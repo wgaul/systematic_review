@@ -1,3 +1,4 @@
 # R specific files
-.nb.html
-.RData
+*.nb.html
+*.RData
+old
