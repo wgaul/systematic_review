@@ -1,0 +1,193 @@
+---
+title: "Biological Records Systematic Review - Preliminary Results"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+```{r, cache = F}
+knitr::opts_chunk$set(echo = F, message = F, cache = F)
+setwd("~/Documents/Data_Analysis/UCD/systematic_review/")
+library(wgutil)
+library(Hmisc)
+library(captioner)
+library(knitr)
+library(tidyverse)
+
+# read in data
+rev <- read_csv("~/Documents/UCD/PhD_Project/systematic_review/systematic_review_coded_results.csv")
+rev <- rev[which(rev$coding_DONE == F), ] # change this to T once I fix all those
+rev <- rev[-2, ] # delete this once dealt with
+```
+
+```{r numberingPrep}
+# make functions for adding numbered captions to figures 
+figs <- captioner(prefix = "Fig.") 
+```
+
+# Preliminary structure of Results
+This document shows the tables and graphs that I expect to want in the *Results* section of the biological records systematic review.  These are currently made using `r nrow(rev)` articles that I've coded so far.  
+
+## Types of questions  
+Analyses may appear in this table or graph more than once.  For example, a study proposing a new method for estimating species richness and then using that method to test predictions about a productivity/richness relationship would appear in the counts in three columns.
+
+
+```{r}
+qt_df <- select(rev, "title", "year", "methodology_development_analysis", 
+                "individual_sp_analysis", "community_analysis", 
+                "compiled_individual_sp_analysis", "distribution", "abundance", 
+                "phenology", "testing_macro_or_ecological_theory", 
+                "trends_over_time") 
+names(qt_df)[3:10] <- c("methodology", "individual_sp", "community", 
+                        "aggregate_individual", "distribution", "abundance",
+                        "phenology", "testing_theory")
+
+qt_df <- gather(qt_df, key = "population", value = "v_1", individual_sp, 
+                aggregate_individual, community, factor_key = T) %>%
+  filter(v_1 == TRUE) %>%
+  gather(key = "study_question", value = "v_2", distribution, abundance, 
+         phenology, testing_theory, methodology, factor_key = T) %>%
+  filter(v_2 == TRUE)
+
+
+kable(table(qt_df$study_question, qt_df$population) / length(unique(qt_df$title)), digits = 2, 
+      caption = "The types of questions addressed by studies that use biological records.  Values are the proportion of all studies.  Study populations are columns, topic of the study is in rows.")
+```
+
+
+```{r}
+qt_df <- select(rev, "title", "year", "methodology_development_analysis", 
+                "individual_sp_analysis", "community_analysis", 
+                "compiled_individual_sp_analysis", "distribution", "abundance", 
+                "phenology", "testing_macro_or_ecological_theory", 
+                "trends_over_time") %>% 
+  filter(trends_over_time == T)
+names(qt_df)[3:10] <- c("methodology", "individual_sp", "community", 
+                        "aggregate_individual", "distribution", "abundance",
+                        "phenology", "testing_theory")
+
+qt_df <- gather(qt_df, key = "population", value = "v_1", individual_sp, 
+                aggregate_individual, community, factor_key = T) %>%
+  filter(v_1 == TRUE) %>%
+  gather(key = "study_question", value = "v_2", distribution, abundance, 
+         phenology, testing_theory, methodology, factor_key = T) %>%
+  filter(v_2 == TRUE)
+
+
+kable(table(qt_df$study_question, qt_df$population) / length(unique(qt_df$title)), digits = 2, 
+      caption = "Same, but for studies of **Trends over time** (about half of all studies).")
+```
+
+```{r}
+qt_df <- select(rev, "title", "year", "methodology_development_analysis", 
+                "individual_sp_analysis", "community_analysis", 
+                "compiled_individual_sp_analysis", "distribution", "abundance", 
+                "phenology", "testing_macro_or_ecological_theory", 
+                "trends_over_time") %>% 
+  filter(methodology_development_analysis == T)
+names(qt_df)[3:10] <- c("methodology", "individual_sp", "community", 
+                        "aggregate_individual", "distribution", "abundance",
+                        "phenology", "testing_theory")
+
+qt_df <- gather(qt_df, key = "population", value = "v_1", individual_sp, 
+                aggregate_individual, community, factor_key = T) %>%
+  filter(v_1 == TRUE) %>%
+  gather(key = "study_question", value = "v_2", distribution, abundance, 
+         phenology, testing_theory, factor_key = T) %>%
+  filter(v_2 == TRUE)
+
+
+kable(table(qt_df$study_question, qt_df$population) / length(unique(qt_df$title)), digits = 2, 
+      caption = "Same, but for **Methodological Studies**.")
+rm(qt_df)
+```
+
+
+## Taxonomic Group
+```{r}
+taxa <- select(rev, title, year, taxon, distribution, abundance, phenology, 
+               testing_macro_or_ecological_theory)
+
+tax_names <- unlist(strsplit(taxa$taxon, "; "))
+tax_names <- gsub("Birds", "bird", tax_names)
+tax_names <- gsub("birds", "bird", tax_names)
+tax_names <- gsub("vascular plant;", "vascular plant", tax_names)
+tax_names <- gsub("vascular plants", "vascular plant", tax_names)
+tax_names <- gsub("Lepidoptara", "Lepidoptera", tax_names)
+tax_names <- gsub("lepidoptara", "Lepidoptera", tax_names)
+tax_names <- gsub("butterflies", "butterfly", tax_names)
+tax_names <- gsub("butterflie", "butterfly", tax_names)
+tax_names <- gsub("odonata", "Odonata", tax_names)
+tax_names <- gsub("bumblebees", "bumblebee", tax_names)
+tax_names <- gsub("Bumblebee", "bumblebee", tax_names)
+tax_names <- gsub("bryophytes", "bryophyte", tax_names)
+tax_names <- gsub("amphibians", "amphibian", tax_names)
+tax_names <- gsub("crickets", "cricket", tax_names)
+tax_names <- unique(tax_names)
+tax_names <- tax_names[order(tax_names)]
+
+tax_names <- tax_names[which(tax_names %nin% c("lepidoptera", "Bombus pascuorum", 
+                                               "Bombus hypnorum", "animals", 
+                                               "Bufo bufo", "Calopteryx splendens", 
+                                               "Cameraria ohridella Deschka & Dimic", 
+                                               "chiroptera", "Chiroptera", 
+                                               "damselfly", "killer whales", 
+                                               "Lady beetle", "ladybirds", "Rubus", 
+                                               "stoneworts", "carabids", 
+                                               "Coccinellidae", "leech", NA, "macromoths", 
+                                               "bees", "Hymenoptera", "crayfish", 
+                                               "marine crustacean", "ladybird", "Lepidoptera"))]
+
+temp_df <- data.frame(matrix(nrow = nrow(taxa), ncol = length(tax_names)))
+colnames(temp_df) <- tax_names
+taxa <- cbind(taxa, temp_df)
+rm(temp_df) 
+
+for(i in 1:nrow(taxa)) {
+  groups <- taxa$taxon[i]
+  groups <- unlist(strsplit(groups, "; "))
+  
+  groups <- gsub("Birds", "bird", groups)
+  groups <- gsub("birds", "bird", groups)
+  groups <- gsub("vascular plant;", "vascular plant", groups)
+  groups <- gsub("vascular plants", "vascular plant", groups)
+  groups <- gsub("Lepidoptara", "Lepidoptera", groups)
+  groups <- gsub("lepidoptara", "Lepidoptera", groups)
+  groups <- gsub("butterflies", "butterfly", groups)
+  groups <- gsub("butterflie", "butterfly", groups)
+  groups <- gsub("odonata", "Odonata", groups)
+  groups <- gsub("bumblebees", "bumblebee", groups)
+  groups <- gsub("Bumblebee", "bumblebee", groups)
+  groups <- gsub("bryophytes", "bryophyte", groups)
+  groups <- gsub("amphibians", "amphibian", groups)
+  groups <- gsub("crickets", "cricket", groups)
+  
+  taxa[i, which(colnames(taxa) %in% groups)] <- T
+}
+
+taxa <- gather(taxa, key = "tax_group", value = "value", 
+               amphibian:'water beetle') %>%
+  filter(value == T) 
+
+table(taxa$tax_group)[order(table(taxa$tax_group), decreasing = T)]
+```
+
+```{r}
+taxa <- gather(taxa, key = "question", value = "v_2", 
+         distribution:testing_macro_or_ecological_theory, factor_key = T) %>%
+  filter(v_2 == T)
+
+table(taxa$tax_group, taxa$question)
+```
+Above is good.  Need to simplify taxonomic groups.  Might not end up using this table, b/c the patterns it shows probably have more to do with the type of data (abundance, semi-structure) than taxonomic group.  So, butterflies don't lend themselves to abundance and phenology studies, but the monitoring scheme used for butterflies does lend itself to those types of analyses.
+
+## Use of biological records within study
+
+
+
+
+
+
+
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
