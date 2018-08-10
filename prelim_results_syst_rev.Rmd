@@ -6,11 +6,11 @@ output:
   word_document: default
 ---
 
-```{r, echo = F}
-knitr::opts_chunk$set(echo = F, message = F, warning = F, cache = F)
+```{r, echo=F}
+knitr::opts_chunk$set(echo=F, message=F, warning=T, cache=F)
 ```
 
-```{r, cache = F}
+```{r, load_data, cache = F, results='hide', warning = F}
 setwd("~/Documents/Data_Analysis/UCD/systematic_review/")
 library(wgutil)
 library(Hmisc)
@@ -23,7 +23,7 @@ library(car)
 library(GGally)
 library(tidyverse)
 
-diag <- T # produce exploratory & diagnostics plots & results
+diag <- F # produce exploratory & diagnostics plots & results
 
 # read in data
 elig <- read_csv("~/Documents/UCD/PhD_Project/systematic_review/master_eligibility_results.csv")
@@ -67,6 +67,185 @@ This document shows the tables and graphs that I expect to want in the *Results*
 
 ## Number of eligible studies
 So far, we have evaluated `r sum(!is.na(elig$qualifies))` studies for eligibility, of which `r length(which(elig$qualifies == TRUE))` are eligible for inclusion in the scoping review.
+
+## General Methods
+
+#### Data Type
+We coded eleven variables describing data type: what, where, when only; sampling effort reported; abundance; detection / non-detection; organized monitoring scheme; visit-specific covariates; life stage information; museum specimen; photo; audio; video. We treated what, where, when as the baseline data type and considered all other data types supplementary additions to that basic data type.  For statistical analyses, we used only the sampling effort reported, abundance, and detection / non-detection data type variables based on *a-priori* expectations about their expected benefit in enabling inferential and predictive modelling and their expected cost in terms of complexity in collecting, recording, and storing the data.  
+
+## Authors and Data Providing Institutions
+
+**Who choses to use biological records data?**
+
+$H_a$: The first author is more likely to use data held by their own institution than by other institutions.
+
+$H_0$: The number of studies with a lead author from the institution that provided the data is the same as expected by chance.
+
+*Proposed Test*: Permutation test of lead author institutions.  
+
+## Temporal Extent
+
+$H_a$: The mean temporal extent of studies using only what, where, when data is longer than the mean temporal extent of studies using richer data types. 
+
+$H_0$: The mean temporal extent of studies using what, where, when-only data is the same as the mean temporal extent of studies using richer data types. 
+
+*Proposed Test*: Linear regression with natural-log transformed time (in years) as the outcome and data types as predictors.
+
+### Methods
+
+We used linear regression with natural-log transformed time (in years) as the response variable and the following data types as predictors:  sampling effort reported, detection / non-detection, abundance.  Note that these are each individual variables - this is not a single categorical factor level "data type" variable because the variables are not mutually exclusive.  This model assumes an additive effect of each supplementary type of data.  The intercept-only model is data that is just what, where, when only and the model estimates the effect of adding each additional type of supplementary data.  
+
+```{r prepare_temporal_extent_df}
+temp_extent <- select(rev, c(title, temp_extent, 
+                             data.type...what.where.when.only, 
+                             data.type...detection...non.detection, 
+                             data.type...abundance:data.type...museum)) %>%
+  gather(key = "data_type", value = "dt_value", 
+         data.type...what.where.when.only:data.type...museum, 
+         factor_key = T) %>%
+  filter(dt_value == T) %>%
+  group_by(data_type)
+
+# make names prettier
+temp_extent$data_type <- gsub("data.type...", "", temp_extent$data_type)
+
+temp_extent$data_type <- factor(as.character(temp_extent$data_type), 
+                            levels = c("what.where.when.only", 
+                                       "detection...non.detection", 
+                                       "abundance", 
+                                       "sampling.effort.reported", 
+                                       "organized.data.collection.scheme", 
+                                       "visit.specific.covariates", 
+                                       "museum"), 
+                            labels = c("what where when only", 
+                                       "detection / non-detection", 
+                                       "abundance", 
+                                       "sampling effort reported", 
+                                       "organized data collection scheme", 
+                                       "visit-specific covariates", 
+                                       "museum"))
+```
+
+```{r temp_range_distribution}
+if(diag) {
+  # distribution of all data
+  hist(rev$temp_extent)
+  hist(rev$temp_extent[which(rev$temp_extent <= quantile(rev$temp_extent, 
+                                                         0.90, na.rm = T))])
+  ## data are not balanced
+  table(temp_extent$data_type)
+  
+  ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + 
+    geom_boxplot() +
+    theme_bw() + 
+    ggtitle("All data") + 
+    theme(axis.text.x = element_text(angle = 330, vjust = 0.3))
+  
+  ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + 
+    ylim(c(0, 800)) + 
+    geom_boxplot() +
+    theme_bw() + 
+    ggtitle("Temporal Duration after\ncutting off the 8000 year study") + 
+    theme(axis.text.x = element_text(angle = 330, vjust = 0.3))
+  
+  ggplot(data = temp_extent, aes(x = temp_extent, y = data_type)) + 
+    xlim(c(0, 800)) + 
+    geom_density_ridges() +
+    ggtitle("Temporal Duration after\ncutting off the 8000 year study") + 
+    theme_bw() 
+  
+  ## normality -------------------------------------
+  # data very non-normal (above) but log transformation kinda fixes this
+  # (reciprocal and sqrt transformations did not help)
+  print(ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + 
+          geom_boxplot(varwidth = T) +
+          scale_y_log10() + 
+          theme_bw() + 
+          ggtitle("log transformation of year\nmakes normality better") + 
+          theme(axis.text.x = element_text(angle = 330, vjust = 1, hjust = 0)) 
+  )
+  
+  for(i in unique(temp_extent$data_type)) { 
+    # distribution of log(years) by data type
+    hist(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)])
+  }
+  ## normality ok-ish after log trans ---------------
+  
+  ggplot(data = temp_extent, aes(x = temp_extent, y = data_type)) + 
+    scale_x_log10() + 
+    # geom_density_ridges(stat = "binline") +
+    geom_density_ridges() + 
+    theme_bw()
+
+### assess correlation between data type predictors ----------------------
+print(ggpairs(rev, columns = c(38, 39, 41, 42)))
+}
+```
+
+Potential correlations between the following data types: abundance & detection/non-det, sampling effort, organized data collection scheme; sampling effort & det/non-det, organized data collection.
+
+```{r temp_extent_lm_independent_predictors}
+## using original df and each data type as a separate variable 
+## fit full model
+rev$log_years <- log(rev$temp_extent)
+time_lm_full <- lm(log_years ~ 1 + 
+                     data.type...sampling.effort.reported + 
+                     data.type...abundance +
+                     data.type...detection...non.detection,
+                   data = rev) # variables added most to least important
+time_resids <- rstandard(time_lm_full)
+if(diag) {
+  plot(time_lm_full)
+  hist(time_resids)
+  boxplot(time_resids)
+}
+time_summary <- summary(time_lm_full)
+# time_full_model_anova <- anova(time_lm_full) # not recommended because R guesses a null model
+time_summary
+
+## to interpret outcome on original scale:
+# for a one-unit increase in x, the predicted value of y 
+# changes by (e^beta1 - 1)*100 percent
+```
+
+### Results for Time
+
+```{r time_data_type_full_model_sig_test}
+# Test significance of full model
+m0 <- lm(log_years ~ 1, data = rev) # fit null model 
+m_time_full_anova <- anova(m0, time_lm_full)
+m_time_full_anova
+```
+
+```{r time_data_type_test_main_effects}
+## test effect of each data type predictor by comparing the full model to a
+# model with that predictor removed
+
+m_no_effort <- lm(log_years ~ 1 + 
+                    data.type...abundance +
+                    data.type...detection...non.detection,
+                  data = rev)
+m_no_abund <- lm(log_years ~ 1 + 
+                   data.type...sampling.effort.reported + 
+                   data.type...detection...non.detection,
+                 data = rev)
+m_no_nonDet <- lm(log_years ~ 1 + 
+                    data.type...sampling.effort.reported + 
+                    data.type...abundance,
+                  data = rev)
+indiv_mods_time <- list(m_no_effort, m_no_abund, m_no_nonDet)
+
+for(i in 1:length(indiv_mods_time)) { 
+  print(anova(indiv_mods_time[[i]], time_lm_full))
+}
+```
+
+[*boxplot is next thing*]
+
+
+
+_________________________________________________________________________
+### Old versions below here
 
 ## Types of questions  
 Analyses may appear in this table or graph more than once.  For example, a study proposing a new method for estimating species richness and then using that method to test predictions about a productivity/richness relationship would appear in the counts in three columns.
@@ -220,44 +399,11 @@ $H_0$: The mean temporal extent of studies using what, where, when-only data is 
 
 $H_a$: The mean temporal extent of studies using what, where, when-only data is larger than the mean temporal extent of studies using other data types. 
 
-### Methods
-
-Use linear regression with natural-log transformed time (in years) and the following data types as predictors: detection / non-detection, abundance, sampling effort reported, organized data collection scheme, visit-specific covariates, museum.  Note that these are each individual variables - this is not a single categorical factor level "data type" variable because the variables are not mutually exclusive.  This model assumes an additive effect of each supplementary type of data.  So the base is data that is just what, where, when only (though that variable is not needed in the model, because if all other data types are FALSE then www-only will be TRUE), and the model estimates the effect of adding each additional type of supplementary data.  It is possible to add all those data types at once. 
-
 Alternatively, log transform temporal extent to fix normality of each group, then use Welch's one-way anova for unequal variances.
 
-```{r prepare_temporal_extent_df}
-temp_extent <- select(rev, c(title, temp_extent, 
-                             data.type...what.where.when.only, 
-                             data.type...detection...non.detection, 
-                             data.type...abundance:data.type...museum)) %>%
-  gather(key = "data_type", value = "dt_value", 
-         data.type...what.where.when.only:data.type...museum, 
-         factor_key = T) %>%
-  filter(dt_value == T) %>%
-  group_by(data_type)
 
-# make names prettier
-temp_extent$data_type <- gsub("data.type...", "", temp_extent$data_type)
 
-temp_extent$data_type <- factor(as.character(temp_extent$data_type), 
-                            levels = c("what.where.when.only", 
-                                       "detection...non.detection", 
-                                       "abundance", 
-                                       "sampling.effort.reported", 
-                                       "organized.data.collection.scheme", 
-                                       "visit.specific.covariates", 
-                                       "museum"), 
-                            labels = c("what where when only", 
-                                       "detection / non-detection", 
-                                       "abundance", 
-                                       "sampling effort reported", 
-                                       "organized data collection scheme", 
-                                       "visit-specific covariates", 
-                                       "museum"))
-```
-
-```{r temp_range_distribution}
+```{r temp_range_distribution_old}
 if(diag) {
   # distribution of all data
   hist(rev$temp_extent)
@@ -325,7 +471,6 @@ print(ggpairs(rev, columns = c(38, 39, 41:45)))
 }
 ```
 
-Potential correlations between the following data types: abundance & detection/non-det, sampling effort, organized data collection scheme; sampling effort & det/non-det, organized data collection.
 
 ```{r temp_extent_welchs, include = FALSE} 
 temp_extent_noNA <- drop_na(temp_extent) 
@@ -335,54 +480,6 @@ temp_welsh <- oneway.test(log(temp_extent) ~ data_type, data = temp_extent_noNA,
 temp_welsh
 ```
 
-```{r temp_extent_lm_categorical, include = F, eval = F}
-## THIS IS WRONG!!!!! Data type is not a factor variable, because it does not
-## have mutually exclusive levels.  So this isn't valid.
-temp_extent$log_years <- log(temp_extent$temp_extent)
-factor_time_lm <- lm(log_years ~ 1 + data_type, data = temp_extent)
-factor_time_resids <- rstandard(factor_time_lm)
-if(diag) {
-  plot(factor_time_lm) # qq plot questionable
-  hist(factor_time_resids) # some residuals bigger than 2
-  boxplot(factor_time_resids)
-}
-factor_time_summary <- summary(factor_time_lm)
-factor_time_full_model_anova <- anova(factor_time_lm)
-factor_time_summary
-
-## to interpret outcome on original scale:
-# for a one-unit increase in x, the predicted value of y 
-# changes by (e^beta1 - 1)*100 percent
-```
-
-```{r temp_extent_lm_independent_predictors}
-#### trying this the better way of using the original df and each variable as a
-#### separate variable (rather than as a categorical factor variable)
-
-## fit full model
-rev$log_years <- log(rev$temp_extent)
-time_lm <- lm(log_years ~ 1 + 
-                data.type...detection...non.detection + 
-                data.type...sampling.effort.reported + 
-                data.type...abundance +
-                data.type...organized.data.collection.scheme + 
-                data.type...visit.specific.covariates + 
-                data.type...museum, 
-              data = rev) # variables added most to least important
-time_resids <- rstandard(time_lm)
-if(diag) {
-  plot(time_lm)
-  hist(time_resids)
-  boxplot(time_resids)
-}
-time_summary <- summary(time_lm)
-time_full_model_anova <- anova(time_lm)
-time_summary
-
-## to interpret outcome on original scale:
-# for a one-unit increase in x, the predicted value of y 
-# changes by (e^beta1 - 1)*100 percent
-```
 
 ```{r time_model_selection_individual_relationships}
 preds <- c("data.type...detection...non.detection", 
@@ -407,28 +504,6 @@ if(diag) {
 }
 ```
 
-```{r time_data_type_test_main_effects, include = F, eval = F}
-## THIS DOES THE SAME AS THE ABOVE CHUNK MORE EXPLICITLY.
-# This explicitly does an anova with a null model whereas the previous 
-# chunk looks at the p-value of the individual term.  For models with only
-# 1 term these are equivalent, but this would be the prefered way for models
-# with more terms.
-
-## test effect of each data type predictor by comparing model with that predictor
-# to a null model.
-# I don't know exactly what null model to use.  I think the best null model is
-# to have no data type predictors, which basically assumes wh,wh,wh data with
-# no supplementary information.  Test that with a model including only the 
-# data type of interest to get the effect of adding that data type alone.
-
-## null model (what, where, when only)
-m0 <- lm(rev$log_years ~ 1)
-
-for(i in 1:length(indiv_mods_time)) { 
-  print(preds[i])
-  print(anova(indiv_mods_time[[i]], m0))
-}
-```
 
 ```{r time_model_selection_Rsquared}
 time_bestMods <- regsubsets(log_years ~ 1 + 
@@ -500,12 +575,14 @@ Overall *F*-test is significant.  When correcting for the other chosen variables
 
 ```{r time_bestMods_tryAllChosen_iteration2}
 # try a model with variables selected above
+m_time_final <- lm(log_years ~ 1 + 
+                     data.type...sampling.effort.reported + 
+                     data.type...visit.specific.covariates + 
+                     data.type...museum, 
+                   data = rev)
+m_time_final_summary <- summary(m_time_final)
+
 if(diag) {
-  m_time_final <- lm(log_years ~ 1 + 
-                       data.type...sampling.effort.reported + 
-                       data.type...visit.specific.covariates + 
-                       data.type...museum, 
-                     data = rev)
   print(summary(m_time_final))
   plot(m_time_final)
 hist(rstandard(m_time_final), main = "residuals of model with 3 data type predictors", 
@@ -513,12 +590,11 @@ hist(rstandard(m_time_final), main = "residuals of model with 3 data type predic
 boxplot(rstandard(m_time_final), main = "residuals of model with 3 data type predictors", 
      ylab = "standardized residuals")
 vif(m_time_final) # ok
-m_time_final_summary <- summary(m_time_final)
 m_time_final_summary
+}
 
 m0 <- lm(log_years ~ 1, data = rev)
 m_time_final_anova <- anova(m0, m_time_final)
-}
 
 ## to interpret log-transformed outcome on original scale:
 # ln(y) = beta_0 + beta_1*x
@@ -738,18 +814,7 @@ results_data_model <- glm(quantitative ~
 # vif(results_data_model)
 ```
 
-## My Questions for group meeting
 
-* What do you think of GLM as a way to analyze this?
-    * appropriate at all?
-    * binary outcome? (lumping inference & prediction)
-    * multi-level outcome?
-    * possible correlation of predictor variables
-    * no sparse cells refers to individual predictor levels, right, not predictor/outcome cells?
-    
-* Is there an expected count vs. observed count test for non-mutually exclusive categories of grouping variable?  (or outcome variable for that matter)
-
-* coding?
 
 
 
