@@ -334,6 +334,136 @@ ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + #, color = sig
 ```
 
 
+## Study Question Paradigm
+
+**What is the most popular study question paradigm?**
+
+$H_a$: Some broad study question paradigms are more common than others in studies using biological records.
+
+$H_0$: The number of studies pursuing each of the broad study question paradigms is the same.
+
+*Proposed Test* One Poisson regression with study question paradigm as predictor. 
+
+```{r make_study_question_paradigm_tibble}
+paradigm_df <- select(rev, title, individual.species.analysis, 
+                      community.analysis) %>%
+  gather(key = "paradigm", value = "used", individual.species.analysis:
+           community.analysis) %>%
+  filter(used == TRUE)
+
+table(paradigm_df$paradigm)
+```
+
+**What data types are used for each study question paradigm?**
+[ descriptive results only ] 
+
+```{r make_study_question_paradigm_by_dataType_tibble}
+paradigm_data_df <- select(rev, title, individual.species.analysis, 
+                      community.analysis, data.type...what.where.when.only, 
+                      data.type...sampling.effort.reported, 
+                      data.type...detection...non.detection, 
+                      data.type...abundance) %>%
+  gather(key = "paradigm", value = "parad_used", individual.species.analysis:
+           community.analysis) %>%
+  filter(parad_used == TRUE) %>%
+  gather(key = "data_type", value = "dat_used", 
+         data.type...what.where.when.only:data.type...abundance) %>%
+  filter(dat_used == TRUE)
+
+paradigm_data_df$data_type <- gsub("data.type...what.where.when.only", 
+                                   "what, where, when only", 
+                                   paradigm_data_df$data_type)
+paradigm_data_df$data_type <- gsub("data.type...sampling.effort.reported", 
+                                   "sampling effort", 
+                                   paradigm_data_df$data_type)
+paradigm_data_df$data_type <- gsub("data.type...detection...non.detection", 
+                                   "detection / non-detection", 
+                                   paradigm_data_df$data_type)
+paradigm_data_df$data_type <- gsub("data.type...abundance", 
+                                   "abundance", 
+                                   paradigm_data_df$data_type)
+paradigm_data_df$paradigm <- gsub("community.analysis", 
+                                   "community", 
+                                   paradigm_data_df$paradigm)
+paradigm_data_df$paradigm <- gsub("individual.species.analysis", 
+                                   "individual species", 
+                                   paradigm_data_df$paradigm)
+
+kable(table(paradigm_data_df$data_type, paradigm_data_df$paradigm))
+```
+
+
+## Specific Study Focus
+
+Descriptive stats for studies focusing on policy or alien species, testing ecological theory, and testing methods of data correction.
+
+```{r specific_question_by_paradigm_bar_plot}
+qt_df <- select(rev, "title", 
+                "species.richness", "diversity", 
+                "distribution", "abundance", "phenology") 
+names(qt_df)[2:6] <- c("species.richness", "diversity", 
+                        "distribution", "abundance", "phenology")
+
+qt_df <- gather(qt_df, key = "study_question", value = "v_2", 
+                species.richness, diversity, distribution, abundance, 
+                phenology,
+                factor_key = T) %>%
+  filter(v_2 == TRUE) %>%
+  group_by(study_question) %>%
+  summarise(count = n()) %>%
+  mutate(percent = (count/sum(count)) * 100) %>%
+  mutate(paradigm = str_replace_all(study_question, 
+                                    c("species.richness|diversity" = 
+                                        "community", 
+                                      "distribution|abundance|phenology" = 
+                                        "individual species"))) 
+
+ggplot(data = qt_df, 
+       aes(x = factor(study_question, 
+                      levels = c("species.richness", "diversity", 
+                                 "distribution", "phenology", "abundance"), 
+                      labels = c("species richness", "diversity", 
+                                 "distribution", "phenology", "abundance")), 
+           y = percent, 
+           fill = paradigm)) + 
+  geom_bar(stat = "identity") + 
+  scale_fill_brewer() + 
+  xlab("Study Focus") + 
+  ylab("Percent of Studies") + 
+  theme_bw()
+```
+
+```{r specific_question_by_paradigm_bar_plot}
+qt_df <- select(rev, "title", "methodology.development.or.analysis", 
+                "testing.macro.or.ecological.theory", "trends.over.time") 
+names(qt_df)[2:4] <- c("methodology", "testing.theory", "temporal.trends")
+
+qt_df <- gather(qt_df, key = "study_question", value = "v_2", 
+                temporal.trends,testing.theory, methodology,  
+         factor_key = T) %>%
+  filter(v_2 == TRUE) %>%
+  group_by(study_question) %>%
+  summarise(count = n()) %>%
+  mutate(percent = (count/sum(count)) * 100)
+
+ggplot(data = qt_df, 
+       aes(x = factor(study_question, 
+                      levels = c("temporal.trends", "methodology",
+                                 "testing.theory"), 
+                      labels = c("temporal trends", "methodology",
+                                 "testing theory")), 
+           y = percent)) + 
+  geom_bar(stat = "identity") + 
+  scale_fill_brewer() + 
+  xlab("Study Focus") + 
+  ylab("Percent of Studies") + 
+  theme_bw()
+
+
+```
+
+
+
 _________________________________________________________________________
 ### Old versions below here
 
@@ -392,57 +522,6 @@ kable(table(qt_df$study_question, qt_df$population) / length(unique(qt_df$title)
 ```
 
 
-```{r time_trends_question_study_type}
-if(diag) {
-  qt_df <- select(rev, "title", "year", "methodology.development.or.analysis", 
-                  "individual.species.analysis", "community.analysis", 
-                  "compiled.individual.species.analysis", "distribution", 
-                  "abundance", "phenology", "testing.macro.or.ecological.theory", 
-                  "trends.over.time") %>% 
-    filter(trends.over.time == T)
-  names(qt_df)[3:10] <- c("methodology", "individual.species", "community", 
-                          "compiled.individual", "distribution", "abundance",
-                          "phenology", "testing.theory")
-  
-  qt_df <- gather(qt_df, key = "population", value = "v_1", individual.species, 
-                  compiled.individual, community, factor_key = T) %>%
-    filter(v_1 == TRUE) %>%
-    gather(key = "study_question", value = "v_2", distribution, abundance, 
-           phenology, testing.theory, methodology, factor_key = T) %>%
-    filter(v_2 == TRUE)
-  
-  
-  kable(table(qt_df$study_question, qt_df$population) / length(unique(qt_df$title)), digits = 2, 
-        caption = "Same, but for studies of **Trends over time** (about half of all studies).")
-}
-```
-
-```{r method_studies_question_study_type}
-if(diag) {
-  qt_df <- select(rev, "title", "year", "methodology.development.or.analysis", 
-                  "individual.species.analysis", "community.analysis", 
-                  "compiled.individual.species.analysis", "distribution", 
-                  "abundance", "phenology", "testing.macro.or.ecological.theory", 
-                  "trends.over.time") %>% 
-    filter(methodology.development.or.analysis == T)
-  names(qt_df)[3:10] <- c("methodology", "individual.species", "community", 
-                          "compiled.individual", "distribution", "abundance",
-                          "phenology", "testing.theory")
-  
-  qt_df <- gather(qt_df, key = "population", value = "v_1", individual.species, 
-                  compiled.individual, community, factor_key = T) %>%
-    filter(v_1 == TRUE) %>%
-    gather(key = "study_question", value = "v_2", distribution, abundance, 
-           phenology, testing.theory, factor_key = T) %>%
-    filter(v_2 == TRUE)
-  
-  
-  kable(table(qt_df$study_question, qt_df$population) / length(unique(qt_df$title)), 
-        digits = 2, 
-        caption = "Same, but for **Methodological Studies**.")
-  rm(qt_df)
-}
-```
 
 
 ## Taxonomic Group
@@ -483,293 +562,6 @@ if(diag) {
 }
 ```
 Above is good.  Need to simplify taxonomic groups.  Might not end up using this table, b/c the patterns it shows probably have more to do with the type of data (abundance, semi-structure) than taxonomic group.  So, butterflies don't lend themselves to abundance and phenology studies, but the monitoring scheme used for butterflies does lend itself to those types of analyses.
-
-## Temporal extent
-$H_0$: The mean temporal extent of studies using what, where, when-only data is the same as the mean temporal extent of studies using other data types.
-
-$H_a$: The mean temporal extent of studies using what, where, when-only data is larger than the mean temporal extent of studies using other data types. 
-
-Alternatively, log transform temporal extent to fix normality of each group, then use Welch's one-way anova for unequal variances.
-
-
-
-```{r temp_range_distribution_old}
-if(diag) {
-  # distribution of all data
-  hist(rev$temp_extent)
-  hist(rev$temp_extent[which(rev$temp_extent <= quantile(rev$temp_extent, 
-                                                         0.90, na.rm = T))])
-  
-  ## data are not balanced
-  table(temp_extent$data_type)
-  
-  ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + 
-    geom_boxplot() +
-    theme_bw() + 
-    theme(axis.text.x = element_text(angle = 330, vjust = 0.3))
-  
-  ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + 
-    ylim(c(0, 800)) + 
-    geom_boxplot() +
-    theme_bw() + 
-    theme(axis.text.x = element_text(angle = 330, vjust = 0.3))
-  
-  ggplot(data = temp_extent, aes(x = temp_extent, y = data_type)) + 
-    xlim(c(0, 800)) + 
-    geom_density_ridges() +
-    theme_bw() 
-  
-  ## normality -------------------------------------
-  # data very non-normal (above) but log transformation kinda fixes this
-  # (reciprocal and sqrt transformations did not help)
-  print(ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + 
-          geom_boxplot(varwidth = T) +
-          scale_y_log10() + 
-          theme_bw() + 
-          theme(axis.text.x = element_text(angle = 330, vjust = 1, hjust = 0)) 
-  )
-  
-  for(i in unique(temp_extent$data_type)) {
-    hist(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)])
-  }
-  ## normality ok-ish after log trans ---------------
-  
-  ggplot(data = temp_extent, aes(x = temp_extent, y = data_type)) + 
-    scale_x_log10() + 
-    # geom_density_ridges(stat = "binline") +
-    geom_density_ridges() + 
-    theme_bw() 
-  
-  ## variances
-  bartlett.test(log10(temp_extent) ~ data_type, data = temp_extent)
-  # variances not equal based on boxplots
-  # but bartlett test doesn't reject null of equal variances
-  # do sensitivity test w/anova, welch's
-  time_aov <- aov(log10(temp_extent) ~ as.factor(data_type), data = temp_extent)
-  anova(time_aov)
-  temp_extent_noNA <- drop_na(temp_extent)
-  temp_welsh <- oneway.test(log(temp_extent) ~ data_type, data = temp_extent_noNA, 
-                            var.equal = F)
-  temp_welsh
-  # anova and welch's p-values different by many orders of magnitude.
-  ## variances unequal.  Use Welch's test.
-
-
-
-### assess correlation -----------------------------------------
-print(ggpairs(rev, columns = c(38, 39, 41:45)))
-}
-```
-
-
-```{r temp_extent_welchs, include = FALSE} 
-temp_extent_noNA <- drop_na(temp_extent) 
-
-temp_welsh <- oneway.test(log(temp_extent) ~ data_type, data = temp_extent_noNA, 
-                          var.equal = F)
-temp_welsh
-```
-
-
-```{r time_model_selection_individual_relationships}
-preds <- c("data.type...detection...non.detection", 
-           "data.type...sampling.effort.reported", 
-           "data.type...abundance", 
-           "data.type...organized.data.collection.scheme", 
-           "data.type...visit.specific.covariates", 
-           "data.type...museum")
-indiv_mods_time <- list()
-for(i in 1:length(preds)) {
-  # fit models to assess the individual effect of each predictor data type
-  m <- lm(rev$log_years ~ data.frame(rev)[, which(colnames(rev) == preds[i])])
-  indiv_mods_time[[i]] <- m
-}
-names(indiv_mods_time) <- preds
-indiv_pvals <- sapply(indiv_mods_time, FUN = function(x) {anova(x)[[5]][1]})
-if(diag) {
-  print("Data type variables with significant individual relationships are:")
-  print(names(indiv_mods_time)[which(indiv_pvals < 0.05)])
-  print("Data type variables NOT significant in individual relationships are:")
-  print(names(indiv_mods_time)[which(indiv_pvals >= 0.05)])
-}
-```
-
-
-```{r time_model_selection_Rsquared}
-time_bestMods <- regsubsets(log_years ~ 1 + 
-                         data.type...detection...non.detection + 
-                         data.type...sampling.effort.reported + 
-                         data.type...abundance +
-                         data.type...organized.data.collection.scheme + 
-                         data.type...visit.specific.covariates + 
-                         data.type...museum, 
-                       data = rev, 
-                       nbest = 2, 
-                       nvmax = 6
-)
-
-
-if(diag) {
-  time_bm_sum <- summary(time_bestMods)
-  time_bm_sum$outmat
-  time_bm_sum$adjr2
-  time_bm_sum$cp
-  time_bm_sum$bic
-}
-
-## Overall summary of model selection
-if(diag) { 
-  print("-----Overall Summary of Model Selection-----")
-  # don't mind the following horrific subsetting.  It must be done.
-  print("best model according to adjr2:")
-  print(names(time_bm_sum$which[which(
-    time_bm_sum$adjr2 == max(time_bm_sum$adjr2)), ][time_bm_sum$which[which(
-      time_bm_sum$adjr2 == max(time_bm_sum$adjr2)), ] == T]))
-  
-  print("best model according to Mallow's Cp")
-  print(names(time_bm_sum$which[which(
-    time_bm_sum$bic == min(time_bm_sum$bic)), ][time_bm_sum$which[which(
-      time_bm_sum$bic == min(time_bm_sum$bic)), ] == T]))
-  
-  print("significant variables in individual regressions") 
-  print(names(indiv_mods_time)[which(indiv_pvals < 0.05)])
-}
-```
-
-As of 8 Aug 2018, with `r nrow(rev)` articles coded, the data type variables selected according to all methods are:
-
-* sampling effort
-* visit-specific covariates
-* museum
-
-and additional variables selected by at least one method are:
-
-* organized scheme
-
-Looking at a model with all 4 of those variables then:
-```{r time_bestMods_tryAllChosen}
-# try a model with all variables that were chosen by at least 1 method
-if(diag) {
-m_chosen <- lm(log_years ~ 1 + 
-                 data.type...sampling.effort.reported + 
-                 data.type...organized.data.collection.scheme + 
-                 data.type...visit.specific.covariates + 
-                 data.type...museum, 
-               data = rev)
-print(summary(m_chosen))
-rm(m_chosen)
-}
-```
-
-Overall *F*-test is significant.  When correcting for the other chosen variables, organized scheme and sampling effort are no longer significant.  Removing organized scheme since it was only identified by two methods gives the following model:
-
-```{r time_bestMods_tryAllChosen_iteration2}
-# try a model with variables selected above
-m_time_final <- lm(log_years ~ 1 + 
-                     data.type...sampling.effort.reported + 
-                     data.type...visit.specific.covariates + 
-                     data.type...museum, 
-                   data = rev)
-m_time_final_summary <- summary(m_time_final)
-
-m0 <- lm(log_years ~ 1, data = rev)
-m_time_final_anova <- anova(m0, m_time_final)
-
-if(diag) {
-  print(summary(m_time_final))
-  plot(m_time_final)
-hist(rstandard(m_time_final), main = "residuals of model with 3 data type predictors", 
-     xlab = "standardized residuals")
-boxplot(rstandard(m_time_final), main = "residuals of model with 3 data type predictors", 
-     ylab = "standardized residuals")
-vif(m_time_final) # ok
-m_time_final_summary
-}
-
-
-## to interpret log-transformed outcome on original scale:
-# ln(y) = beta_0 + beta_1*x
-# exponentiate both sides to get:
-# y = e^(beta_0+beta_1*x) = e^beta_0 * e^(beta_1*x)
-#
-# for a one-unit increase in x, the predicted value of y 
-# changes by (e^beta1 - 1)*100 percent
-# 
-## For my binary variables, not sure the "one unit change" is the 
-# best way to think about it.  Probably better to just calculate
-# the expected study duration with each supplementary data type
-# and no other supplementary data types.
-
-## equation giving temporal extent of study in years:
-# ln(years) = 3.56 + (-1.27)*sampling_effort + (-2.26)*visit_covs + 1.81*museum
-# years = e^(3.56 + (-1.27)*sampling_effort + (-2.26)*visit_covs + 1.81*museum)
-# years = exp(m_time_final$coefficients[[1]] + 
-#           (m_time_final$coefficients[[2]] * sampling effort) + 
-#           (m_time_final$coefficients[[3]] * visit-specific covs) + 
-#           (m_time_final$coefficients[[4]] * museum))
-```
-Overall *F*-test still significant, and all terms significant or nearly so.  Will keep these 3 terms for now. Test for interactions (below) found no significant interactions among the 3 variables I've chosen to keep.
-
-```{r time_bestMods_testInteractions}
-# look for interactions between the 3 variables selected above
-if(diag) {
-  m_interact01 <- lm(log_years ~ 1 + 
-                       data.type...sampling.effort.reported * 
-                       data.type...visit.specific.covariates + 
-                       data.type...museum, 
-                     data = rev)
-  m_interact02 <- lm(log_years ~ 1 + 
-                       data.type...sampling.effort.reported + 
-                       data.type...visit.specific.covariates * 
-                       data.type...museum, 
-                     data = rev)
-  m_interact03 <- lm(log_years ~ 1 + 
-                       data.type...visit.specific.covariates +
-                       data.type...sampling.effort.reported * 
-                       data.type...museum, 
-                     data = rev)
-  
-  print(summary(m_interact01)) # interaction not significant
-  print(summary(m_interact02)) # interaction not significant
-  print(summary(m_interact03)) # interaction not significante
-
-  rm(m_interact01, m_interact02, m_interact03)
-}
-```
-
-
-### Results for Time
-
-```{r time_extent_results_plot_old}
-# this old version has more variables than I'm planning to use
-temp_extent$sig_different_from_WhWhWh <- temp_extent$data_type %in% 
-                                       c("sampling effort reported", 
-                                         "visit-specific covariates", 
-                                         "museum")
-print(ggplot(data = temp_extent, aes(y = temp_extent, x = data_type, 
-                                     color = sig_different_from_WhWhWh)) + 
-        geom_boxplot(varwidth = T) +
-        scale_y_log10() + 
-        xlab("Data Type") + 
-        ylab("Temporal Extent of Study (years)") + 
-        theme_bw() + 
-        scale_color_discrete(name = "Significantly Different from\nWhat, Where, When-only\nstudies") + 
-        theme(axis.text.x = element_text(angle = 330, vjust = 1, hjust = 0)) 
-)
-```
-
-The overall model using the three most important data types to predict the natural log of temporal extent of study (in years) was significant (p = `r format(round(m_time_final_anova[6][[1]][2], digits = 4), scientific = F)`).  
-
-The expected temporal extent covered by a study that uses only "what, where, when" data is `r round(exp(m_time_final$coefficients[1]), digits = 1)` years (95% CI [`r round(exp(confint(m_time_final)[1]), digits = 1)`, `r round(exp(confint(m_time_final)[5]), digits = 1)`]).  The expected temporal extent of studies is shorter for studies that include sampling effort information or visit-specific covariates than for studies that use only "what, where, when" data (*p* = `r format(round(m_time_final_summary$coefficients[2, 4], digits = 3), scientific = F)` and *p* = `r format(round(m_time_final_summary$coefficients[3, 4], digits = 3), scientific = F)`, respectively).  The expected temporal extent of studies is longer for studies that use data for which a museum specimen is available than for studies that use only "what, where, when" data (*p* = `r format(round(m_time_final_summary$coefficients[4, 4], digits = 3), scientific = F)`).
-
-The effects of additional information on detection / non-detection and abundance, and whether the data came from an organized monitoring scheme were not significant after accounting for the effects of sampling effort, visit-specific covariates, and availability of museum specimens.  This may be because sampling effort is correlated with detection/non-detection, abundance, and organized scheme.
-
-**Question for Jon** 
-
-* normality?
-* For interpreting coefficients, do I use the coefficients of the final model (all 3 variables) or do I use the coefficients from the models with only the variable of interest?  ok, I think this is dumb.  I think I use the coefficients from the final model, but set other variable values to 0.  
-* still plot all variables, given correlation and model selection?
-* do variable selection like this or 
 
 
 --------------------------------------------------------------------

@@ -40,8 +40,6 @@ $H_0$: Data type does not affect the mean temporal extent of studies.  //  The m
 
 ## Study Question Paradigm
 
-There are two questions about this topic.
-
 **What is the most popular study question paradigm?**
 
 $H_a$: Some broad study question paradigms are more common than others in studies using biological records.
