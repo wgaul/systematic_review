@@ -158,7 +158,7 @@ to test for than interaction (whether there is a dependency between Module and V
 
 ## Specific Study Focus
 
-Descriptive stats for studies focusing on policy or alien species, testing ecological theory, and testing methods of data correction.
+What are bio recs used for?  Descriptive stats for studies focusing on policy or alien species, testing ecological theory, and testing methods of data correction.
 
 ## Spatial Bias Correction
 

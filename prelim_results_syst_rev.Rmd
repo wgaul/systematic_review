@@ -14,6 +14,7 @@ knitr::opts_chunk$set(echo=F, message=F, warning=T, cache=F)
 setwd("~/Documents/Data_Analysis/UCD/systematic_review/")
 library(wgutil)
 library(Hmisc)
+library(irr)
 library(captioner)
 library(knitr)
 library(pander)
@@ -24,20 +25,44 @@ library(GGally)
 library(tidyverse)
 
 diag <- F # produce exploratory & diagnostics plots & results
+diag_present <- T # produce diagnostics for report to Dina
 
 # read in data
 elig <- read_csv("~/Documents/UCD/PhD_Project/systematic_review/master_eligibility_results.csv")
 rev <- read_csv("./data/systematic_review_coded_results.csv")
+cp <- read_csv("./data/casey_coded_results.csv")
+cp_pre_cal <- read_csv("./data/casey_coded_results_pre_calibration.csv")
+
 # remove columns which are used as visual separators with no data
 if(any(grepl("X.*", colnames(rev)))) {
   rev <- rev[, -which(grepl("X.*", colnames(rev)))]
 }
-
 colnames(rev) <- make.names(colnames(rev))
 
+# remove columns which are used as visual separators with no data - casey's coding
+if(any(grepl("X.*", colnames(cp)))) {
+  cp <- cp[, -which(grepl("X.*", colnames(cp)))]
+}
+colnames(cp) <- make.names(colnames(cp))
+
+# remove columns which are used as visual separators with no data - casey's coding
+if(any(grepl("X.*", colnames(cp_pre_cal)))) {
+  cp_pre_cal <- cp_pre_cal[, -which(grepl("X.*", colnames(cp_pre_cal)))]
+}
+colnames(cp_pre_cal) <- make.names(colnames(cp_pre_cal))
+
 # tidy some column names
-colnames(rev)[which(colnames(rev) ==
-                      "X.if.prediction.used..prediction.performance.measure")] <- 
+colnames(rev)[which(
+  colnames(rev) == 
+    "X.if.prediction.used..prediction.performance.measure")] <- 
+  "predicton.performance.measure"
+colnames(cp)[which(
+  colnames(cp) == 
+    "X.if.prediction.used..prediction.performance.measure")] <- 
+  "predicton.performance.measure"
+colnames(cp_pre_cal)[which(
+  colnames(cp_pre_cal) == 
+    "X.if.prediction.used..prediction.performance.measure")] <- 
   "predicton.performance.measure"
 
 rev <- rev[which(rev$coding.DONE == T), ] 
@@ -47,6 +72,10 @@ rev <- rev[, -which(colnames(rev) %in% c(
   "aspects.not.yet.coded", 
   "eligible.for.meta..or.publication.bias.analysis", 
   "wg.needs.to.read"))]
+
+cp <- cp[, -which(colnames(cp) %in% c("coding.DONE", "other.notes"))]
+cp_pre_cal <- cp_pre_cal[, -which(colnames(cp_pre_cal) %in% 
+                                    c("coding.DONE", "other.notes"))]
 ```
 
 ```{r calc_temp_extent}
@@ -59,7 +88,15 @@ rev$temp_extent[which(
         rev$title))] <- 0.33
 ```
 
-```{r museum_data_to_whwhwh}
+```{r make_voucher_available_column}
+rev$data.type...voucher.available <- rev$data.type...museum == T |
+  rev$data.type...photo == T |
+  rev$data.type...audio == T | 
+  rev$data.type...video ==T
+```
+
+```{r voucher_data_to_whwhwh, include = F, eval = F}
+## This chunk could be turned on if I decide that:
 ## For the purposes of analysis, if there was a specimen available but the 
 # specimen was not used at all for analysis, then, if there are no other richer
 # data types, I will consider the data what, where, when-only.  I think this
@@ -68,6 +105,9 @@ rev$temp_extent[which(
 # uses it as what, where, when) because that is a choice to strip usually 
 # meaningful information.  The physical specimen is likely not meaningful for
 # many analyses that use museums as a source of wh, wh, wh data.
+
+## But as of 23 August 2018 I think I will keep the museum data as "voucher
+## available" and not transform the whwhwh column.  
 
 for(i in 1:nrow(rev)) {
   if(rev$data.type...museum[i] == T | rev$data.type...photo[i] == T | 
@@ -81,11 +121,11 @@ for(i in 1:nrow(rev)) {
       # If there are no other rich data types
       if(rev$voucher.of.some.kind.necessary.for.analysis[i] == F) {
         # If the voucer was not used
-              rev$data.type...what.where.when.only[i] <- TRUE
+        rev$data.type...what.where.when.only[i] <- TRUE
       }
     }
   }
-} # my, what a very large "if" nest you have, Grandmother.
+} 
 ```
 
 ```{r numberingPrep}
@@ -93,26 +133,176 @@ for(i in 1:nrow(rev)) {
 figs <- captioner(prefix = "Fig.") 
 ```
 
-# Preliminary structure of Results
-This document shows the tables and graphs that I expect to want in the *Results* section of the biological records systematic review.  These are currently made using `r nrow(rev)` articles that I've coded so far.  
+# Preliminary structure of analysis and results
+This document states every question I plan to ask and shows methods, figures, tables and results text that I expect to use to answer each question in the biological records systematic review. Specific results and interpretations will change when I code the rest of the articles.
 
-## Number of eligible studies
-So far, we have evaluated `r sum(!is.na(elig$qualifies))` studies (of `r nrow(elig)`) for eligibility, and judged `r length(which(elig$qualifies == TRUE))` to be eligible for inclusion in the scoping review.
+# Methods
+We did a systematic review of original research published since 2014 that used biological records from Ireland and the UK.  We generated a list of relevant articles from Web of Science, Scopus, ProQuest, GoogleScholar, and the Global Biodiversity Information Facility (GBIF) website.  I evaluated each article for inclusion eligibility and coded information on [**??**] characteristics for each eligible article.  This coding was validated for a subset of articles by a second reader.  Agreement between the two readers was evaluated using [**???**].
 
-## General Methods
+## Study eligibility
+Studies were eligible for inclusion if they met all of the following criteria:
 
-#### Data Type
-We coded eleven variables describing data type: what, where, when only; sampling effort reported; abundance; detection / non-detection; organized monitoring scheme; visit-specific covariates; life stage information; museum specimen; photo; audio; video. We treated what, where, when as the baseline data type and considered all other data types supplementary additions to that basic data type.  For statistical analyses, we used only the sampling effort reported, abundance, and detection / non-detection data type variables based on *a-priori* expectations about their expected benefit in enabling inferential and predictive modelling and their expected cost in terms of complexity in collecting, recording, and storing the data.  
+1) original research
+2) English language
+3) used opportunistic biological data collected with non-standardized or semi-standardized protocols
+4) included (but were not necessarily limited to) data from Ireland or the UK
+5) the full text of the study was available through the UCD library online platform, Google, GoogleScholar, or ResearchGate.  
+6) performs at least one analysis of the data (data papers and biotic atlases were not eligible)
+7) sample size greater than 20
+8) not restricted to fossil records
 
-## Authors and Data Providing Institutions
+Grey literature was included and therefore peer review was not required.  Studies using semi-standardized data collection schemes (e.g. UK Butterfly Monitoring Scheme) were included as long as they included some opportunistic elements (e.g. locations chosen opportunistically by volunteers). Studies for which all data was collected by the study authors were excluded.  
 
-**Who choses to use biological records data?**
+## Article coding
+### Data Type
+We coded twelve variables describing aspects of data type: what, where, when only; sampling effort reported; abundance; detection / non-detection; organized monitoring scheme; visit-specific covariates; multiple datasets integrated for analysis; life stage information; museum specimen; photo; audio; video. Data types are not mutually exclusive except fot the "what where when only" data type, which cannot be true if any other data type is true.  We considered "what, where, when" as the baseline data type and considered all other data types supplementary additions to that basic data type.
 
-$H_a$: The first author is more likely to use data held by their own institution than by other institutions.
+~~For statistical analyses, we used only the sampling effort reported, abundance, and detection / non-detection data type variables based on *a-priori* expectations about their expected benefit in enabling inferential and predictive modelling and their expected cost in terms of complexity in collecting, recording, and storing the data.~~
 
-$H_0$: The number of studies with a lead author from the institution that provided the data is the same as expected by chance.
+For most analyses, we grouped the data types "museum specimen", "photo", "audio", and "video" into a "voucher specimen" group, but we coded them individually for in order to identify emerging trends in how vouchers are collected. 
 
-*Proposed Test*: Permutation test of lead author institutions.  
+For statistical analyses, we kept data type variables in models based on *a-priori* expectations about the variables' influence on data analysis strategy and based on expectations about different levels of complexity and effort involved in collecting, recording, and storing the data.  The data type variables we kept in models were: what, where, when only; sampling effort reported; abundance; detection / non-detection; organized monitoring scheme; visit-specific covariates; multiple datasets integrated for analysis; life stage information; voucher specimen.  
+
+----------------------------
+
+### Agreement between two readers (TODO)
+**Dina**, do you have any suggestions about ways to quantify the agreement between two readers in how they code studies?
+
+I used Krippendorf's *alpha* to evaluate the agreement between two readers for each of **???** variables that had been coded by two people.  
+
+```{r inter_coder_agreement_subset_dfs}
+# remove columns that aren't coded variables from casey's df
+cp <- cp[, which(colnames(cp) %nin% c("link", "qualifies", "authors", 
+                                      "publication", "doi", "year"))]
+cp <- cp[order(cp$title), ] # order rows
+cp <- cp[, order(colnames(cp))] # order columns
+# put title column first
+cp <- cp[, c(which(colnames(cp) == "title"), which(colnames(cp) != "title"))]
+
+# subset my coded results to titles and columns coded by casey
+mult_coded_rev <- rev[which(rev$title %in% cp$title), 
+                      which(colnames(rev) %in% colnames(cp))]
+mult_coded_rev <- mult_coded_rev[order(mult_coded_rev$title), ] # order rows
+mult_coded_rev <- mult_coded_rev[, order(colnames(mult_coded_rev))] # order cols
+mult_coded_rev <- mult_coded_rev[, c(
+  which(colnames(mult_coded_rev) == "title"), 
+  which(colnames(mult_coded_rev) != "title"))]
+
+## check to make sure df rows and cols are in the same order
+if(any(cp$title %nin% mult_coded_rev$title)) {
+  warning("Some titles in cp are not in mult_coded_rev.")
+  cp <- cp[which(cp$title %in% mult_coded_rev$title), ]
+}
+if(any(mult_coded_rev$title %nin% cp$title)) {
+  warning("Some titles in mult_coded_rev are not in cp.")
+  mult_coded_rev <- mult_coded_rev[which(mult_coded_rev$title %in%
+                                           cp$title), ]
+}
+if(!identical(cp$title, mult_coded_rev$title)) {
+  stop("Study titles in cp and mult_coded_rev are either not the same or are not in the same order.  They must be in the same order for creating the variable data frames that will be used to calculate Krippendorf's alpha.")
+}
+if(!identical(colnames(cp), colnames(mult_coded_rev))) {
+  stop("Columns in cp and mult_coded_rev must be identical and in the same order.")
+}
+
+## convert all columns from logical to character
+# for(i in 1:ncol(cp)) {
+#   cp[, i] <- as.character(cp[, i][[1]])
+# }
+# for(i in 1:ncol(mult_coded_rev)) {
+#   mult_coded_rev[, i] <- as.character(mult_coded_rev[, i][[1]])
+# }
+```
+
+```{r make_dfs_of_double_coded_variables_all_studies}
+## make a data frame for each double-coded variable
+# each row is codings from one person
+# each column is a study
+dbl_coded <- list()
+
+if(colnames(cp)[1] != "title") {stop("The first column of cp and mult_coded_rev must be the study title.")}
+
+for(i in 2:ncol(cp)) { # awkward subsetting is b/c of tibble format
+  dbl_coded[[i-1]] <- data.frame(matrix(data = c(cp[, i][[1]], 
+                                                 mult_coded_rev[, i][[1]]),
+                                        nrow = 2, ncol = nrow(cp), byrow = T))
+}
+names(dbl_coded) <- colnames(cp)[2:ncol(cp)]
+```
+
+```{r define_calibration_set}
+## probably do this automated?
+calibration_set <- cp_pre_cal$title
+
+calibration_set <- c("The sensitivity of breeding songbirds to changes in seasonal timing is linked to population change but cannot be directly attributed to the effects of trophic asynchrony on productivity", 
+                     "Missing native oyster (Ostrea edulis L.) beds in a European Marine Protected Area: Should there be widespread restorative management?", 
+                     "The arrow points north–endemic areas and post-Devensian assembly of the British Empidoidea fauna (Insecta: Diptera)", 
+                     "Changes in the geographical distribution of plant species and climatic variables on the West Cornwall peninsula (South West UK)", 
+                     "Ocean current connectivity propelling the secondary spread of a marine invasive comb jelly across western Eurasia", 
+                     "Congruency in fungal phenology patterns across dataset sources and scales", 
+                     "N81 Tullow Footbridges Scheme & Associated Road Reconfiguration Works Appropriate Assessment Screening Report", 
+                     "British phenological records indicate high diversity and extinction rates among late-summer-flying pollinators", 
+                     "Population variability in species can be deduced from opportunistic citizen science records: a case study using British butterflies", 
+                     "Predicting population trends using citizen science data: do subsampling methods produce reliable estimates for mammals?", 
+                     "Nature protection areas of Europe are insufficient to preserve the threatened beetle Rosalia alpina (Coleoptera: Cerambycidae): evidence from species distribution models and conservation gap analysis")
+```
+
+```{r make_dfs_of_calibration_double_coded_articles}
+pre_cal_list <- list()
+
+# pre_cal_cp <- cp[which(cp$title %in% calibration_set), ]
+pre_cal_rev <- mult_coded_rev[which(mult_coded_rev$title %in% calibration_set), ]
+
+if(colnames(cal_cp)[1] != "title") {stop("The first column of cal_cp and mult_coded_rev must be the study title.")}
+
+for(i in 2:ncol(cal_cp)) { # awkward subsetting is b/c of tibble format
+  cal_list[[i-1]] <- data.frame(matrix(data = c(cal_cp[, i][[1]],
+                                                 cal_rev[, i][[1]]),
+                                        nrow = 2, ncol = nrow(cal_cp), byrow = T))
+}
+names(cal_list) <- colnames(cal_cp)[2:ncol(cal_cp)]
+```
+
+```{r make_dfs_of_post_calibration_doubl_coded_articles}
+post_cal_list <- list()
+
+post_cal_cp <- cp[which(cp$title %nin% calibration_set), ]
+post_cal_rev <- mult_coded_rev[which(mult_coded_rev$title %nin% calibration_set), ]
+
+if(colnames(post_cal_cp)[1] != "title") {stop("The first column of post_cal_cp and mult_coded_rev must be the study title.")}
+
+for(i in 2:ncol(post_cal_cp)) { # awkward subsetting is b/c of tibble format
+  post_cal_list[[i-1]] <- data.frame(matrix(data = c(post_cal_cp[, i][[1]], 
+                                                     post_cal_rev[, i][[1]]),
+                                            nrow = 2, ncol = nrow(post_cal_cp), 
+                                            byrow = T))
+}
+names(post_cal_list) <- colnames(post_cal_cp)[2:ncol(post_cal_cp)]
+```
+
+```{r krippendorfs_alpha_calc}
+do_kripp.alpha <- function(x, method) {
+  # function to call kripp.alpha while converting dataframe x to a matrix
+  # ARGS: x - data frame in which rows are observers and columns are studies
+  #       method - character string of method to pass to kripp.alpha
+  kripp.alpha(as.matrix(x), method = method)
+}
+
+kripp_all <- lapply(dbl_coded, FUN = do_kripp.alpha, method = "nominal")
+kripp_cal <- lapply(cal_list, FUN = do_kripp.alpha, method = "nominal")
+kripp_post_cal <- lapply(post_cal_list, FUN = do_kripp.alpha, method = "nominal")
+```
+
+```{r krippendorfs_alpha_summary}
+boxplot(list(all = sapply(kripp_all, FUN = function(x) {x$value}), 
+        calibration = sapply(kripp_cal, FUN = function(x) {x$value}), 
+        post_calibration = sapply(kripp_post_cal, 
+                                  FUN = function(x) {x$value})), 
+     main = "Agreement for all double-coded studies and variables",
+     xlab = "Krippendorf's alpha value")
+```
+
+--------------------------
 
 ## Temporal Extent
 
@@ -122,18 +312,64 @@ $H_0$: The mean temporal extent of studies using what, where, when-only data is 
 
 *Proposed Test*: Linear regression with natural-log transformed time (in years) as the outcome and data types as predictors.
 
-### Methods
+We used linear regression with natural-log transformed time (in years) as the response variable.  We used nine binary predictor variables indicating whether the data had the following information: 1) only what where when data, 2) sampling effort, 3) abundance, and 4) detection / non-detection, 5) organized monitoring scheme, 6) visit-specific covariates, 7) multiple datasets integrated for analysis, 8) life stage information, and 9) voucher specimen.  While the predictor variables are correlated, we kept all variables in the multiple regressin model because we are interested in the effect of each additional type of information *after accounting for other information types* (e.g. is there an additional effect of having abundance data after adjusting for whether the data came from an organized monitoring scheme).
 
-We used linear regression with natural-log transformed time (in years) as the response variable and the following data types as predictors:  sampling effort reported, detection / non-detection, abundance.  Note that these are each individual variables - this is not a single categorical factor level "data type" variable because the variables are not mutually exclusive.  This model assumes an additive effect of each supplementary type of data.  The intercept-only model is data that is just what, where, when only and the model estimates the effect of adding each additional type of supplementary data.  
+Note that because the variables are not mutually exclusive these are each individual variables - these are not dummy variables representing a single categorical factor level "data type" variable.  
+
+The intercept-only model in this analysis is not particularly relevant or sensible to interpret. **need to revisit this - what is intercept only model now that I include all *a-priori* data type variables?**  
+
+
+```{r time_assess_correlation_predictors, fig.height=8, fig.width = 8}
+### assess correlation between data type predictors ----------------------
+dt_df <- rev[, which(
+  colnames(rev) %in% 
+    c("data.type...what.where.when.only", 
+      "data.type...sampling.effort.reported", 
+      "data.type...abundance", 
+      "data.type...detection...non.detection", 
+      "data.type...organized.data.collection.scheme", 
+      "data.type...visit.specific.covariates", 
+      "data.type...multiple.datasets.integrated.for.analysis", 
+      "data.type...life.stage", 
+      "data.type...voucher.available"))]
+for(i in 1:ncol(dt_df)) {
+  dt_df[, i] <- as.factor(as.character(data.frame(dt_df)[, i]))
+}
+
+print(ggpairs(dt_df, columns = 1:ncol(dt_df), 
+              upper = list(discrete = "ratio"),
+              lower = list(discrete = "facetbar"), 
+              diag = list(discrete = "barDiag"), 
+              columnLabels = c("what where when only", 
+                               "sampling effort",
+                               "abundance",
+                               "non detection", 
+                               "organized scheme", 
+                               "visit specific covariates", 
+                               "multiple datasets", 
+                               "life stage", 
+                               "voucher available"), 
+              labeller = label_wrap_gen(width = 10)) + 
+        ggtitle("Correlation of data type predictor variables") + 
+        theme(axis.text.x = element_text(angle = 50, hjust = 1)))
+  
+```
+
 
 ```{r prepare_temporal_extent_df}
-temp_extent <- select(rev, c(title, temp_extent, 
-                             data.type...what.where.when.only, 
-                             data.type...detection...non.detection, 
-                             data.type...abundance,
-                             data.type...sampling.effort.reported)) %>%
+temp_extent <- select(rev, 
+                      c(title, temp_extent, 
+                        data.type...what.where.when.only, 
+                        data.type...sampling.effort.reported, 
+                        data.type...abundance,
+                        data.type...detection...non.detection,
+                        data.type...organized.data.collection.scheme, 
+                        data.type...visit.specific.covariates, 
+                        data.type...multiple.datasets.integrated.for.analysis,
+                        data.type...life.stage, 
+                        data.type...voucher.available)) %>%
   gather(key = "data_type", value = "dt_value", 
-         data.type...what.where.when.only:data.type...sampling.effort.reported, 
+         data.type...what.where.when.only:data.type...voucher.available, 
          factor_key = T) %>%
   filter(dt_value == T) %>%
   group_by(data_type)
@@ -144,22 +380,34 @@ temp_extent$data_type <- gsub("data.type...", "", temp_extent$data_type)
 temp_extent$data_type <- factor(as.character(temp_extent$data_type), 
                             levels = c("what.where.when.only", 
                                        "sampling.effort.reported",
+                                       "abundance",
                                        "detection...non.detection", 
-                                       "abundance"), 
-                            labels = c("what where when only",
-                                       "sampling effort reported", 
-                                       "detection / non-detection", 
-                                       "abundance"))
+                                       "organized.data.collection.scheme", 
+                                       "visit.specific.covariates", 
+                                       "multiple.datasets.integrated.for.analysis", 
+                                       "life.stage", 
+                                       "voucher.available"), 
+                            labels = c("what where when only", 
+                                       "sampling effort reported",
+                                       "abundance",
+                                       "non detection", 
+                                       "organized scheme", 
+                                       "visit specific covariates", 
+                                       "multiple datasets", 
+                                       "life stage", 
+                                       "voucher available"))
 ```
 
+Evaluate normality of raw data:
 ```{r temp_range_distribution}
-if(diag) {
+if(diag_present) {
   # distribution of all data
-  hist(rev$temp_extent)
-  hist(rev$temp_extent[which(rev$temp_extent <= quantile(rev$temp_extent, 
-                                                         0.90, na.rm = T))])
+ # hist(rev$temp_extent)
+ # hist(rev$temp_extent[which(rev$temp_extent <= quantile(rev$temp_extent, 
+ #                                                        0.90, na.rm = T))])
   ## data are not balanced
-  table(temp_extent$data_type)
+  print(table(temp_extent$data_type))
+  print("Data are not balanced.")
   
   ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + 
     geom_boxplot() +
@@ -178,7 +426,7 @@ if(diag) {
     xlim(c(0, 800)) + 
     geom_density_ridges() +
     ggtitle("Temporal Duration after\ncutting off the 8000 year study") + 
-    theme_bw() 
+    theme_bw()
   
   ## normality -------------------------------------
   # data very non-normal (above) but log transformation kinda fixes this
@@ -188,43 +436,54 @@ if(diag) {
           scale_y_log10() + 
           theme_bw() + 
           ggtitle("log transformation of year\nmakes normality better") + 
-          theme(axis.text.x = element_text(angle = 330, vjust = 1, hjust = 0)) 
-  )
+          ylab("Temporal extent (years)") + 
+          theme(axis.text.x = element_text(angle = 40, vjust = 0.9, 
+                                           hjust = 1)))
   
-  for(i in unique(temp_extent$data_type)) { 
-    # distribution of log(years) by data type
-    hist(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)])
+  print(ggplot(data = temp_extent, aes(x = temp_extent, y = data_type)) + 
+          scale_x_log10() + 
+          geom_density_ridges(stat = "binline", alpha = 0.4) +
+          geom_density_ridges(alpha = 0.4) + 
+          xlab("Temporal extent (years)") + 
+          theme_bw())
+  
+  if(diag) {
+    for(i in unique(temp_extent$data_type)) { 
+      # distribution of log(years) by data type
+      hist(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)])
+      qqnorm(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)])
+      qqline(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)])
+    }
   }
-  ## normality ok-ish after log trans ---------------
-  
-  ggplot(data = temp_extent, aes(x = temp_extent, y = data_type)) + 
-    scale_x_log10() + 
-    # geom_density_ridges(stat = "binline") +
-    geom_density_ridges() + 
-    theme_bw()
-
-### assess correlation between data type predictors ----------------------
-print(ggpairs(rev, columns = c(38, 39, 41, 42)))
 }
 ```
 
-Potential correlations between the following data types: abundance & detection/non-det, sampling effort, organized data collection scheme; sampling effort & det/non-det, organized data collection. **Need to revisit this and decide if I should continue using these *a-priori* variables or whether I should switch b/c of correlation.**
-
-```{r temp_extent_lm_independent_predictors, include = F}
-## using original df and each data type as a separate variable 
-## fit full model
+Fit full model and evaluate residuals for assumptions of linear regression.
+```{r fit_temp_extent_lm}
+## fit linear regression with log-transformed years as response variable
+## and each data type as a separate variable 
+# fit full model
 rev$log_years <- log(rev$temp_extent)
+# variables added based on a-priori expectation of most to least important
 time_lm_full <- lm(log_years ~ 1 + 
                      data.type...what.where.when.only + 
                      data.type...sampling.effort.reported + 
                      data.type...abundance +
-                     data.type...detection...non.detection,
-                   data = rev) # variables added most to least important
-time_resids <- rstandard(time_lm_full)
-if(diag) {
+                     data.type...detection...non.detection + 
+                     data.type...organized.data.collection.scheme + 
+                     data.type...visit.specific.covariates + 
+                     data.type...multiple.datasets.integrated.for.analysis + 
+                     data.type...life.stage + 
+                     data.type...voucher.available,
+                   data = rev) 
+time_resids <- rstandard(time_lm_full) # calculate residuals
+if(diag_present) {
+  print("Diagnostics for full model log_years ~ all 9 data types")
   plot(time_lm_full)
-  hist(time_resids)
-  boxplot(time_resids)
+  hist(time_resids, 
+       main = "standardized residuals of full model for temporal extent", 
+       xlab = "standardized residuals")
+  boxplot(time_resids, ylab = "standardized residuals")
 }
 time_summary <- summary(time_lm_full)
 # time_full_model_anova <- anova(time_lm_full) # not recommended because R guesses a null model
@@ -235,13 +494,10 @@ time_summary
 # changes by (e^beta1 - 1)*100 percent
 ```
 
-### Results for Time
-
 ```{r time_data_type_full_model_sig_test, include = F}
 # Test significance of full model
 m0 <- lm(log_years ~ 1, data = rev) # fit null model 
 m_time_full_anova <- anova(m0, time_lm_full)
-m_time_full_anova
 ```
 
 ```{r time_data_type_test_main_effects, include = F}
@@ -253,25 +509,133 @@ m_time_full_anova
 m_no_whwhwh <- lm(log_years ~ 1 + 
                     data.type...sampling.effort.reported + 
                     data.type...abundance +
-                    data.type...detection...non.detection,
+                    data.type...detection...non.detection + 
+                    data.type...organized.data.collection.scheme + 
+                    data.type...visit.specific.covariates + 
+                    data.type...multiple.datasets.integrated.for.analysis + 
+                    data.type...life.stage + 
+                    data.type...voucher.available,
                   data = rev)
 m_no_effort <- lm(log_years ~ 1 + 
                     data.type...what.where.when.only + 
                     data.type...abundance +
-                    data.type...detection...non.detection,
+                    data.type...detection...non.detection + 
+                    data.type...organized.data.collection.scheme + 
+                    data.type...visit.specific.covariates + 
+                    data.type...multiple.datasets.integrated.for.analysis + 
+                    data.type...life.stage + 
+                    data.type...voucher.available,
                   data = rev)
 m_no_abund <- lm(log_years ~ 1 + 
                    data.type...what.where.when.only + 
                    data.type...sampling.effort.reported + 
-                   data.type...detection...non.detection,
+                   data.type...detection...non.detection + 
+                   data.type...organized.data.collection.scheme + 
+                   data.type...visit.specific.covariates + 
+                   data.type...multiple.datasets.integrated.for.analysis + 
+                   data.type...life.stage + 
+                   data.type...voucher.available,
                  data = rev)
 m_no_nonDet <- lm(log_years ~ 1 + 
                     data.type...what.where.when.only + 
                     data.type...sampling.effort.reported + 
-                    data.type...abundance,
+                    data.type...abundance +
+                    data.type...organized.data.collection.scheme + 
+                    data.type...visit.specific.covariates + 
+                    data.type...multiple.datasets.integrated.for.analysis + 
+                    data.type...life.stage + 
+                    data.type...voucher.available,
                   data = rev)
-indiv_mods_time <- list(m_no_whwhwh, m_no_effort, m_no_abund, m_no_nonDet)
+m_no_scheme <- lm(log_years ~ 1 + 
+                    data.type...what.where.when.only + 
+                    data.type...sampling.effort.reported + 
+                    data.type...abundance +
+                    data.type...detection...non.detection + 
+                    data.type...visit.specific.covariates + 
+                    data.type...multiple.datasets.integrated.for.analysis + 
+                    data.type...life.stage + 
+                    data.type...voucher.available,
+                  data = rev)
+m_no_visitCovs <- lm(log_years ~ 1 + 
+                       data.type...what.where.when.only + 
+                       data.type...sampling.effort.reported + 
+                       data.type...abundance +
+                       data.type...detection...non.detection + 
+                       data.type...organized.data.collection.scheme + 
+                       data.type...multiple.datasets.integrated.for.analysis + 
+                       data.type...life.stage + 
+                       data.type...voucher.available,
+                     data = rev)
+m_no_multData <- lm(log_years ~ 1 + 
+                      data.type...what.where.when.only + 
+                      data.type...sampling.effort.reported + 
+                      data.type...abundance +
+                      data.type...detection...non.detection + 
+                      data.type...organized.data.collection.scheme + 
+                      data.type...visit.specific.covariates + 
+                      data.type...life.stage + 
+                      data.type...voucher.available,
+                    data = rev)
+m_no_lifeStage <- lm(log_years ~ 1 + 
+                       data.type...what.where.when.only + 
+                       data.type...sampling.effort.reported + 
+                       data.type...abundance +
+                       data.type...detection...non.detection + 
+                       data.type...organized.data.collection.scheme + 
+                       data.type...visit.specific.covariates + 
+                       data.type...multiple.datasets.integrated.for.analysis + 
+                       data.type...voucher.available,
+                     data = rev)
+m_no_voucher <- lm(log_years ~ 1 + 
+                     data.type...what.where.when.only + 
+                     data.type...sampling.effort.reported + 
+                     data.type...abundance +
+                     data.type...detection...non.detection + 
+                     data.type...organized.data.collection.scheme + 
+                     data.type...visit.specific.covariates + 
+                     data.type...multiple.datasets.integrated.for.analysis + 
+                     data.type...life.stage,
+                   data = rev)
 
+indiv_mods_time <- list(m_no_whwhwh, m_no_effort, m_no_abund, m_no_nonDet, 
+                        m_no_scheme, m_no_visitCovs, m_no_multData, 
+                        m_no_lifeStage, m_no_voucher)
+```
+
+
+---------------------
+
+## Authors and Data Providing Institutions (TODO)
+
+**Who choses to use biological records data?**
+
+$H_a$: The first author is more likely to use data held by their own institution than by other institutions.
+
+$H_0$: The number of studies with a lead author from the institution that provided the data is the same as expected by chance.
+
+*Proposed Test*: Permutation test of lead author institutions.  
+
+----------------------
+
+____________________________________________________________________________
+
+# Results
+
+## Search results (TODO)
+The search returned `r nrow(elig)` potentially relevant studies, of which we have evaluated `r sum(!is.na(elig$qualifies))` for eligibility, and judged `r length(which(elig$qualifies == TRUE))` to be eligible for inclusion in the scoping review.  One reader has coded `r nrow(rev)` articles and a second reader has coded [???] of those. This preliminary analysis uses the `r nrow(rev)` articles coded so far.
+
+ 
+
+
+
+
+### Results for Time
+
+```{r print_time_anova}
+m_time_full_anova
+```
+
+```{r print_time_individual_predictor_significance}
 for(i in 1:length(indiv_mods_time)) { 
   print(anova(indiv_mods_time[[i]], time_lm_full))
 }
@@ -279,7 +643,7 @@ for(i in 1:length(indiv_mods_time)) {
 
 The overall model using supplementary data types to predict the natural log of temporal extent of study (in years) was significant ($F_{`r format(round(m_time_full_anova$Df[2], digits = 2), scientific = F)`, `r format(round(m_time_full_anova$Res.Df[2], digits = 2), scientific = F)`}$ = `r format(round(m_time_full_anova$F[2], digits = 2), scientific = F)`, p = `r format(round(m_time_full_anova[6][[1]][2], digits = 4), scientific = F)`, Adjusted $R^2%$ = `r format(round(time_summary$adj.r.squared, digits = 2), scientific = F)`).  
 
-If the overall model is significant, I will report individual data type results in a format like this: 
+If the overall model is significant, I will individually test whether each variable has a significant effect after accounting for the other variables.  I will interpret the effect direction and effect size of all variables in the context of the full model even if the variables are not significant on their own.
  
 The expected temporal extent covered by a study that uses only "what, where, when" data is `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[2])), digits = 1)` years. 
 
@@ -352,6 +716,9 @@ paradigm_df <- select(rev, title, individual.species.analysis,
   filter(used == TRUE)
 
 table(paradigm_df$paradigm)
+paste0("Studies that are neither community nor individual sp analyses: ", 
+       length(which(rev$community.analysis == F & 
+                      rev$individual.species.analysis == F)))
 ```
 
 **What data types are used for each study question paradigm?**
@@ -433,7 +800,7 @@ ggplot(data = qt_df,
   theme_bw()
 ```
 
-```{r specific_question_by_paradigm_bar_plot}
+```{r specific_question_multi_paradigm_bar_plot}
 qt_df <- select(rev, "title", "methodology.development.or.analysis", 
                 "testing.macro.or.ecological.theory", "trends.over.time") 
 names(qt_df)[2:4] <- c("methodology", "testing.theory", "temporal.trends")
@@ -458,8 +825,6 @@ ggplot(data = qt_df,
   xlab("Study Focus") + 
   ylab("Percent of Studies") + 
   theme_bw()
-
-
 ```
 
 
