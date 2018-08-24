@@ -171,6 +171,25 @@ For statistical analyses, we kept data type variables in models based on *a-prio
 I used Krippendorf's *alpha* to evaluate the agreement between two readers for each of **???** variables that had been coded by two people.  
 
 ```{r inter_coder_agreement_subset_dfs}
+## casey's pre-calibration results ------------------------------------------
+# remove columns that aren't coded variables
+cp_pre_cal <- cp_pre_cal[, which(colnames(cp_pre_cal) %nin% 
+                                   c("link", "qualifies", "authors", 
+                                     "publication", "doi", "year"))]
+# rename the old column names used in casey's 1st coding
+colnames(cp_pre_cal)[grep(".*known.effort", colnames(cp_pre_cal))] <- 
+  "data.type...sampling.effort.reported"
+colnames(cp_pre_cal)[grep(".*semi.structured.*", colnames(cp_pre_cal))] <- 
+  "data.type...organized.data.collection.scheme"
+
+cp_pre_cal <- cp_pre_cal[order(cp_pre_cal$title), ] # order rows
+cp_pre_cal <- cp_pre_cal[, order(colnames(cp_pre_cal))] # order columns
+# put title column first
+cp_pre_cal <- cp_pre_cal[, c(which(colnames(cp_pre_cal) == "title"), 
+                             which(colnames(cp_pre_cal) != "title"))]
+## end casey's pre-calibration results ---------------------------------------
+
+## casey's post-calibration results -----------------------------------------
 # remove columns that aren't coded variables from casey's df
 cp <- cp[, which(colnames(cp) %nin% c("link", "qualifies", "authors", 
                                       "publication", "doi", "year"))]
@@ -178,7 +197,9 @@ cp <- cp[order(cp$title), ] # order rows
 cp <- cp[, order(colnames(cp))] # order columns
 # put title column first
 cp <- cp[, c(which(colnames(cp) == "title"), which(colnames(cp) != "title"))]
+## end casey's post-calibration results ------------------------------------
 
+## my results -----------------------------------------------------------
 # subset my coded results to titles and columns coded by casey
 mult_coded_rev <- rev[which(rev$title %in% cp$title), 
                       which(colnames(rev) %in% colnames(cp))]
@@ -187,8 +208,13 @@ mult_coded_rev <- mult_coded_rev[, order(colnames(mult_coded_rev))] # order cols
 mult_coded_rev <- mult_coded_rev[, c(
   which(colnames(mult_coded_rev) == "title"), 
   which(colnames(mult_coded_rev) != "title"))]
+### end my results -----------------------------------------------------
 
-## check to make sure df rows and cols are in the same order
+## make sure all titles are present
+if(any(cp_pre_cal$title %nin% mult_coded_rev$title)) {
+  warning("Some titles in cp_pre_cal are not in mult_coded_rev.")
+  cp_pre_cal <- cp_pre_cal[which(cp_pre_cal$title %in% mult_coded_rev$title)]
+}
 if(any(cp$title %nin% mult_coded_rev$title)) {
   warning("Some titles in cp are not in mult_coded_rev.")
   cp <- cp[which(cp$title %in% mult_coded_rev$title), ]
@@ -198,11 +224,16 @@ if(any(mult_coded_rev$title %nin% cp$title)) {
   mult_coded_rev <- mult_coded_rev[which(mult_coded_rev$title %in%
                                            cp$title), ]
 }
+
+## make sure df rows and cols are in the same order
 if(!identical(cp$title, mult_coded_rev$title)) {
   stop("Study titles in cp and mult_coded_rev are either not the same or are not in the same order.  They must be in the same order for creating the variable data frames that will be used to calculate Krippendorf's alpha.")
 }
 if(!identical(colnames(cp), colnames(mult_coded_rev))) {
   stop("Columns in cp and mult_coded_rev must be identical and in the same order.")
+}
+if(!identical(colnames(cp_pre_cal), colnames(mult_coded_rev))) {
+  stop("Columns in cp_pre_cal and mult_coded_rev must be identical and in the same order.")
 }
 
 ## convert all columns from logical to character
@@ -212,6 +243,43 @@ if(!identical(colnames(cp), colnames(mult_coded_rev))) {
 # for(i in 1:ncol(mult_coded_rev)) {
 #   mult_coded_rev[, i] <- as.character(mult_coded_rev[, i][[1]])
 # }
+```
+
+```{r define_calibration_set}
+calibration_set <- cp_pre_cal$title
+```
+
+```{r make_dfs_of_pre_calibration_double_coded_articles}
+pre_cal_list <- list()
+
+rev_pre_cal <- mult_coded_rev[which(mult_coded_rev$title %in% calibration_set), ]
+
+if(colnames(cp_pre_cal)[1] != "title") {stop("The first column of cp_pre_cal and mult_coded_rev must be the study title.")}
+
+for(i in 2:ncol(cp_pre_cal)) { # awkward subsetting is b/c of tibble format
+  pre_cal_list[[i-1]] <- data.frame(matrix(data = c(cp_pre_cal[, i][[1]],
+                                                 rev_pre_cal[, i][[1]]),
+                                        nrow = 2, ncol = nrow(cp_pre_cal), 
+                                       byrow = T))
+}
+names(pre_cal_list) <- colnames(cp_pre_cal)[2:ncol(cp_pre_cal)]
+```
+
+```{r make_dfs_of_post_calibration_double_coded_articles}
+post_cal_list <- list()
+
+cp_post_cal <- cp[which(cp$title %nin% calibration_set), ]
+rev_post_cal <- mult_coded_rev[which(mult_coded_rev$title %nin% calibration_set), ]
+
+if(colnames(cp_post_cal)[1] != "title") {stop("The first column of cp_post_cal and mult_coded_rev must be the study title.")}
+
+for(i in 2:ncol(cp_post_cal)) { # awkward subsetting is b/c of tibble format
+  post_cal_list[[i-1]] <- data.frame(matrix(data = c(cp_post_cal[, i][[1]], 
+                                                     rev_post_cal[, i][[1]]),
+                                            nrow = 2, ncol = nrow(cp_post_cal), 
+                                            byrow = T))
+}
+names(post_cal_list) <- colnames(cp_post_cal)[2:ncol(cp_post_cal)]
 ```
 
 ```{r make_dfs_of_double_coded_variables_all_studies}
@@ -230,57 +298,7 @@ for(i in 2:ncol(cp)) { # awkward subsetting is b/c of tibble format
 names(dbl_coded) <- colnames(cp)[2:ncol(cp)]
 ```
 
-```{r define_calibration_set}
-## probably do this automated?
-calibration_set <- cp_pre_cal$title
-
-calibration_set <- c("The sensitivity of breeding songbirds to changes in seasonal timing is linked to population change but cannot be directly attributed to the effects of trophic asynchrony on productivity", 
-                     "Missing native oyster (Ostrea edulis L.) beds in a European Marine Protected Area: Should there be widespread restorative management?", 
-                     "The arrow points north–endemic areas and post-Devensian assembly of the British Empidoidea fauna (Insecta: Diptera)", 
-                     "Changes in the geographical distribution of plant species and climatic variables on the West Cornwall peninsula (South West UK)", 
-                     "Ocean current connectivity propelling the secondary spread of a marine invasive comb jelly across western Eurasia", 
-                     "Congruency in fungal phenology patterns across dataset sources and scales", 
-                     "N81 Tullow Footbridges Scheme & Associated Road Reconfiguration Works Appropriate Assessment Screening Report", 
-                     "British phenological records indicate high diversity and extinction rates among late-summer-flying pollinators", 
-                     "Population variability in species can be deduced from opportunistic citizen science records: a case study using British butterflies", 
-                     "Predicting population trends using citizen science data: do subsampling methods produce reliable estimates for mammals?", 
-                     "Nature protection areas of Europe are insufficient to preserve the threatened beetle Rosalia alpina (Coleoptera: Cerambycidae): evidence from species distribution models and conservation gap analysis")
-```
-
-```{r make_dfs_of_calibration_double_coded_articles}
-pre_cal_list <- list()
-
-# pre_cal_cp <- cp[which(cp$title %in% calibration_set), ]
-pre_cal_rev <- mult_coded_rev[which(mult_coded_rev$title %in% calibration_set), ]
-
-if(colnames(cal_cp)[1] != "title") {stop("The first column of cal_cp and mult_coded_rev must be the study title.")}
-
-for(i in 2:ncol(cal_cp)) { # awkward subsetting is b/c of tibble format
-  cal_list[[i-1]] <- data.frame(matrix(data = c(cal_cp[, i][[1]],
-                                                 cal_rev[, i][[1]]),
-                                        nrow = 2, ncol = nrow(cal_cp), byrow = T))
-}
-names(cal_list) <- colnames(cal_cp)[2:ncol(cal_cp)]
-```
-
-```{r make_dfs_of_post_calibration_doubl_coded_articles}
-post_cal_list <- list()
-
-post_cal_cp <- cp[which(cp$title %nin% calibration_set), ]
-post_cal_rev <- mult_coded_rev[which(mult_coded_rev$title %nin% calibration_set), ]
-
-if(colnames(post_cal_cp)[1] != "title") {stop("The first column of post_cal_cp and mult_coded_rev must be the study title.")}
-
-for(i in 2:ncol(post_cal_cp)) { # awkward subsetting is b/c of tibble format
-  post_cal_list[[i-1]] <- data.frame(matrix(data = c(post_cal_cp[, i][[1]], 
-                                                     post_cal_rev[, i][[1]]),
-                                            nrow = 2, ncol = nrow(post_cal_cp), 
-                                            byrow = T))
-}
-names(post_cal_list) <- colnames(post_cal_cp)[2:ncol(post_cal_cp)]
-```
-
-```{r krippendorfs_alpha_calc}
+```{r krippendorfs_alpha_calc, warning=FALSE, message=FALSE}
 do_kripp.alpha <- function(x, method) {
   # function to call kripp.alpha while converting dataframe x to a matrix
   # ARGS: x - data frame in which rows are observers and columns are studies
@@ -289,18 +307,98 @@ do_kripp.alpha <- function(x, method) {
 }
 
 kripp_all <- lapply(dbl_coded, FUN = do_kripp.alpha, method = "nominal")
-kripp_cal <- lapply(cal_list, FUN = do_kripp.alpha, method = "nominal")
+kripp_pre_cal <- lapply(pre_cal_list, FUN = do_kripp.alpha, method = "nominal")
 kripp_post_cal <- lapply(post_cal_list, FUN = do_kripp.alpha, method = "nominal")
 ```
 
 ```{r krippendorfs_alpha_summary}
-boxplot(list(all = sapply(kripp_all, FUN = function(x) {x$value}), 
-        calibration = sapply(kripp_cal, FUN = function(x) {x$value}), 
-        post_calibration = sapply(kripp_post_cal, 
-                                  FUN = function(x) {x$value})), 
-     main = "Agreement for all double-coded studies and variables",
-     xlab = "Krippendorf's alpha value")
+kripp_summary_long <- data.frame(
+  set = c(rep("pre calibration", length(kripp_pre_cal)), 
+          rep("post calibration", length(kripp_post_cal)), 
+          rep("all", length(kripp_all))), 
+  variable = c(names(kripp_pre_cal), 
+               names(kripp_post_cal), 
+               names(kripp_all)), 
+  krip_alpha = c(sapply(kripp_pre_cal, 
+                        FUN = function(x) {x$value}), 
+                 sapply(kripp_post_cal, 
+                        FUN = function(x) {x$value}), 
+                 sapply(kripp_all, 
+                        FUN = function(x) {x$value})))
+
+kripp_summary_long$set <- factor(kripp_summary_long$set, 
+                                 levels = c("pre calibration", 
+                                            "post calibration", 
+                                            "all"))
+
+print(
+  ggplot(data = kripp_summary_long, 
+         mapping = aes(y = krip_alpha, x = set)) + 
+    geom_boxplot() + 
+    geom_point() + 
+    geom_line(aes(group = variable)) + 
+    geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
+    geom_hline(aes(yintercept = 0.8), lty = "dotted") + 
+    ggtitle("Reader agreement using Krippendorff's alpha") + 
+    theme_bw()
+)
 ```
+
+```{r plot_kripp_by_nTRUE}
+# this is exploratory to see if krippendorff's alpha is varying wildly b/c
+# of insufficient variation
+alpha_df_all <- data.frame(
+  set = rep("all", length(names(kripp_pre_cal))), 
+  variable = names(kripp_all),  
+  alpha = sapply(kripp_all, FUN = function(x) {x$value}),
+  n_wg_T = sapply(names(kripp_all), 
+                  FUN = function(x, df = mult_coded_rev) {
+                    df <- data.frame(df)
+                    col_vec <- df[, which(colnames(df) == x)]
+                    sum(col_vec)}), 
+  stringsAsFactors = FALSE,
+  row.names = 1:length(names(kripp_all))
+)
+
+alpha_df_pre_cal <- data.frame(
+  set = rep("pre calibration", length(names(kripp_pre_cal))), 
+  variable = names(kripp_pre_cal), 
+  alpha = sapply(kripp_pre_cal, FUN = function(x) {x$value}), 
+  n_wg_T = sapply(names(kripp_pre_cal), 
+                  FUN = function(x, df = mult_coded_rev) {
+                    df <- data.frame(df)
+                    col_vec <- df[, which(colnames(df) == x)]
+                    sum(col_vec)}),
+  stringsAsFactors = FALSE, 
+  row.names = 1:length(names(kripp_pre_cal))
+)
+
+alpha_df_post_cal <- data.frame(
+  set = rep("post calibration", length(names(kripp_post_cal))), 
+  variable = names(kripp_post_cal), 
+  alpha = sapply(kripp_post_cal, FUN = function(x) {x$value}), 
+  n_wg_T = sapply(names(kripp_post_cal), 
+                  FUN = function(x, df = mult_coded_rev) {
+                    df <- data.frame(df)
+                    col_vec <- df[, which(colnames(df) == x)]
+                    sum(col_vec)}), 
+  stringsAsFactors = FALSE,
+  row.names = 1:length(names(kripp_post_cal))
+)
+
+alpha_df <- bind_rows(list(alpha_df_all, alpha_df_pre_cal, alpha_df_post_cal))
+
+print(
+  ggplot(alpha_df, aes(x = n_wg_T, y = alpha, color = set)) + 
+    geom_point() + 
+    geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
+    geom_hline(aes(yintercept = 0.8), lty = "dotted") + 
+    ggtitle("Krippendorff's alpha by the number\nof TRUEs in Willson's coding") + 
+    xlab("Number of TRUE values in Willson's coding") + 
+    theme_bw()
+)
+```
+
 
 --------------------------
 
@@ -660,15 +758,15 @@ print(ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + #, color
         ylab("Temporal Extent of Study (years)") + 
         annotate("text", x = 3, y = 2600, 
                  label = "paste(\"Adjusted \", 
-                 italic(R) ^ 2, \" = 0.3\")", 
+                 italic(R) ^ 2, \" = ???\")", 
                 parse = TRUE) + 
   annotate("text", x = 3, y = 1200, 
            label = "paste(\"Overall model significance \", 
-                 italic(p), \" = 0.012\")", 
+                 italic(p), \" = 0.08\")", 
            parse = TRUE) +
         theme_bw() + 
         scale_color_discrete(name = "Significantly Different from\nWhat, Where, When-only\nstudies (alpha = 0.1 level)") + 
-        theme(axis.text.x = element_text(angle = 330, vjust = 1, hjust = 0)) 
+        theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 0)) 
 )
 ```
 
