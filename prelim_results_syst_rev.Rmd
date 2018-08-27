@@ -27,55 +27,7 @@ library(tidyverse)
 diag <- F # produce exploratory & diagnostics plots & results
 diag_present <- T # produce diagnostics for report to Dina
 
-# read in data
-elig <- read_csv("~/Documents/UCD/PhD_Project/systematic_review/master_eligibility_results.csv")
-rev <- read_csv("./data/systematic_review_coded_results.csv")
-cp <- read_csv("./data/casey_coded_results.csv")
-cp_pre_cal <- read_csv("./data/casey_coded_results_pre_calibration.csv")
-
-# remove columns which are used as visual separators with no data
-if(any(grepl("X.*", colnames(rev)))) {
-  rev <- rev[, -which(grepl("X.*", colnames(rev)))]
-}
-colnames(rev) <- make.names(colnames(rev))
-
-# remove columns which are used as visual separators with no data - casey's coding
-if(any(grepl("X.*", colnames(cp)))) {
-  cp <- cp[, -which(grepl("X.*", colnames(cp)))]
-}
-colnames(cp) <- make.names(colnames(cp))
-
-# remove columns which are used as visual separators with no data - casey's coding
-if(any(grepl("X.*", colnames(cp_pre_cal)))) {
-  cp_pre_cal <- cp_pre_cal[, -which(grepl("X.*", colnames(cp_pre_cal)))]
-}
-colnames(cp_pre_cal) <- make.names(colnames(cp_pre_cal))
-
-# tidy some column names
-colnames(rev)[which(
-  colnames(rev) == 
-    "X.if.prediction.used..prediction.performance.measure")] <- 
-  "predicton.performance.measure"
-colnames(cp)[which(
-  colnames(cp) == 
-    "X.if.prediction.used..prediction.performance.measure")] <- 
-  "predicton.performance.measure"
-colnames(cp_pre_cal)[which(
-  colnames(cp_pre_cal) == 
-    "X.if.prediction.used..prediction.performance.measure")] <- 
-  "predicton.performance.measure"
-
-rev <- rev[which(rev$coding.DONE == T), ] 
-rev <- rev[which(rev$qualifies == T), ]
-rev <- rev[, -which(colnames(rev) %in% c(
-  "link", "inclusion.order", "other.notes", 
-  "aspects.not.yet.coded", 
-  "eligible.for.meta..or.publication.bias.analysis", 
-  "wg.needs.to.read"))]
-
-cp <- cp[, -which(colnames(cp) %in% c("coding.DONE", "other.notes"))]
-cp_pre_cal <- cp_pre_cal[, -which(colnames(cp_pre_cal) %in% 
-                                    c("coding.DONE", "other.notes"))]
+source("./clean_data_syst_rev.R")
 ```
 
 ```{r calc_temp_extent}
@@ -189,60 +141,70 @@ cp_pre_cal <- cp_pre_cal[, c(which(colnames(cp_pre_cal) == "title"),
                              which(colnames(cp_pre_cal) != "title"))]
 ## end casey's pre-calibration results ---------------------------------------
 
-## casey's post-calibration results -----------------------------------------
+## casey's post-calibration results before error correction ----------------------
 # remove columns that aren't coded variables from casey's df
-cp <- cp[, which(colnames(cp) %nin% c("link", "qualifies", "authors", 
-                                      "publication", "doi", "year"))]
-cp <- cp[order(cp$title), ] # order rows
-cp <- cp[, order(colnames(cp))] # order columns
+cp_post_cal <- cp_orig[, which(colnames(cp_orig) %nin% 
+                             c("link", "qualifies", "authors", "publication", 
+                               "doi", "year"))]
+cp_post_cal <- cp_post_cal[order(cp_post_cal$title), ] # order rows
+cp_post_cal <- cp_post_cal[, order(colnames(cp_post_cal))] # order columns
 # put title column first
-cp <- cp[, c(which(colnames(cp) == "title"), which(colnames(cp) != "title"))]
+cp_post_cal <- cp_post_cal[, c(which(colnames(cp_post_cal) == "title"), 
+                       which(colnames(cp_post_cal) != "title"))]
 ## end casey's post-calibration results ------------------------------------
 
-## my results -----------------------------------------------------------
+## all casey's results before error correction --------------------------------
+# remove columns that aren't coded variables from casey's df
+cp_orig <- cp_orig[, which(colnames(cp_orig) %nin% 
+                             c("link", "qualifies", "authors", "publication", 
+                               "doi", "year"))]
+cp_orig <- cp_orig[order(cp_orig$title), ] # order rows
+cp_orig <- cp_orig[, order(colnames(cp_orig))] # order columns
+# put title column first
+cp_orig <- cp_orig[, c(which(colnames(cp_orig) == "title"), 
+                       which(colnames(cp_orig) != "title"))]
+
+## end casey's results before error correction --------------------------------
+
+## my results before correction  ------------------------------------------------
 # subset my coded results to titles and columns coded by casey
-mult_coded_rev <- rev[which(rev$title %in% cp$title), 
-                      which(colnames(rev) %in% colnames(cp))]
-mult_coded_rev <- mult_coded_rev[order(mult_coded_rev$title), ] # order rows
-mult_coded_rev <- mult_coded_rev[, order(colnames(mult_coded_rev))] # order cols
-mult_coded_rev <- mult_coded_rev[, c(
-  which(colnames(mult_coded_rev) == "title"), 
-  which(colnames(mult_coded_rev) != "title"))]
-### end my results -----------------------------------------------------
+mult_coded_rev_orig <- rev[which(rev$title %in% cp_orig$title), 
+                      which(colnames(rev) %in% colnames(cp_orig))]
+# order rows
+mult_coded_rev_orig <- mult_coded_rev_orig[order(mult_coded_rev_orig$title), ] 
+# order cols
+mult_coded_rev_orig <- mult_coded_rev_orig[, order(colnames(mult_coded_rev_orig))] 
+mult_coded_rev_orig <- mult_coded_rev_orig[, c(
+  which(colnames(mult_coded_rev_orig) == "title"), 
+  which(colnames(mult_coded_rev_orig) != "title"))] # put title column first
+### end my results before correciton -----------------------------------------
 
 ## make sure all titles are present
-if(any(cp_pre_cal$title %nin% mult_coded_rev$title)) {
-  warning("Some titles in cp_pre_cal are not in mult_coded_rev.")
-  cp_pre_cal <- cp_pre_cal[which(cp_pre_cal$title %in% mult_coded_rev$title)]
+if(any(cp_pre_cal$title %nin% mult_coded_rev_orig$title)) {
+  warning("Some titles in cp_pre_cal are not in mult_coded_rev_orig.")
+  cp_pre_cal <- cp_pre_cal[which(cp_pre_cal$title %in% 
+                                   mult_coded_rev_orig$title), ]
 }
-if(any(cp$title %nin% mult_coded_rev$title)) {
-  warning("Some titles in cp are not in mult_coded_rev.")
-  cp <- cp[which(cp$title %in% mult_coded_rev$title), ]
+if(any(cp_orig$title %nin% mult_coded_rev_orig$title)) {
+  warning("Some titles in cp_orig are not in mult_coded_rev_orig.")
+  cp_orig <- cp_orig[which(cp_orig$title %in% mult_coded_rev_orig$title), ]
 }
-if(any(mult_coded_rev$title %nin% cp$title)) {
-  warning("Some titles in mult_coded_rev are not in cp.")
-  mult_coded_rev <- mult_coded_rev[which(mult_coded_rev$title %in%
-                                           cp$title), ]
+if(any(mult_coded_rev_orig$title %nin% cp_orig$title)) {
+  warning("Some titles in mult_coded_rev_orig are not in cp_orig.")
+  mult_coded_rev_orig <- mult_coded_rev_orig[which(mult_coded_rev_orig$title %in%
+                                           cp_orig$title), ]
 }
 
 ## make sure df rows and cols are in the same order
-if(!identical(cp$title, mult_coded_rev$title)) {
-  stop("Study titles in cp and mult_coded_rev are either not the same or are not in the same order.  They must be in the same order for creating the variable data frames that will be used to calculate Krippendorf's alpha.")
+if(!identical(cp_orig$title, mult_coded_rev_orig$title)) {
+  stop("Study titles in cp_orig and mult_coded_rev_orig are either not the same or are not in the same order.  They must be in the same order for creating the variable data frames that will be used to calculate Krippendorf's alpha.")
 }
-if(!identical(colnames(cp), colnames(mult_coded_rev))) {
-  stop("Columns in cp and mult_coded_rev must be identical and in the same order.")
+if(!identical(colnames(cp_orig), colnames(mult_coded_rev_orig))) {
+  stop("Columns in cp_orig and mult_coded_rev_orig must be identical and in the same order.")
 }
-if(!identical(colnames(cp_pre_cal), colnames(mult_coded_rev))) {
-  stop("Columns in cp_pre_cal and mult_coded_rev must be identical and in the same order.")
+if(!identical(colnames(cp_pre_cal), colnames(mult_coded_rev_orig))) {
+  stop("Columns in cp_pre_cal and mult_coded_rev_orig must be identical and in the same order.")
 }
-
-## convert all columns from logical to character
-# for(i in 1:ncol(cp)) {
-#   cp[, i] <- as.character(cp[, i][[1]])
-# }
-# for(i in 1:ncol(mult_coded_rev)) {
-#   mult_coded_rev[, i] <- as.character(mult_coded_rev[, i][[1]])
-# }
 ```
 
 ```{r define_calibration_set}
@@ -252,9 +214,9 @@ calibration_set <- cp_pre_cal$title
 ```{r make_dfs_of_pre_calibration_double_coded_articles}
 pre_cal_list <- list()
 
-rev_pre_cal <- mult_coded_rev[which(mult_coded_rev$title %in% calibration_set), ]
+rev_pre_cal <- mult_coded_rev_orig[which(mult_coded_rev_orig$title %in% calibration_set), ]
 
-if(colnames(cp_pre_cal)[1] != "title") {stop("The first column of cp_pre_cal and mult_coded_rev must be the study title.")}
+if(colnames(cp_pre_cal)[1] != "title") {stop("The first column of cp_pre_cal and mult_coded_rev_orig must be the study title.")}
 
 for(i in 2:ncol(cp_pre_cal)) { # awkward subsetting is b/c of tibble format
   pre_cal_list[[i-1]] <- data.frame(matrix(data = c(cp_pre_cal[, i][[1]],
@@ -268,10 +230,10 @@ names(pre_cal_list) <- colnames(cp_pre_cal)[2:ncol(cp_pre_cal)]
 ```{r make_dfs_of_post_calibration_double_coded_articles}
 post_cal_list <- list()
 
-cp_post_cal <- cp[which(cp$title %nin% calibration_set), ]
-rev_post_cal <- mult_coded_rev[which(mult_coded_rev$title %nin% calibration_set), ]
+cp_post_cal <- cp_orig[which(cp_orig$title %nin% calibration_set), ]
+rev_post_cal <- mult_coded_rev_orig[which(mult_coded_rev_orig$title %nin% calibration_set), ]
 
-if(colnames(cp_post_cal)[1] != "title") {stop("The first column of cp_post_cal and mult_coded_rev must be the study title.")}
+if(colnames(cp_post_cal)[1] != "title") {stop("The first column of cp_post_cal and mult_coded_rev_orig must be the study title.")}
 
 for(i in 2:ncol(cp_post_cal)) { # awkward subsetting is b/c of tibble format
   post_cal_list[[i-1]] <- data.frame(matrix(data = c(cp_post_cal[, i][[1]], 
@@ -286,16 +248,16 @@ names(post_cal_list) <- colnames(cp_post_cal)[2:ncol(cp_post_cal)]
 ## make a data frame for each double-coded variable
 # each row is codings from one person
 # each column is a study
-dbl_coded <- list()
+pre_correct_list <- list()
 
-if(colnames(cp)[1] != "title") {stop("The first column of cp and mult_coded_rev must be the study title.")}
+if(colnames(cp_orig)[1] != "title") {stop("The first column of cp_orig and mult_coded_rev_orig must be the study title.")}
 
-for(i in 2:ncol(cp)) { # awkward subsetting is b/c of tibble format
-  dbl_coded[[i-1]] <- data.frame(matrix(data = c(cp[, i][[1]], 
-                                                 mult_coded_rev[, i][[1]]),
-                                        nrow = 2, ncol = nrow(cp), byrow = T))
+for(i in 2:ncol(cp_orig)) { # awkward subsetting is b/c of tibble format
+  pre_correct_list[[i-1]] <- data.frame(matrix(data = c(cp_orig[, i][[1]], 
+                                                 mult_coded_rev_orig[, i][[1]]),
+                                        nrow = 2, ncol = nrow(cp_orig), byrow = T))
 }
-names(dbl_coded) <- colnames(cp)[2:ncol(cp)]
+names(pre_correct_list) <- colnames(cp_orig)[2:ncol(cp_orig)]
 ```
 
 ```{r krippendorfs_alpha_calc, warning=FALSE, message=FALSE}
@@ -306,40 +268,42 @@ do_kripp.alpha <- function(x, method) {
   kripp.alpha(as.matrix(x), method = method)
 }
 
-kripp_all <- lapply(dbl_coded, FUN = do_kripp.alpha, method = "nominal")
+krip_all_pre_correct <- lapply(pre_correct_list, FUN = do_kripp.alpha, 
+                               method = "nominal")
 kripp_pre_cal <- lapply(pre_cal_list, FUN = do_kripp.alpha, method = "nominal")
-kripp_post_cal <- lapply(post_cal_list, FUN = do_kripp.alpha, method = "nominal")
+kripp_post_cal <- lapply(post_cal_list, FUN = do_kripp.alpha, 
+                         method = "nominal")
 ```
 
 ```{r krippendorfs_alpha_summary}
-kripp_summary_long <- data.frame(
+kripp_summary_precorrect_long <- data.frame(
   set = c(rep("pre calibration", length(kripp_pre_cal)), 
           rep("post calibration", length(kripp_post_cal)), 
-          rep("all", length(kripp_all))), 
+          rep("all", length(krip_all_pre_correct))), 
   variable = c(names(kripp_pre_cal), 
                names(kripp_post_cal), 
-               names(kripp_all)), 
+               names(krip_all_pre_correct)), 
   krip_alpha = c(sapply(kripp_pre_cal, 
                         FUN = function(x) {x$value}), 
                  sapply(kripp_post_cal, 
                         FUN = function(x) {x$value}), 
-                 sapply(kripp_all, 
+                 sapply(krip_all_pre_correct, 
                         FUN = function(x) {x$value})))
 
-kripp_summary_long$set <- factor(kripp_summary_long$set, 
+kripp_summary_precorrect_long$set <- factor(kripp_summary_precorrect_long$set, 
                                  levels = c("pre calibration", 
                                             "post calibration", 
                                             "all"))
 
 print(
-  ggplot(data = kripp_summary_long, 
+  ggplot(data = kripp_summary_precorrect_long, 
          mapping = aes(y = krip_alpha, x = set)) + 
     geom_boxplot() + 
     geom_point() + 
     geom_line(aes(group = variable)) + 
     geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
     geom_hline(aes(yintercept = 0.8), lty = "dotted") + 
-    ggtitle("Reader agreement using Krippendorff's alpha") + 
+    ggtitle("Reader agreement using Krippendorff's alpha\nOriginal coding before correction errors") + 
     theme_bw()
 )
 ```
@@ -349,15 +313,15 @@ print(
 # of insufficient variation
 alpha_df_all <- data.frame(
   set = rep("all", length(names(kripp_pre_cal))), 
-  variable = names(kripp_all),  
-  alpha = sapply(kripp_all, FUN = function(x) {x$value}),
-  n_wg_T = sapply(names(kripp_all), 
-                  FUN = function(x, df = mult_coded_rev) {
+  variable = names(krip_all_pre_correct),  
+  alpha = sapply(krip_all_pre_correct, FUN = function(x) {x$value}),
+  n_wg_T = sapply(names(krip_all_pre_correct), 
+                  FUN = function(x, df = mult_coded_rev_orig) {
                     df <- data.frame(df)
                     col_vec <- df[, which(colnames(df) == x)]
                     sum(col_vec)}), 
   stringsAsFactors = FALSE,
-  row.names = 1:length(names(kripp_all))
+  row.names = 1:length(names(krip_all_pre_correct))
 )
 
 alpha_df_pre_cal <- data.frame(
@@ -365,7 +329,7 @@ alpha_df_pre_cal <- data.frame(
   variable = names(kripp_pre_cal), 
   alpha = sapply(kripp_pre_cal, FUN = function(x) {x$value}), 
   n_wg_T = sapply(names(kripp_pre_cal), 
-                  FUN = function(x, df = mult_coded_rev) {
+                  FUN = function(x, df = mult_coded_rev_orig) {
                     df <- data.frame(df)
                     col_vec <- df[, which(colnames(df) == x)]
                     sum(col_vec)}),
@@ -378,7 +342,7 @@ alpha_df_post_cal <- data.frame(
   variable = names(kripp_post_cal), 
   alpha = sapply(kripp_post_cal, FUN = function(x) {x$value}), 
   n_wg_T = sapply(names(kripp_post_cal), 
-                  FUN = function(x, df = mult_coded_rev) {
+                  FUN = function(x, df = mult_coded_rev_orig) {
                     df <- data.frame(df)
                     col_vec <- df[, which(colnames(df) == x)]
                     sum(col_vec)}), 
@@ -393,7 +357,7 @@ print(
     geom_point() + 
     geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
     geom_hline(aes(yintercept = 0.8), lty = "dotted") + 
-    ggtitle("Krippendorff's alpha by the number\nof TRUEs in Willson's coding") + 
+    ggtitle("Krippendorff's alpha by the number\nof TRUEs in Willson's coding\nOriginal Codings Before Correcting Errors") + 
     xlab("Number of TRUE values in Willson's coding") + 
     theme_bw()
 )
@@ -401,9 +365,20 @@ print(
 
 **Notes about agreement** 
 
-- inference: looks pretty good.  Casey missed one that had bootstrap CIs on one plot.  On a second I put no inference b/c all the analyses using bio recs didn't use inference, while Casey put inference b/c there were other analyses with non-bio recs data that used inference.
-- data type - museum: Casey missed "Congruence in fungal phenology patterns...", perhaps because methods say "fungarium" data, and he may not have known the word or not realized that those are probably physical specimens in a collection.  I think Casey missed "Evaluating promotional approaches for citizen science biological recording..." which states that all data used were records for which there was either a photo or specimen.  Perhaps I need to change name from "museum" to "physical specimen" for this category.  For "Explaining European fungal fruiting phenology..." it looks like Casey correctly had TRUE for museum and I just missed the 1st sentence of methods - a bad oversight on my part.  For "Nature protection areas are insufficient..." Casey had T for museum, I had F, but on re-reading I think this doesn't even qualify at all - even though UK was in their original study extent, there were no records of the beetle in UK or IE, so it doesn't actually meet my criteria of using UK/IE biological records. 
-- data type - organized monitoring scheme:  For "Evaluating promotional approaches for citizen science biological recording..." Casey coded T for monitoring scheme.  However, despite records coming from named "schemes" (UK Ladybird Recording Scheme & BeeWatch), those named schemes are actually just data collection portals/websites for opportunistic records.  There is no organized monitoring effort, no regular survey protocol, locations, or times of surveys.  So the correct coding is FALSE for that article.  For "Nature protection areas of Europe are insufficient..." Casey put TRUE for organized scheme, but I find no record of that in the article.  Seems data were agregated from many databases, but no scheme.  Don't know why he put that.  Either misunderstanding or oversight.  
+- inference: looks pretty good.  
+    - Casey missed one that had bootstrap CIs on one plot.  
+    - On a second I put no inference b/c all the analyses using bio recs didn't use inference, while Casey put inference b/c there were other analyses with non-bio recs data that used inference.
+- data type - museum: 
+    - Casey missed "Congruence in fungal phenology patterns...", perhaps because methods say "fungarium" data, and he may not have known the word or not realized that those are probably physical specimens in a collection.  
+    - I think Casey missed "Evaluating promotional approaches for citizen science biological recording..." which states that all data used were records for which there was either a photo or specimen.  
+    - Perhaps I need to change name from "museum" to "physical specimen" for this category.  
+    - For "Explaining European fungal fruiting phenology..." it looks like Casey correctly had TRUE for museum and I just missed the 1st sentence of methods - a bad oversight on my part.  
+    - For "Nature protection areas are insufficient..." Casey had T for museum, I had F, but on re-reading I think this doesn't even qualify at all - even though UK was in their original study extent, there were no records of the beetle in UK or IE, so it doesn't actually meet my criteria of using UK/IE biological records. 
+- data type - organized monitoring scheme:  
+    - For "Evaluating promotional approaches for citizen science biological recording..." Casey coded T for monitoring scheme.  However, despite records coming from named "schemes" (UK Ladybird Recording Scheme & BeeWatch), those named schemes are actually just data collection portals/websites for opportunistic records.  There is no organized monitoring effort, no regular survey protocol, locations, or times of surveys.  So the correct coding is FALSE for that article.
+    - For "Nature protection areas of Europe are insufficient..." Casey put TRUE for organized scheme, but I find no record of that in the article.  Seems data were agregated from many databases, but no scheme.  Don't know why he put that.  Either misunderstanding or oversight.  
+
+
 
 --------------------------
 
