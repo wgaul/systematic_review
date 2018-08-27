@@ -127,7 +127,8 @@ I used Krippendorf's *alpha* to evaluate the agreement between two readers for e
 # remove columns that aren't coded variables
 cp_pre_cal <- cp_pre_cal[, which(colnames(cp_pre_cal) %nin% 
                                    c("link", "qualifies", "authors", 
-                                     "publication", "doi", "year"))]
+                                     "publication", "doi", "year", 
+                                     "coding.DONE"))]
 # rename the old column names used in casey's 1st coding
 colnames(cp_pre_cal)[grep(".*known.effort", colnames(cp_pre_cal))] <- 
   "data.type...sampling.effort.reported"
@@ -145,7 +146,7 @@ cp_pre_cal <- cp_pre_cal[, c(which(colnames(cp_pre_cal) == "title"),
 # remove columns that aren't coded variables from casey's df
 cp_post_cal <- cp_orig[, which(colnames(cp_orig) %nin% 
                              c("link", "qualifies", "authors", "publication", 
-                               "doi", "year"))]
+                               "doi", "year", "coding.DONE"))]
 cp_post_cal <- cp_post_cal[order(cp_post_cal$title), ] # order rows
 cp_post_cal <- cp_post_cal[, order(colnames(cp_post_cal))] # order columns
 # put title column first
@@ -157,7 +158,7 @@ cp_post_cal <- cp_post_cal[, c(which(colnames(cp_post_cal) == "title"),
 # remove columns that aren't coded variables from casey's df
 cp_orig <- cp_orig[, which(colnames(cp_orig) %nin% 
                              c("link", "qualifies", "authors", "publication", 
-                               "doi", "year"))]
+                               "doi", "year", "coding.DONE"))]
 cp_orig <- cp_orig[order(cp_orig$title), ] # order rows
 cp_orig <- cp_orig[, order(colnames(cp_orig))] # order columns
 # put title column first
@@ -168,8 +169,8 @@ cp_orig <- cp_orig[, c(which(colnames(cp_orig) == "title"),
 
 ## my results before correction  ------------------------------------------------
 # subset my coded results to titles and columns coded by casey
-mult_coded_rev_orig <- rev[which(rev$title %in% cp_orig$title), 
-                      which(colnames(rev) %in% colnames(cp_orig))]
+mult_coded_rev_orig <- rev_orig[which(rev_orig$title %in% cp_orig$title), 
+                      which(colnames(rev_orig) %in% colnames(cp_orig))]
 # order rows
 mult_coded_rev_orig <- mult_coded_rev_orig[order(mult_coded_rev_orig$title), ] 
 # order cols
@@ -268,7 +269,7 @@ do_kripp.alpha <- function(x, method) {
   kripp.alpha(as.matrix(x), method = method)
 }
 
-krip_all_pre_correct <- lapply(pre_correct_list, FUN = do_kripp.alpha, 
+kripp_all_pre_correct <- lapply(pre_correct_list, FUN = do_kripp.alpha, 
                                method = "nominal")
 kripp_pre_cal <- lapply(pre_cal_list, FUN = do_kripp.alpha, method = "nominal")
 kripp_post_cal <- lapply(post_cal_list, FUN = do_kripp.alpha, 
@@ -279,21 +280,21 @@ kripp_post_cal <- lapply(post_cal_list, FUN = do_kripp.alpha,
 kripp_summary_precorrect_long <- data.frame(
   set = c(rep("pre calibration", length(kripp_pre_cal)), 
           rep("post calibration", length(kripp_post_cal)), 
-          rep("all", length(krip_all_pre_correct))), 
+          rep("all_pre_correct", length(kripp_all_pre_correct))), 
   variable = c(names(kripp_pre_cal), 
                names(kripp_post_cal), 
-               names(krip_all_pre_correct)), 
+               names(kripp_all_pre_correct)), 
   krip_alpha = c(sapply(kripp_pre_cal, 
                         FUN = function(x) {x$value}), 
                  sapply(kripp_post_cal, 
                         FUN = function(x) {x$value}), 
-                 sapply(krip_all_pre_correct, 
+                 sapply(kripp_all_pre_correct, 
                         FUN = function(x) {x$value})))
 
 kripp_summary_precorrect_long$set <- factor(kripp_summary_precorrect_long$set, 
                                  levels = c("pre calibration", 
                                             "post calibration", 
-                                            "all"))
+                                            "all_pre_correct"))
 
 print(
   ggplot(data = kripp_summary_precorrect_long, 
@@ -303,7 +304,7 @@ print(
     geom_line(aes(group = variable)) + 
     geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
     geom_hline(aes(yintercept = 0.8), lty = "dotted") + 
-    ggtitle("Reader agreement using Krippendorff's alpha\nOriginal coding before correction errors") + 
+    ggtitle("Reader agreement using Krippendorff's alpha\nOriginal coding before correcting errors") + 
     theme_bw()
 )
 ```
@@ -313,15 +314,15 @@ print(
 # of insufficient variation
 alpha_df_all <- data.frame(
   set = rep("all", length(names(kripp_pre_cal))), 
-  variable = names(krip_all_pre_correct),  
-  alpha = sapply(krip_all_pre_correct, FUN = function(x) {x$value}),
-  n_wg_T = sapply(names(krip_all_pre_correct), 
+  variable = names(kripp_all_pre_correct),  
+  alpha = sapply(kripp_all_pre_correct, FUN = function(x) {x$value}),
+  n_wg_T = sapply(names(kripp_all_pre_correct), 
                   FUN = function(x, df = mult_coded_rev_orig) {
                     df <- data.frame(df)
                     col_vec <- df[, which(colnames(df) == x)]
                     sum(col_vec)}), 
   stringsAsFactors = FALSE,
-  row.names = 1:length(names(krip_all_pre_correct))
+  row.names = 1:length(names(kripp_all_pre_correct))
 )
 
 alpha_df_pre_cal <- data.frame(
@@ -363,20 +364,41 @@ print(
 )
 ```
 
-**Notes about agreement** 
+**Notes about agreement** (*italics* means I've corrected it, **bold** means I need to deal with it.)
 
-- inference: looks pretty good.  
-    - Casey missed one that had bootstrap CIs on one plot.  
-    - On a second I put no inference b/c all the analyses using bio recs didn't use inference, while Casey put inference b/c there were other analyses with non-bio recs data that used inference.
+- *biological records in facilitative role*: generally, it looks like CP codes this as TRUE much more often than I do.
+    - *"An assessment of bumblebee (Bombus spp) land use..." Casey coded this as T, but the species observation data were clearly used as a response variable.  Perhaps the confusion is because survey participants were identifed from a list of people who had participated in a previous survey.  Regardless, this should be FALSE.*
+    - *"Modelling and mapping UK emissions..." Casey coded TRUE, but to me this is a pretty clear case of biological records as a predictor (used to modify the response variable of emissions).  I think this is an error from lack of understanding of what it would look like to have bio recs as a predictor variable.  I don't think there's actually much ambiguity about how this article would be coded, I think perhaps there is ambiguity in my instructions about this category.  So, I changed this to FALSE.*
+    - *"The role of historical environmental information in perceptions..." Casey coded TRUE but the occurrence records were used as a response variable to create the presence trajectory type categories that were used for trait analysis.  See p 27 of the study.  This is an error and I will change it to FALSE.*
+    - **Edit instructions to make clear what bio recs as a predictor would look like from a general perspective, not just explicitly in a regression equation or something.**
+- *cross validation*
+    - *The only disagreement was on "Nature protection areas of Europe are insufficient..." which I have already disqualified b/c it doesn't use UK/IE records.*
 - data type - museum: 
-    - Casey missed "Congruence in fungal phenology patterns...", perhaps because methods say "fungarium" data, and he may not have known the word or not realized that those are probably physical specimens in a collection.  
-    - I think Casey missed "Evaluating promotional approaches for citizen science biological recording..." which states that all data used were records for which there was either a photo or specimen.  
-    - Perhaps I need to change name from "museum" to "physical specimen" for this category.  
-    - For "Explaining European fungal fruiting phenology..." it looks like Casey correctly had TRUE for museum and I just missed the 1st sentence of methods - a bad oversight on my part.  
-    - For "Nature protection areas are insufficient..." Casey had T for museum, I had F, but on re-reading I think this doesn't even qualify at all - even though UK was in their original study extent, there were no records of the beetle in UK or IE, so it doesn't actually meet my criteria of using UK/IE biological records. 
+    * *Casey missed "Congruence in fungal phenology patterns...", perhaps because methods say "fungarium" data, and he may not have known the word or not realized that those are probably physical specimens in a collection.*
+    - **I think Casey missed "Evaluating promotional approaches for citizen science biological recording..." which states that all data used were records for which there was either a photo or specimen.** 
+    - **Perhaps I need to change name from "museum" to "physical specimen" for this category.**  
+    * *For "Explaining European fungal fruiting phenology..." it looks like Casey correctly had TRUE for museum and I just missed the 1st sentence of methods - a bad oversight on my part.*
+    * *For "Nature protection areas are insufficient..." Casey had T for museum, I had F, but on re-reading I think this doesn't even qualify at all - even though UK was in their original study extent, there were no records of the beetle in UK or IE, so it doesn't actually meet my criteria of using UK/IE biological records.*
 - data type - organized monitoring scheme:  
-    - For "Evaluating promotional approaches for citizen science biological recording..." Casey coded T for monitoring scheme.  However, despite records coming from named "schemes" (UK Ladybird Recording Scheme & BeeWatch), those named schemes are actually just data collection portals/websites for opportunistic records.  There is no organized monitoring effort, no regular survey protocol, locations, or times of surveys.  So the correct coding is FALSE for that article.
-    - For "Nature protection areas of Europe are insufficient..." Casey put TRUE for organized scheme, but I find no record of that in the article.  Seems data were agregated from many databases, but no scheme.  Don't know why he put that.  Either misunderstanding or oversight.  
+    * *For "Evaluating promotional approaches for citizen science biological recording..." Casey coded T for monitoring scheme.  However, despite records coming from named "schemes" (UK Ladybird Recording Scheme & BeeWatch), those named schemes are actually just data collection portals/websites for opportunistic records.  There is no organized monitoring effort, no regular survey protocol, locations, or times of surveys.  So the correct coding is FALSE for that article.*
+    - **Need to edit instructions to make it clear that this is only if the actual act of recording is standardized in methods, locations, or effort, not just having a central repository.**
+    * *For "Nature protection areas of Europe are insufficient..." Casey put TRUE for organized scheme, but I find no record of that in the article.  Seems data were agregated from many databases, but no scheme.  Don't know why he put that.  Either misunderstanding or oversight.  Regardless, the article is now disqualified (see above).*
+- *sampling effort reported*
+    - *"British phenological records indicate high diversity..." Casey coded T, I coded FALSE, but I was wrong, as they used data from UK Butterfly Monitoring Scheme (among other data sources).  This was an error by me.*
+    - *"Congruency in fungal phenology..." Casey coded TRUE, I coded FALSE.  This is not obviously an error by either of us, but is due to ambiguity in the study.  The local dataset used for Switzerland is from surveys in quadrats, and seems to be the result of a specific study.  I considered this not bio recs data but rather other data that was used in addition to bio recs data.  However, one could view this as bio recs data in the sense that bio recs are sometimes derived by searching published literature.  So it is a legitimate interpretation to call that bio recs data, in which case sampling effort = TRUE for this study.  I will not change anything as this is not an obvious error.*
+    - *"Evaluating promotional approaches for citizen science..." Casey coded TRUE.  But despite records coming from named "schemes" (UK Ladybird Recording Scheme & BeeWatch), those named schemes are actually just data collection portals/websites for opportunistic records.  There is no organized monitoring effort, no regular survey protocol, locations, or times of surveys, and, as far as I can tell from looking at those scheme websites, no record of survey effort.  This is an error by CP and I will change it to FALSE.*
+    - *"Large reorganizations in butterfly communities..." CP coded FALSE but the study uses UKBMS data which is collected on transects of known length.  This is an error by CP and I will change it to TRUE.*
+    - **Edit instructions to make clear that what is being asked is whether the sampling effort is reported with the data, not whether sampling effort is reported in the study or article.  So a study that uses UK Butterfly Monitoring Scheme data is TRUE for sampling effort reported, because it is reported with the data, even if the study doesn't report that sampling effort (e.g. transect length).**
+- **diversity as focus**
+- **non detection inferred using taxonomic group**
+- **policy focus**
+- **results type - descriptive only**
+- *inference: looks pretty good.*
+    * *Casey missed "Explaining European fungal fruiting..." that he marked as FALSE but that had bootstrap CIs on one plot.*
+    * *On "Ocean current connectivity..." I put no inference b/c all the analyses using bio recs didn't use inference, while Casey put inference b/c there were other analyses with non-bio recs data that used inference.*
+- **spatial bias mentioned**
+- **testing using independent dataset**
+
 
 
 
