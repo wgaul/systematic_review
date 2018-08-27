@@ -399,6 +399,11 @@ print(
 )
 ```
 
+**Notes about agreement** 
+
+- inference: looks pretty good.  Casey missed one that had bootstrap CIs on one plot.  On a second I put no inference b/c all the analyses using bio recs didn't use inference, while Casey put inference b/c there were other analyses with non-bio recs data that used inference.
+- data type - museum: Casey missed "Congruence in fungal phenology patterns...", perhaps because methods say "fungarium" data, and he may not have known the word or not realized that those are probably physical specimens in a collection.  I think Casey missed "Evaluating promotional approaches for citizen science biological recording..." which states that all data used were records for which there was either a photo or specimen.  Perhaps I need to change name from "museum" to "physical specimen" for this category.  For "Explaining European fungal fruiting phenology..." it looks like Casey correctly had TRUE for museum and I just missed the 1st sentence of methods - a bad oversight on my part.  For "Nature protection areas are insufficient..." Casey had T for museum, I had F, but on re-reading I think this doesn't even qualify at all - even though UK was in their original study extent, there were no records of the beetle in UK or IE, so it doesn't actually meet my criteria of using UK/IE biological records. 
+- data type - organized monitoring scheme:  For "Evaluating promotional approaches for citizen science biological recording..." Casey coded T for monitoring scheme.  However, despite records coming from named "schemes" (UK Ladybird Recording Scheme & BeeWatch), those named schemes are actually just data collection portals/websites for opportunistic records.  There is no organized monitoring effort, no regular survey protocol, locations, or times of surveys.  So the correct coding is FALSE for that article.  For "Nature protection areas of Europe are insufficient..." Casey put TRUE for organized scheme, but I find no record of that in the article.  Seems data were agregated from many databases, but no scheme.  Don't know why he put that.  Either misunderstanding or oversight.  
 
 --------------------------
 
