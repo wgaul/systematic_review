@@ -33,6 +33,8 @@
 ## last modified: 27 Aug 2018
 ###########################################
 
+library(tidyverse)
+
 setwd("~/Documents/Data_Analysis/UCD/systematic_review/")
 
 # read in data
@@ -73,12 +75,16 @@ colnames(cp_pre_cal)[which(
   colnames(cp_pre_cal) == 
     "X.if.prediction.used..prediction.performance.measure")] <- 
   "predicton.performance.measure"
+colnames(cp_pre_cal)[grep(".*museum.*", colnames(cp_pre_cal))] <- 
+  "data.type...physical.specimen" # change to match my new name for this var.
 
 # casey post-callibration data
 colnames(cp_orig)[which(
   colnames(cp_orig) == 
     "X.if.prediction.used..prediction.performance.measure")] <- 
   "predicton.performance.measure"
+colnames(cp_orig)[grep(".*museum.*", colnames(cp_orig))] <- 
+  "data.type...physical.specimen" # change to match my new name for this var.
 
 ## subset to qualifying articles for which coding is done ---------------------
 # wg data
@@ -95,6 +101,13 @@ cp_orig <- cp_orig[, -which(colnames(cp_orig) %in% c("other.notes"))]
 cp_pre_cal <- cp_pre_cal[, -which(colnames(cp_pre_cal) %in% 
                                     c("other.notes"))]
 
+## make voucher available column
+rev_orig$data.type...voucher.available <- 
+  rev_orig$data.type...physical.specimen == T |
+  rev_orig$data.type...photo == T |
+  rev_orig$data.type...audio == T | 
+  rev_orig$data.type...video ==T
+
 ## correct errors revealed by double coding -----------------------------------
 # This fixes things that were obvioulsy oversights or errors in coding that were
 # revealed by comparing 2 readers' codings.  Things that are legitimately 
@@ -107,9 +120,15 @@ rev <- rev_orig
 rev[grep(".*Nature protection areas of Europe.*", rev$title), 
     "qualifies"] <- FALSE
 rev[grep("Explaining European fungal fruiting.*", rev$title), 
-    "data.type...museum"] <- TRUE
+    "data.type...physical.specimen"] <- TRUE
+# the above change making physical.specimen TRUE means I need to change wh,wh,wh
+rev[grep("Explaining European fungal fruiting.*", rev$title), 
+    "data.type...what.where.when.only"] <- FALSE
 rev[grep("British phenological records indicate high diversity.*", rev$title), 
     "data.type...sampling.effort.reported"] <- TRUE
+# the above change making samp effort to TRUE means I need to change wh,wh,wh
+rev[grep("British phenological records indicate high diversity.*", rev$title), 
+    "data.type...what.where.when.only"] <- FALSE
 rev[grep("Modelling and mapping UK emissions.*", rev$title), 
     "non.detection.inferred.using.taxonomic.group"] <- FALSE
 rev[grep("Changes in the geographical distribution of plant.*", rev$title), 
@@ -124,7 +143,8 @@ cp <- cp_orig
 cp[grep("Explaining European fungal fruiting.*", cp$title), 
    "results.type...inference"] <- TRUE
 cp[grep("Ocean current conn.*", cp$title), "results.type...inference"] <- FALSE
-cp[grep("Congruency in fungal phen.*", cp$title), "data.type...museum"] <- TRUE
+cp[grep("Congruency in fungal phen.*", cp$title), 
+   "data.type...physical.specimen"] <- TRUE
 cp[grep("Evaluating promotional app.*", cp$title), 
    "data.type...organized.data.collection.scheme"] <- FALSE
 cp[grep(".*assessment of bumblebee.*land use.*", cp$title), 
@@ -171,4 +191,29 @@ cp[grep("Potential for coupling the monitoring of bush.*", cp$title),
 # these are the objects to use for analysis
 rev <- rev[which(rev$coding.DONE == T & rev$qualifies == T), ]
 cp <- cp[which(cp$coding.DONE == T & cp$qualifies == T), ]
+
+
+## check to make sure I didn't manually assign impossible competing values
+# make sure I didn't manually assign a richer data type as TRUE without changing
+# what, where, when to FALSE
+rev_rich_data <- rev$data.type...detection...non.detection == T |
+  rev$data.type...abundance == T | 
+  rev$data.type...sampling.effort.reported == T |
+  rev$data.type...organized.data.collection.scheme == T |
+  rev$data.type...visit.specific.covariates == T | 
+  rev$data.type...life.stage == T | 
+  rev$data.type...voucher.available == T
+  
+if(any(rev_rich_data == T & rev$data.type...what.where.when.only == T)) {
+  stop("data.type...what.where.when.only and one of the richer data types are both TRUE in rev.  This may be due to assigning one of the data types manually as part of error correction.  Revisit that assignment and change the corresponding mutually exclusive value also.")
+}
+
+rev_not_desc <- rev$results.type...inference == T | 
+  rev$results.type...prediction == T
+if(any(rev_not_desc == T & rev$results.type...descriptive.only == T)) {
+  stop("Descriptive data only and either inference or prediction are both coded TRUE in rev.  This should not be possible.  This may be due to assigning one of the values manually as part of error correction.  Revisit that assignment and change the corresponding mutually exclusive value also.")
+}
+
+rm(rev_rich_data, rev_not_desc)
+## end check for competing values
 
