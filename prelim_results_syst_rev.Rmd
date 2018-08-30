@@ -27,6 +27,10 @@ library(tidyverse)
 diag <- F # produce exploratory & diagnostics plots & results
 diag_present <- T # produce diagnostics for report to Dina
 
+if(diag == F) { # turn off warnings when not running diagnostics
+  knitr::opts_chunk$set(echo=F, message=F, warning=F, cache=F)
+}
+
 source("./clean_data_syst_rev.R")
 ```
 
@@ -83,6 +87,7 @@ for(i in 1:nrow(rev)) {
 ```{r numberingPrep}
 # make functions for adding numbered captions to figures 
 figs <- captioner(prefix = "Fig.") 
+tabs <- captioner(prefix = "Table")
 ```
 
 # Preliminary structure of analysis and results
@@ -180,6 +185,32 @@ mult_coded_rev_orig <- mult_coded_rev_orig[, c(
   which(colnames(mult_coded_rev_orig) != "title"))] # put title column first
 ### end my results before correciton -----------------------------------------
 
+## casey's results after error correction -----------------------------------
+# remove columns that aren't coded variables 
+cp <- cp[, which(colnames(cp) %nin% 
+                             c("link", "qualifies", "authors", "publication", 
+                               "doi", "year", "coding.DONE"))]
+cp <- cp[order(cp$title), ] # order rows
+cp <- cp[, order(colnames(cp))] # order columns
+# put title column first
+cp <- cp[, c(which(colnames(cp) == "title"), 
+                       which(colnames(cp) != "title"))]
+## end casey's results after error correction ---------------------------------
+
+## my results after error correction ----------------------------------------
+# subset my coded results to titles and columns coded by casey
+mult_coded_rev <- rev[which(rev$title %in% cp$title), 
+                      which(colnames(rev) %in% colnames(cp))]
+# order rows
+mult_coded_rev <- mult_coded_rev[order(mult_coded_rev$title), ] 
+# order cols
+mult_coded_rev <- mult_coded_rev[, order(colnames(mult_coded_rev))] 
+mult_coded_rev <- mult_coded_rev[, c(
+  which(colnames(mult_coded_rev) == "title"), 
+  which(colnames(mult_coded_rev) != "title"))] # put title column first
+## end my results after error correction --------------------------------------
+
+
 ## make sure all titles are present
 if(any(cp_pre_cal$title %nin% mult_coded_rev_orig$title)) {
   warning("Some titles in cp_pre_cal are not in mult_coded_rev_orig.")
@@ -191,9 +222,15 @@ if(any(cp_orig$title %nin% mult_coded_rev_orig$title)) {
   cp_orig <- cp_orig[which(cp_orig$title %in% mult_coded_rev_orig$title), ]
 }
 if(any(mult_coded_rev_orig$title %nin% cp_orig$title)) {
-  warning("Some titles in mult_coded_rev_orig are not in cp_orig.")
+  warning("Some titles in mult_coded_rev_orig are not in cp_orig. ")
   mult_coded_rev_orig <- mult_coded_rev_orig[which(mult_coded_rev_orig$title %in%
                                            cp_orig$title), ]
+}
+if(any(mult_coded_rev$title %nin% cp$title) | 
+   any(cp$title %nin% mult_coded_rev$title)) {
+  warning("cp and mult_coded_rev don't have the same titles. ")
+  mult_coded_rev <- mult_coded_rev[which(mult_coded_rev$title %in% cp$title), ]
+  cp <- cp[which(cp$title %in% mult_coded_rev$title), ]
 }
 
 ## make sure df rows and cols are in the same order
@@ -205,6 +242,9 @@ if(!identical(colnames(cp_orig), colnames(mult_coded_rev_orig))) {
 }
 if(!identical(colnames(cp_pre_cal), colnames(mult_coded_rev_orig))) {
   stop("Columns in cp_pre_cal and mult_coded_rev_orig must be identical and in the same order.")
+}
+if(!identical(colnames(cp), colnames(mult_coded_rev))) {
+  stop("Columns in cp and mult_coded_rev must be identical and in the same order.")
 }
 ```
 
@@ -245,7 +285,7 @@ for(i in 2:ncol(cp_post_cal)) { # awkward subsetting is b/c of tibble format
 names(post_cal_list) <- colnames(cp_post_cal)[2:ncol(cp_post_cal)]
 ```
 
-```{r make_dfs_of_double_coded_variables_all_studies}
+```{r make_dfs_of_double_coded_variables_all_studies_pre_correction}
 ## make a data frame for each double-coded variable
 # each row is codings from one person
 # each column is a study
@@ -261,6 +301,21 @@ for(i in 2:ncol(cp_orig)) { # awkward subsetting is b/c of tibble format
 names(pre_correct_list) <- colnames(cp_orig)[2:ncol(cp_orig)]
 ```
 
+```{r make_dfs_of_double_coded_variables_all_studies_post_correction}
+# each row is codings from one person
+# each column is a study
+post_correct_list <- list()
+if(colnames(cp)[1] != "title" | colnames(mult_coded_rev)[1] != "title") {
+  stop("The first column of cp and mult_coded_rev must be the study title")}
+
+for(i in 2:ncol(cp)) {
+  post_correct_list[[i-1]] <- data.frame(matrix(
+    data = c(cp[, i][[1]], mult_coded_rev[, i][[1]]), 
+    nrow = 2, ncol = nrow(cp), byrow = T))
+}
+names(post_correct_list) <- colnames(cp)[2:ncol(cp)]
+```
+
 ```{r krippendorfs_alpha_calc, warning=FALSE, message=FALSE}
 do_kripp.alpha <- function(x, method) {
   # function to call kripp.alpha while converting dataframe x to a matrix
@@ -271,133 +326,44 @@ do_kripp.alpha <- function(x, method) {
 
 kripp_all_pre_correct <- lapply(pre_correct_list, FUN = do_kripp.alpha, 
                                method = "nominal")
+kripp_all_post_correct <- lapply(post_correct_list, FUN = do_kripp.alpha, 
+                                 method = "nominal")
 kripp_pre_cal <- lapply(pre_cal_list, FUN = do_kripp.alpha, method = "nominal")
 kripp_post_cal <- lapply(post_cal_list, FUN = do_kripp.alpha, 
                          method = "nominal")
 ```
 
-```{r krippendorfs_alpha_summary}
-kripp_summary_precorrect_long <- data.frame(
-  set = c(rep("pre calibration", length(kripp_pre_cal)), 
-          rep("post calibration", length(kripp_post_cal)), 
-          rep("all_pre_correct", length(kripp_all_pre_correct))), 
-  variable = c(names(kripp_pre_cal), 
-               names(kripp_post_cal), 
-               names(kripp_all_pre_correct)), 
-  krip_alpha = c(sapply(kripp_pre_cal, 
-                        FUN = function(x) {x$value}), 
-                 sapply(kripp_post_cal, 
-                        FUN = function(x) {x$value}), 
-                 sapply(kripp_all_pre_correct, 
-                        FUN = function(x) {x$value})))
+```{r calc_kripp_wg_before_and_after_correction}
+# calculate agreement between my codings before and after I corrected them based
+# on CP's codings.  This will perhaps show how reliable my original codings are.
+# The assumption would be that if my original codings are reliable compared to
+# my double-checking when prompted, then we can at least have confidence that
+# my coding is consistent and I'm not making too many sloppy errors.
+wg_comparison_list <- list()
 
-kripp_summary_precorrect_long$set <- factor(kripp_summary_precorrect_long$set, 
-                                 levels = c("pre calibration", 
-                                            "post calibration", 
-                                            "all_pre_correct"))
+if(colnames(mult_coded_rev)[1] != "title" | colnames(mult_coded_rev_orig)[1] != "title") {
+  stop("The first columns of mult_coded_rev_orig and mult_coded_rev must be the study title.")}
+if(nrow(mult_coded_rev) != nrow(mult_coded_rev_orig)) {
+  warning("There are different numbers of rows in mult_coded_rev and mult_coded_rev_orig. This may be due to studies that were disqualified in the data cleaning script after review because of differing reader scorings.")
+  mult_coded_rev_orig <- mult_coded_rev_orig[which(mult_coded_rev_orig$title %in%
+                                                     mult_coded_rev$title), ]
+  mult_coded_rev <- mult_coded_rev[which(mult_coded_rev$title %in%
+                                           mult_coded_rev_orig$title), ]
+}
 
-print(
-  ggplot(data = kripp_summary_precorrect_long, 
-         mapping = aes(y = krip_alpha, x = set)) + 
-    geom_boxplot() + 
-    geom_point() + 
-    geom_line(aes(group = variable)) + 
-    geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
-    geom_hline(aes(yintercept = 0.8), lty = "dotted") + 
-    ggtitle("Reader agreement using Krippendorff's alpha\nOriginal coding before correcting errors") + 
-    theme_bw()
-)
+for(i in 2:ncol(mult_coded_rev)) {
+  wg_comparison_list[[i-1]] <- data.frame(matrix(
+    data = c(mult_coded_rev_orig[, i][[1]], mult_coded_rev[, i][[1]]), 
+    nrow = 2, ncol = max(nrow(mult_coded_rev), nrow(mult_coded_rev_orig)), 
+    byrow = T))
+}
+names(wg_comparison_list) <- colnames(cp)[2:ncol(cp)]
+
+## calculate Krippendorff's alpha
+kripp_wg_comparison <- lapply(wg_comparison_list, FUN = do_kripp.alpha, 
+                              method = "nominal")
 ```
 
-```{r plot_kripp_by_nTRUE}
-# this is exploratory to see if krippendorff's alpha is varying wildly b/c
-# of insufficient variation
-alpha_df_all <- data.frame(
-  set = rep("all", length(names(kripp_pre_cal))), 
-  variable = names(kripp_all_pre_correct),  
-  alpha = sapply(kripp_all_pre_correct, FUN = function(x) {x$value}),
-  n_wg_T = sapply(names(kripp_all_pre_correct), 
-                  FUN = function(x, df = mult_coded_rev_orig) {
-                    df <- data.frame(df)
-                    col_vec <- df[, which(colnames(df) == x)]
-                    sum(col_vec)}), 
-  stringsAsFactors = FALSE,
-  row.names = 1:length(names(kripp_all_pre_correct))
-)
-
-alpha_df_pre_cal <- data.frame(
-  set = rep("pre calibration", length(names(kripp_pre_cal))), 
-  variable = names(kripp_pre_cal), 
-  alpha = sapply(kripp_pre_cal, FUN = function(x) {x$value}), 
-  n_wg_T = sapply(names(kripp_pre_cal), 
-                  FUN = function(x, df = mult_coded_rev_orig) {
-                    df <- data.frame(df)
-                    col_vec <- df[, which(colnames(df) == x)]
-                    sum(col_vec)}),
-  stringsAsFactors = FALSE, 
-  row.names = 1:length(names(kripp_pre_cal))
-)
-
-alpha_df_post_cal <- data.frame(
-  set = rep("post calibration", length(names(kripp_post_cal))), 
-  variable = names(kripp_post_cal), 
-  alpha = sapply(kripp_post_cal, FUN = function(x) {x$value}), 
-  n_wg_T = sapply(names(kripp_post_cal), 
-                  FUN = function(x, df = mult_coded_rev_orig) {
-                    df <- data.frame(df)
-                    col_vec <- df[, which(colnames(df) == x)]
-                    sum(col_vec)}), 
-  stringsAsFactors = FALSE,
-  row.names = 1:length(names(kripp_post_cal))
-)
-
-alpha_df <- bind_rows(list(alpha_df_all, alpha_df_pre_cal, alpha_df_post_cal))
-
-print(
-  ggplot(alpha_df, aes(x = n_wg_T, y = alpha, color = set)) + 
-    geom_point() + 
-    geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
-    geom_hline(aes(yintercept = 0.8), lty = "dotted") + 
-    ggtitle("Krippendorff's alpha by the number\nof TRUEs in Willson's coding\nOriginal Codings Before Correcting Errors") + 
-    xlab("Number of TRUE values in Willson's coding") + 
-    theme_bw()
-)
-```
-
-**Notes about agreement** (*italics* means I've corrected it, **bold** means I need to deal with it.)
-
-- *biological records in facilitative role*: generally, it looks like CP codes this as TRUE much more often than I do.
-    - *"An assessment of bumblebee (Bombus spp) land use..." Casey coded this as T, but the species observation data were clearly used as a response variable.  Perhaps the confusion is because survey participants were identifed from a list of people who had participated in a previous survey.  Regardless, this should be FALSE.*
-    - *"Modelling and mapping UK emissions..." Casey coded TRUE, but to me this is a pretty clear case of biological records as a predictor (used to modify the response variable of emissions).  I think this is an error from lack of understanding of what it would look like to have bio recs as a predictor variable.  I don't think there's actually much ambiguity about how this article would be coded, I think perhaps there is ambiguity in my instructions about this category.  So, I changed this to FALSE.*
-    - *"The role of historical environmental information in perceptions..." Casey coded TRUE but the occurrence records were used as a response variable to create the presence trajectory type categories that were used for trait analysis.  See p 27 of the study.  This is an error and I will change it to FALSE.*
-    - **Edit instructions to make clear what bio recs as a predictor would look like from a general perspective, not just explicitly in a regression equation or something.**
-- *cross validation*
-    - *The only disagreement was on "Nature protection areas of Europe are insufficient..." which I have already disqualified b/c it doesn't use UK/IE records.*
-- data type - museum: 
-    * *Casey missed "Congruence in fungal phenology patterns...", perhaps because methods say "fungarium" data, and he may not have known the word or not realized that those are probably physical specimens in a collection.*
-    - **I think Casey missed "Evaluating promotional approaches for citizen science biological recording..." which states that all data used were records for which there was either a photo or specimen.** 
-    - **Perhaps I need to change name from "museum" to "physical specimen" for this category.**  
-    * *For "Explaining European fungal fruiting phenology..." it looks like Casey correctly had TRUE for museum and I just missed the 1st sentence of methods - a bad oversight on my part.*
-    * *For "Nature protection areas are insufficient..." Casey had T for museum, I had F, but on re-reading I think this doesn't even qualify at all - even though UK was in their original study extent, there were no records of the beetle in UK or IE, so it doesn't actually meet my criteria of using UK/IE biological records.*
-- data type - organized monitoring scheme:  
-    * *For "Evaluating promotional approaches for citizen science biological recording..." Casey coded T for monitoring scheme.  However, despite records coming from named "schemes" (UK Ladybird Recording Scheme & BeeWatch), those named schemes are actually just data collection portals/websites for opportunistic records.  There is no organized monitoring effort, no regular survey protocol, locations, or times of surveys.  So the correct coding is FALSE for that article.*
-    - **Need to edit instructions to make it clear that this is only if the actual act of recording is standardized in methods, locations, or effort, not just having a central repository.**
-    * *For "Nature protection areas of Europe are insufficient..." Casey put TRUE for organized scheme, but I find no record of that in the article.  Seems data were agregated from many databases, but no scheme.  Don't know why he put that.  Either misunderstanding or oversight.  Regardless, the article is now disqualified (see above).*
-- *sampling effort reported*
-    - *"British phenological records indicate high diversity..." Casey coded T, I coded FALSE, but I was wrong, as they used data from UK Butterfly Monitoring Scheme (among other data sources).  This was an error by me.*
-    - *"Congruency in fungal phenology..." Casey coded TRUE, I coded FALSE.  This is not obviously an error by either of us, but is due to ambiguity in the study.  The local dataset used for Switzerland is from surveys in quadrats, and seems to be the result of a specific study.  I considered this not bio recs data but rather other data that was used in addition to bio recs data.  However, one could view this as bio recs data in the sense that bio recs are sometimes derived by searching published literature.  So it is a legitimate interpretation to call that bio recs data, in which case sampling effort = TRUE for this study.  I will not change anything as this is not an obvious error.*
-    - *"Evaluating promotional approaches for citizen science..." Casey coded TRUE.  But despite records coming from named "schemes" (UK Ladybird Recording Scheme & BeeWatch), those named schemes are actually just data collection portals/websites for opportunistic records.  There is no organized monitoring effort, no regular survey protocol, locations, or times of surveys, and, as far as I can tell from looking at those scheme websites, no record of survey effort.  This is an error by CP and I will change it to FALSE.*
-    - *"Large reorganizations in butterfly communities..." CP coded FALSE but the study uses UKBMS data which is collected on transects of known length.  This is an error by CP and I will change it to TRUE.*
-    - **Edit instructions to make clear that what is being asked is whether the sampling effort is reported with the data, not whether sampling effort is reported in the study or article.  So a study that uses UK Butterfly Monitoring Scheme data is TRUE for sampling effort reported, because it is reported with the data, even if the study doesn't report that sampling effort (e.g. transect length).**
-- **diversity as focus**
-- **non detection inferred using taxonomic group**
-- **policy focus**
-- **results type - descriptive only**
-- *inference: looks pretty good.*
-    * *Casey missed "Explaining European fungal fruiting..." that he marked as FALSE but that had bootstrap CIs on one plot.*
-    * *On "Ocean current connectivity..." I put no inference b/c all the analyses using bio recs didn't use inference, while Casey put inference b/c there were other analyses with non-bio recs data that used inference.*
-- **spatial bias mentioned**
-- **testing using independent dataset**
 
 
 
@@ -412,11 +378,11 @@ $H_0$: The mean temporal extent of studies using what, where, when-only data is 
 
 *Proposed Test*: Linear regression with natural-log transformed time (in years) as the outcome and data types as predictors.
 
-We used linear regression with natural-log transformed time (in years) as the response variable.  We used nine binary predictor variables indicating whether the data had the following information: 1) only what where when data, 2) sampling effort, 3) abundance, and 4) detection / non-detection, 5) organized monitoring scheme, 6) visit-specific covariates, 7) multiple datasets integrated for analysis, 8) life stage information, and 9) voucher specimen.  While the predictor variables are correlated, we kept all variables in the multiple regressin model because we are interested in the effect of each additional type of information *after accounting for other information types* (e.g. is there an additional effect of having abundance data after adjusting for whether the data came from an organized monitoring scheme).
+We used linear regression with natural-log transformed time (in years) as the response variable.  We used nine binary predictor variables indicating whether the data had the following information: 1) only what where when data, 2) sampling effort, 3) abundance, 4) detection / non-detection, 5) organized monitoring scheme, 6) visit-specific covariates, 7) multiple different datasets, 8) life stage information, and 9) voucher specimens.  While the predictor variables are correlated, we kept all variables in the multiple regression model because we are interested in the effect of each additional type of information *after accounting for other information types* (e.g. is there an additional effect of having abundance data after adjusting for whether the data came from an organized monitoring scheme).
 
 Note that because the variables are not mutually exclusive these are each individual variables - these are not dummy variables representing a single categorical factor level "data type" variable.  
 
-The intercept-only model in this analysis is not particularly relevant or sensible to interpret. **need to revisit this - what is intercept only model now that I include all *a-priori* data type variables?**  
+The intercept-only model in this analysis is the mean temporal extent of all studies.  
 
 
 ```{r time_assess_correlation_predictors, fig.height=8, fig.width = 8}
@@ -586,15 +552,16 @@ if(diag_present) {
   boxplot(time_resids, ylab = "standardized residuals")
 }
 time_summary <- summary(time_lm_full)
-# time_full_model_anova <- anova(time_lm_full) # not recommended because R guesses a null model
-time_summary
+if(diag) time_summary
 
 ## to interpret outcome on original scale:
 # for a one-unit increase in x, the predicted value of y 
 # changes by (e^beta1 - 1)*100 percent
 ```
 
-```{r time_data_type_full_model_sig_test, include = F}
+Fitted vs. residuals plot shows some fanning.  
+
+```{r time_data_type_full_model_sig_test}
 # Test significance of full model
 m0 <- lm(log_years ~ 1, data = rev) # fit null model 
 m_time_full_anova <- anova(m0, time_lm_full)
@@ -703,6 +670,10 @@ indiv_mods_time <- list(m_no_whwhwh, m_no_effort, m_no_abund, m_no_nonDet,
 ```
 
 
+
+
+
+
 ---------------------
 
 ## Authors and Data Providing Institutions (TODO)
@@ -722,14 +693,232 @@ ____________________________________________________________________________
 # Results
 
 ## Search results (TODO)
-The search returned `r nrow(elig)` potentially relevant studies, of which we have evaluated `r sum(!is.na(elig$qualifies))` for eligibility, and judged `r length(which(elig$qualifies == TRUE))` to be eligible for inclusion in the scoping review.  One reader has coded `r nrow(rev)` articles and a second reader has coded [???] of those. This preliminary analysis uses the `r nrow(rev)` articles coded so far.
-
- 
+The search returned `r nrow(elig)` potentially relevant studies, of which we have evaluated `r sum(!is.na(elig$qualifies))` for eligibility, and judged `r length(which(elig$qualifies == TRUE))` to be eligible for inclusion in the scoping review.  One reader has coded `r nrow(rev)` articles and a second reader has coded `r nrow(cp_orig)` of those. This preliminary analysis uses the `r nrow(rev)` articles coded so far.
 
 
+## Results for reader agreement
+
+Krippendorff's alpha values for the variables that have been double coded indicate substantial disagreement between the two readers, and show few variables for which codings are reliable enough to be used in analysis (`r figs("kripp_sum_cap", display = "cite")`).  However, the number of articles that have been evaluated by two readers is probably too small for reliable estimation of Krippendorff's alpha given the proportions of the TRUE and FALSE classes for most variables (`r tabs("kripp_samp_size_cap", display = "cite")`). 
+
+```{r caption_kripp_summary}
+kripp_sum_cap <- figs(name = "kripp_sum_cap", 
+                      "Reader agreement for 12 categories measured using Krippendorff's alpha.  The pre-calibration results are for only articles before a meeting to calibrate expectations and definitions (n = 11).  Post-calibration results are for only articles coded after the calibration meeting (n = 10). The all_pre_correct group shows results for the original codings for all articles (both those coded before and after the callibration meeting, n = 21).  The post-correct group shows agreement for all articles after I evaluated each individual case of disagreement and corrected obvious errors (n = 20). Dotted lines show values of alpha of 0.667 and 0.8, which are recommended cutoff values representing minimum and preferred values at which variables can be relied upon for analysis.")
+```
+
+```{r krippendorfs_alpha_summary, fig.cap=kripp_sum_cap}
+kripp_summary_precorrect_long <- data.frame(
+  set = c(rep("pre calibration", length(kripp_pre_cal)), 
+          rep("post calibration", length(kripp_post_cal)), 
+          rep("all_pre_correct", length(kripp_all_pre_correct)), 
+          rep("all_post_correct", length(kripp_all_post_correct))), 
+  variable = c(names(kripp_pre_cal), 
+               names(kripp_post_cal), 
+               names(kripp_all_pre_correct), 
+               names(kripp_all_post_correct)), 
+  krip_alpha = c(sapply(kripp_pre_cal, 
+                        FUN = function(x) {x$value}), 
+                 sapply(kripp_post_cal, 
+                        FUN = function(x) {x$value}), 
+                 sapply(kripp_all_pre_correct, 
+                        FUN = function(x) {x$value}), 
+                 sapply(kripp_all_post_correct, 
+                        FUN = function(x) {x$value})))
+
+kripp_summary_precorrect_long$set <- factor(kripp_summary_precorrect_long$set, 
+                                 levels = c("pre calibration", 
+                                            "post calibration", 
+                                            "all_pre_correct", 
+                                            "all_post_correct"))
+
+if(diag_present) {
+  print(
+    ggplot(data = kripp_summary_precorrect_long, 
+           mapping = aes(y = krip_alpha, x = set)) + 
+      geom_boxplot() + 
+      geom_point() + 
+      geom_line(aes(group = variable)) + 
+      geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
+      geom_hline(aes(yintercept = 0.8), lty = "dotted") + 
+      ggtitle("Reader agreement using Krippendorff's alpha") + 
+      xlab("") +
+      ylab("Krippendorff's alpha") + 
+      theme_bw()
+  )
+}
+```
+
+```{r plot_kripp_by_nTRUE}
+# this is exploratory to see if krippendorff's alpha is varying wildly b/c
+# of insufficient variation
+alpha_df_all <- data.frame(
+  set = rep("all", length(names(kripp_pre_cal))), 
+  variable = names(kripp_all_pre_correct),  
+  alpha = sapply(kripp_all_pre_correct, FUN = function(x) {x$value}),
+  n_wg_T = sapply(names(kripp_all_pre_correct), 
+                  FUN = function(x, df = mult_coded_rev_orig) {
+                    df <- data.frame(df)
+                    col_vec <- df[, which(colnames(df) == x)]
+                    sum(col_vec)}), 
+  stringsAsFactors = FALSE,
+  row.names = 1:length(names(kripp_all_pre_correct))
+)
+
+alpha_df_pre_cal <- data.frame(
+  set = rep("pre calibration", length(names(kripp_pre_cal))), 
+  variable = names(kripp_pre_cal), 
+  alpha = sapply(kripp_pre_cal, FUN = function(x) {x$value}), 
+  n_wg_T = sapply(names(kripp_pre_cal), 
+                  FUN = function(x, df = mult_coded_rev_orig) {
+                    df <- data.frame(df)
+                    col_vec <- df[, which(colnames(df) == x)]
+                    sum(col_vec)}),
+  stringsAsFactors = FALSE, 
+  row.names = 1:length(names(kripp_pre_cal))
+)
+
+alpha_df_post_cal <- data.frame(
+  set = rep("post calibration", length(names(kripp_post_cal))), 
+  variable = names(kripp_post_cal), 
+  alpha = sapply(kripp_post_cal, FUN = function(x) {x$value}), 
+  n_wg_T = sapply(names(kripp_post_cal), 
+                  FUN = function(x, df = mult_coded_rev_orig) {
+                    df <- data.frame(df)
+                    col_vec <- df[, which(colnames(df) == x)]
+                    sum(col_vec)}), 
+  stringsAsFactors = FALSE,
+  row.names = 1:length(names(kripp_post_cal))
+)
+
+alpha_df <- bind_rows(list(alpha_df_all, alpha_df_pre_cal, alpha_df_post_cal))
+
+if(diag) {
+  print(
+    ggplot(alpha_df, aes(x = n_wg_T, y = alpha, color = set)) + 
+      geom_point() + 
+      geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
+      geom_hline(aes(yintercept = 0.8), lty = "dotted") + 
+      ggtitle("Krippendorff's alpha by the number\nof TRUEs in Willson's coding\nOriginal Codings Before Correcting Errors") + 
+      xlab("Number of TRUE values in Willson's coding") + 
+      theme_bw()
+  )
+}
+```
+
+```{r kripp_agreement_wg_before_and_after_corrections}
+# show agreement measure of how well my corrections based on looking at double
+# codings agree with my original codings.
+if(diag) {
+  hist(sapply(kripp_wg_comparison, FUN = function(x) {x$value}))
+  summary(sapply(kripp_wg_comparison, FUN = function(x) {x$value}))
+  sapply(kripp_wg_comparison, FUN = function(x) {x$value})
+}
+```
+
+The calculation of agreement between my codings before and after I corrected them based on CP's codings kinda shows how reliable my original codings are. The assumption would be that if my original codings are reliable compared to my double-checking when prompted, then we can at least have confidence that my coding is consistent and I'm not making too many sloppy errors.  We can then use my codings (either original or corrected) for analysis, and view the second reader's role as highlighting cases of sloppy errors or careless oversight on my part.  This doesn't address the reproducability question of whether my categories are clear enough that an independent researcher trying to do the same study would come up with the same conclusions.  In order to answer that, we would need a second reader with adequate ability to code each category.  Lacking such a person, we'll have to use the second reader as an error catcher rather than an independent second opinion.
+
+Page 240 of the Krippendorf (2004) book has recommendations about sample size needed based on how many cases there are of the least common class.  `r tabs("kripp_samp_size_cap", display = "cite")` shows which variables have enough of the minority class that Krippendorff's alpha can be calculated with significance level of 0.1 and minimum acceptable Krippendorff's alpha of 0.667.
+
+```{r kripp_samp_size_cap}
+kripp_samp_size_cap <- tabs(name = "kripp_samp_size_cap", 
+                            "Recommended sample size for accurate estimation of Krippendorff's alpha given the proportion of the minority class in the results, and a desired confidence level of 0.1 for a minimum Krippendorff's alpha value of 0.667 (Krippendorf 2004).")
+```
+
+`r tabs("kripp_samp_size_cap", display = "full")`
+
+```{r calculate_proportion_T}
+prob_of_values <- lapply(mult_coded_rev[, 2:ncol(mult_coded_rev)], 
+                         FUN = function(x) {sum(x, na.rm = T) / length(which(!is.na(x)))})
+prob_of_values <- data.frame(variable = names(prob_of_values), 
+                             prob_T = unlist(prob_of_values), 
+                             row.names = NULL)
+prob_of_values$prob_small_class <- NA
+prob_of_values$kripp_pre_correct <- NA
+for(i in 1:nrow(prob_of_values)) {
+  if(prob_of_values$prob_T[i] <= 0.5) { # calc prob of minority class
+    prob_of_values$prob_small_class[i] <- prob_of_values$prob_T[i]
+  } else prob_of_values$prob_small_class[i] <- 1 - prob_of_values$prob_T[i]
+  
+  # add krippendorff's alpha for codings before corrections
+  prob_of_values$kripp_pre_correct[i] <- kripp_all_pre_correct[[which(
+    names(kripp_all_pre_correct) == prob_of_values$variable[i])]]$value
+}
+
+# On p 240 of Krippendorff book, it says that if acceptable alpha is 0.667 and 
+# desired significance level is 0.1, then sample size needed is as follows:
+prob_of_values$n_20_adequate <- prob_of_values$prob_small_class > 0.3
+prob_of_values$n_30_adequate <- prob_of_values$prob_small_class > 0.2
+prob_of_values$n_40_adequate <- prob_of_values$prob_small_class >= 0.143
+
+if(diag_present) kable(prob_of_values[, -2], digits = 2)
+```
 
 
-### Results for Time
+#### Notes about agreement 
+(*italics* means I've corrected it, **bold** means I need to deal with it.)
+
+- *biological records in facilitative role*: generally, it looks like CP codes this as TRUE much more often than I do.
+    - *"An assessment of bumblebee (Bombus spp) land use..." Casey coded this as T, but the species observation data were clearly used as a response variable.  Perhaps the confusion is because survey participants were identifed from a list of people who had participated in a previous survey.  Regardless, this should be FALSE.*
+    - *"Modelling and mapping UK emissions..." Casey coded TRUE, but to me this is a pretty clear case of biological records as a predictor (used to modify the response variable of emissions).  I think this is an error from lack of understanding of what it would look like to have bio recs as a predictor variable.  I don't think there's actually much ambiguity about how this article would be coded, I think perhaps there is ambiguity in my instructions about this category.  So, I changed this to FALSE.*
+    - *"The role of historical environmental information in perceptions..." Casey coded TRUE but the occurrence records were used as a response variable to create the presence trajectory type categories that were used for trait analysis.  See p 27 of the study.  This is an error and I will change it to FALSE.*
+    - **Edit instructions to make clear what bio recs as a predictor would look like from a general perspective, not just explicitly in a regression equation or something.**
+- *cross validation*
+    - *The only disagreement was on "Nature protection areas of Europe are insufficient..." which I have already disqualified b/c it doesn't use UK/IE records.*
+- data type - museum: 
+    * *Casey missed "Congruence in fungal phenology patterns...", perhaps because methods say "fungarium" data, and he may not have known the word or not realized that those are probably physical specimens in a collection.*
+    - **I think Casey missed "Evaluating promotional approaches for citizen science biological recording..." which states that all data used were records for which there was either a photo or specimen.  But I don't know if this is clear enough to be an error that I correct, or whether this article is a bit ambiguous.  I will not change it for now.** 
+    - **Perhaps I need to change name from "museum" to "physical specimen" for this category.**  
+    * *For "Explaining European fungal fruiting phenology..." it looks like Casey correctly had TRUE for museum and I just missed the 1st sentence of methods - a bad oversight on my part.*
+    * *For "Nature protection areas are insufficient..." Casey had T for museum, I had F, but on re-reading I think this doesn't even qualify at all - even though UK was in their original study extent, there were no records of the beetle in UK or IE, so it doesn't actually meet my criteria of using UK/IE biological records.*
+- data type - organized monitoring scheme:  
+    * *For "Evaluating promotional approaches for citizen science biological recording..." Casey coded T for monitoring scheme.  However, despite records coming from named "schemes" (UK Ladybird Recording Scheme & BeeWatch), those named schemes are actually just data collection portals/websites for opportunistic records.  There is no organized monitoring effort, no regular survey protocol, locations, or times of surveys.  So the correct coding is FALSE for that article.*
+    - **Need to edit instructions to make it clear that this is only if the actual act of recording is standardized in methods, locations, or effort, not just having a central repository.**
+    * *For "Nature protection areas of Europe are insufficient..." Casey put TRUE for organized scheme, but I find no record of that in the article.  Seems data were agregated from many databases, but no scheme.  Don't know why he put that.  Either misunderstanding or oversight.  Regardless, the article is now disqualified (see above).*
+- *sampling effort reported*
+    - *"British phenological records indicate high diversity..." Casey coded T, I coded FALSE, but I was wrong, as they used data from UK Butterfly Monitoring Scheme (among other data sources).  This was an error by me.*
+    - *"Congruency in fungal phenology..." Casey coded TRUE, I coded FALSE.  This is not obviously an error by either of us, but is due to ambiguity in the study.  The local dataset used for Switzerland is from surveys in quadrats, and seems to be the result of a specific study.  I considered this not bio recs data but rather other data that was used in addition to bio recs data.  However, one could view this as bio recs data in the sense that bio recs are sometimes derived by searching published literature.  So it is a legitimate interpretation to call that bio recs data, in which case sampling effort = TRUE for this study.  I will not change anything as this is not an obvious error.*
+    - *"Evaluating promotional approaches for citizen science..." Casey coded TRUE.  But despite records coming from named "schemes" (UK Ladybird Recording Scheme & BeeWatch), those named schemes are actually just data collection portals/websites for opportunistic records.  There is no organized monitoring effort, no regular survey protocol, locations, or times of surveys, and, as far as I can tell from looking at those scheme websites, no record of survey effort.  This is an error by CP and I will change it to FALSE.*
+    - *"Large reorganizations in butterfly communities..." CP coded FALSE but the study uses UKBMS data which is collected on transects of known length.  This is an error by CP and I will change it to TRUE.*
+    - **Edit instructions to make clear that what is being asked is whether the sampling effort is reported with the data, not whether sampling effort is reported in the study or article.  So a study that uses UK Butterfly Monitoring Scheme data is TRUE for sampling effort reported, because it is reported with the data, even if the study doesn't report that sampling effort (e.g. transect length).**
+- diversity as focus: 
+    - CP seems to be coding TRUE way more often than I am.  I think the main issue here is that I didn't define clearly enough that by "diversity" I mean a narrow definition of either alpha/beta diversity (turnover) or a combination of species richness and evenness.  I am not considering species richness alone or narrative descriptions of communities as "diversity" as a study focus.
+    - *"An assessment of bumblebee (Bombus spp) land use...".  This looks like clearly not diversity as an outcome to me.  This is an error by CP and I will change TRUE to FALSE.*
+    - *"An invertebrate survey of Scragh Bog...".  I don't see any explicity study of diversity (in the strict sense) in this.  This is an error by CP and I will change TRUE to FALSE.*
+    - *"British phenological records indicate high diversity...".  Despite the title, this study uses species richness as the outcome measure, and is therefore not a diversity study by my strict definition.  Therefore I consider CP's TRUE to be an error, and I will change it to FALSE.*
+    - *"Ocean current connectivity propelling...".  Don't know why CP coded this as T.  That is an error and I will change this to FALSE.* 
+    - *"The interplay of climate and land use change affects...".  Doesn't measure diversity in the strict sense.  So CP's TRUE is an error and I will change it to FALSE.*
+    - *Edit instructions to make clear that this is about either alpha or beta diversity or about some combination of species richness and evenness.*
+- non detection inferred using taxonomic group
+    - I think the issue here is that I intended a narrow sense in which explicit absence points are inferred and then used as data for a SDM (e.g "pseudo-absence" points).  This is not the same as drawing conclusions e.g. about phenology based only on presence records, which does assume absences when there are no presence records.  But there are no explicitly generated absences that are used as data in a model in that case.  
+    - **Edit instructions to make clear that this is about using explicit inferred pseudo-absences as data in a model.  Or evaluate whether this is actually helping me answer an important question, and if not, drop it from coding.**
+    - *"An assessment of bumblebee (Bombus spp) land use...".  CP coded T but it should be false.  Sampling design gives explicit non-detection data.  This is an error, and I am changing CP's value to FALSE.*
+    - *"British phenological records indicate...".  CP coded T but the study makes no mention of using a method that requires absence data, so CP's coding is an error and I will change it to FALSE.*
+    - *"Changes in the geographical distribution of plant...".  CP had F, I had T.  Ugh.  This one is hard.  They don't explicitly generate an "absence" value that is used in a model, but they do calculate the area of loss of species range based on no current records for a species, which is basically inferring absence.  Though they don't do this on the basis of other records from the taxonomic group, so according to my narrow definition of this category, the coding here should be FALSE I think.  This is making me wonder if this category is possible to code consistently, as almost all analyses infer absence at some level, and there is a very wide range to which that assumption is actually used in models or is just used in interpretation.  I think my coding was an error and I will change it to FALSE.*
+    - *"Evaluating promotional approaches for citizen...". CP coded T, I coded F. CP was in error so I will change this to FALSE.*
+    - *"Factors driving population recovery...".  CP coded T, I coded F. Study says 'Zero counts were reported'.  CP was in error, so I will change this value to FALSE.*
+    - *"Modelling and mapping UK emissions...".  CP coded F, I coded T.  This uses the presence of sp in a hectad to allocate emissions to that hectad, and no emissions are allocated when there is no record, which I evidently thought is enough of an inferred absence to code T.  Again, though, this is ambiguous and hard to figure out a strict rule for when the absence is being inferred.  Though I guess in this case the absence is not being inferred *based on other presences in the taxonomic group*, but rather is just inferred based on no presence record, so the coding in this category should be FALSE.  This is my error, and I will change my value to FALSE.*
+    - *"Nature protection areas of Europe...". CP coded T, I coded F.  The study states that 10000 background points were placed randomly and not considered true absences (so the records of other species in the taxonomic group were not used.  Therefore, CPs coding is an error and I will change it to FALSE.*
+    - *"Ocean current connectivity...". CP coded T, I coded F.  I don't see any mention of inferring absences, and at least part of the data are explicitly stated as being collected as presence/absence data.  So CP is in error and I will change the value to FALSE.*
+    - *"The arrow points north-...".  CP coded T, I coded F.  Again, they assumed absences, but not based explicilty on the presence of other species, just assuming adequate coverage generally.  So this is FALSE by my narrow category definition, but TRUE in a larger sense that they use assumed absences to calculate their metrics (just not assumed based on other records in the taxonomic group).  But this is very ambiguous, so I will not change any values.  I am becoming more convinced that this is not a well defined category right now.*
+- *policy focus*
+    - *"An invertebrate survey of Scragh...". CP coded T, I coded F.  I think it should be TRUE because the introduction talks about the site's designation of a Special Area of Conservation (SAC) and the Annex I and II species there.  This was my error, and I will change my coding to TRUE.*
+    - *"Factors driving population recovery of greater...". CP coded F, I coded T. Slightly ambiguous, as it was not done by a policy group (e.g. gov. agency), but it talks about policy applications in abstract and studies areas in Agro-Environment Scheme as a predictor/hypothesis, which means that policy instruments are the focus of one of the tested hypotheses.  This is enough that I think it has a policy focus.  I probably need to define this category more explicitly, and until I do that, this article is not clearly coded in error but rather is ambiguous.  I will not change the values for now.*
+- results type - descriptive only
+    - *"Ocean current connectivity...". CP coded F, I coded T. I don't see any non-descriptive analyses that use the bio recs data, but it's a little unclear which data were used for which analyses, so this article is probably ambiguous, which means the codings are not in error.  I will not change them.*
+- *inference: looks pretty good.*
+    * *Casey missed "Explaining European fungal fruiting..." that he marked as FALSE but that had bootstrap CIs on one plot.*
+    * *On "Ocean current connectivity..." I put no inference b/c all the analyses using bio recs didn't use inference, while Casey put inference b/c there were other analyses with non-bio recs data that used inference.*
+- *spatial bias mentioned*
+    - I wonder if I should narrow this to being TRUE only if some specific keywords are present (e.g. "spatial bias" or something like that), since it can be a little unclear whether authors are talking about spatial bias.  e.g. see "Evaluating promotional approaches..." in which they talk about bias, and talk about bio recs data being "geographically limited".
+    - *"British phenological records indicate...". CP coded T, I coded F. I don't see any mention of spatial bias.  Maybe I'm missing it?  I guess I shouldn't change a T to F ever, b/c I may still be overlooking it?  So for now I will not change this.*
+    - *"Evaluating promotional approaches...". CP coded T, I coded F. The article mentions datasets being "geographically limited" for some species, and also talks about general bias in bio recs data, so I think I was in error and this should be T.  I will change my value to TRUE.*
+    - *"Factors driving population recovery...". CP coded T, I coded F.  I don't see any mention, but again I can't be sure there isn't, so I can't change coding to FALSE.*
+    - *"Modelling and mapping UK emissions...". CP coded T, I coded F.  I am fairly confident there is no mention here, but I guess still I can't change CP's to FALSE.  Ugh. This is a frustrating category as I currently define it.*
+- *testing using independent dataset*
+    - *"Population variability in species can be deduced...". CP coded F, I coded T.  The study compares results using UKBMS and a separate dataset of opportunistic records.  Therefore CP's coding is an error and I will change it to TRUE.*
+    - *"Potential for coupling the monitoring of bush-crickets...". CP coded F, I coded T.  The introduction says "We validated these methods using data from intensive survey sites", so I think CP's code is an error and I will change it to TRUE.*
+
+
+## Results for temporal extent of studies
 
 ```{r print_time_anova}
 m_time_full_anova
@@ -930,7 +1119,8 @@ ggplot(data = qt_df,
 
 
 _________________________________________________________________________
-### Old versions below here
+
+# Old versions below here
 
 ## Types of questions  
 Analyses may appear in this table or graph more than once.  For example, a study proposing a new method for estimating species richness and then using that method to test predictions about a productivity/richness relationship would appear in the counts in three columns.

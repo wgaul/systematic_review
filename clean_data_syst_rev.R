@@ -110,7 +110,14 @@ rev[grep("Explaining European fungal fruiting.*", rev$title),
     "data.type...museum"] <- TRUE
 rev[grep("British phenological records indicate high diversity.*", rev$title), 
     "data.type...sampling.effort.reported"] <- TRUE
-
+rev[grep("Modelling and mapping UK emissions.*", rev$title), 
+    "non.detection.inferred.using.taxonomic.group"] <- FALSE
+rev[grep("Changes in the geographical distribution of plant.*", rev$title), 
+    "non.detection.inferred.using.taxonomic.group"] <- FALSE
+rev[grep(".*Scragh.*", rev$title), 
+    "policy.focus"] <- TRUE
+rev[grep("Evaluating promotional approaches.*", rev$title), 
+    "spatial.bias.mentioned"] <- TRUE
 
 # cp codings
 cp <- cp_orig
@@ -130,6 +137,32 @@ cp[grep("Evaluating promotional app.*", cp$title),
    "data.type...sampling.effort.reported"] <- FALSE
 cp[grep("Large reorganizations in butterfly.*", cp$title), 
    "data.type...sampling.effort.reported"] <- TRUE
+cp[grep("An assessment of bumblebee \\(Bombus sp.*", cp$title),
+   "diversity"] <- FALSE
+cp[grep(".*Scragh Bog.*", cp$title),
+   "diversity"] <- FALSE
+cp[grep("British phenological records indicate.*", cp$title),
+   "diversity"] <- FALSE
+cp[grep("Ocean current connectivity.*", cp$title),
+   "diversity"] <- FALSE
+cp[grep("The interplay of climate and land.*", cp$title),
+   "diversity"] <- FALSE
+cp[grep("An assessment of bumblebee \\(Bombus sp.*", cp$title),
+   "non.detection.inferred.using.taxonomic.group"] <- FALSE
+cp[grep("British phenological records indicate.*", cp$title),
+   "non.detection.inferred.using.taxonomic.group"] <- FALSE
+cp[grep("Evaluating promotional approaches.*", cp$title),
+   "non.detection.inferred.using.taxonomic.group"] <- FALSE
+cp[grep("Factors driving population recovery.*", cp$title),
+   "non.detection.inferred.using.taxonomic.group"] <- FALSE
+cp[grep("Nature protection areas of Europe.*", cp$title),
+   "non.detection.inferred.using.taxonomic.group"] <- FALSE
+cp[grep("Ocean current connectivity.*", cp$title),
+   "non.detection.inferred.using.taxonomic.group"] <- FALSE
+cp[grep("Population variability in species can be deduced.*", cp$title),
+   "testing.using.independent.dataset"] <- TRUE
+cp[grep("Potential for coupling the monitoring of bush.*", cp$title),
+   "testing.using.independent.dataset"] <- TRUE
 
 ## end correct errors ---------------------------------------------------------
 
