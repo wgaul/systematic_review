@@ -3,9 +3,42 @@ title: "Biological Records Systematic Review - Preliminary Results"
 output:
   html_document: default
   html_notebook: default
-  word_document: default
+  word_document: 
+  fig_caption: true
+bibliography: phd_sources_Aug2018.bib
+csl: ecology.csl
 ---
 
+**TODO:**
+
+- Methods
+    - *Study eligibiligy* [DONE]
+    - Article coding
+        - Data Type
+        - Study Questions
+        - *Analysis approach* [DONE]
+        - *Agreement* [DONE]
+    - *Temporal Extent* [DONE]
+    - Authors and Data Providing Institutions
+    - Study Question
+        - Paradigms
+        - Specific focus
+    - Analysis approach & data type
+- Results
+    - Search results
+        - eligibility, n vars coded, n studies coded, n double coded
+    - Reader agreement
+    - *Temporal extent* [DONE]
+    - Study question paradigm
+    - Study question specific focus
+    - Analysis approach & data type
+- Discussion
+    - Article coding
+        - Agreement
+    - Temporal extent
+    - Study question
+    - Analysis approach & data type
+ 
 
 ```{r, echo=F}
 knitr::opts_chunk$set(echo=F, message=F, warning=T, cache=F)
@@ -111,16 +144,19 @@ We coded twelve variables describing aspects of data type: what, where, when onl
 
 ~~For statistical analyses, we used only the sampling effort reported, abundance, and detection / non-detection data type variables based on *a-priori* expectations about their expected benefit in enabling inferential and predictive modelling and their expected cost in terms of complexity in collecting, recording, and storing the data.~~
 
-For most analyses, we grouped the data types "physical specimen", "photo", "audio", and "video" into a "voucher specimen" group, but we coded them individually for in order to identify emerging trends in how vouchers are collected. 
+For most analyses, we grouped the data types "physical specimen", "photo", "audio", and "video" into a "voucher specimen" group, but we coded them individually in order to identify emerging trends in how vouchers are collected.
 
-For statistical analyses, we kept data type variables in models based on *a-priori* expectations about the variables' influence on data analysis strategy and based on expectations about different levels of complexity and effort involved in collecting, recording, and storing the data.  The data type variables we kept in models were: what, where, when only; sampling effort reported; abundance; detection / non-detection; organized monitoring scheme; visit-specific covariates; multiple datasets integrated for analysis; life stage information; voucher specimen.  
+For statistical analyses, we kept data type variables in models based on *a-priori* expectations about the variables' influence on data analysis strategy and based on expectations about different levels of complexity and effort involved in collecting, recording, and storing the data.  The data type variables we kept in models were: what, where, when only; sampling effort reported; abundance; detection / non-detection; organized monitoring scheme; visit-specific covariates; multiple datasets integrated for analysis; life stage information; voucher specimen. 
 
-----------------------------
+### Study Question
 
-### Agreement between two readers (TODO)
-**Dina**, do you have any comments about Krippendorff's alpha or other ways to quantify the agreement between two readers in how they code studies?
+### Analysis approach
+We classified the broad analysis approach used by each study into one of three categories: 1) inference; 2) prediction; or 3) descriptive only.  For each study, we evaluated the analysis approach only for analyses within the study that used biological records data.  
 
-I used Krippendorf's *alpha* to evaluate the agreement between two readers for each of `r ncol(cp)-1` variables that had been coded by two people.  [**add equation of krippendorff's alpha for Dina to look at?**]. For each case of disagreement between the two readers, I reviewed the article.  When the disagreement seemed to be due to an oversight or an obvious error (e.g. when one reader coded "results type - inference" as FALSE but the article reported 95% confidence intervals around estimates), I corrected the erroneous value.  In cases where the disagreement was not the result of an obvious oversight, I did not change either value.  I calculated Krippendorff's alpha to assess agreement both before and after I corrected obviously erroneous codings.  
+We considered studies estimating parameters and reporting some measure of uncertainty (e.g. *p*-values, confidence intervals, posterior probability distributions) to be using inference.  We considered studies that built models and made predictions to be using an analysis strategy of prediction, even if no uncertainty or inference was reported with the predictions.  Finally, we considered the analysis approach to be descriptive only if results were descriptive with no prediction or inference.  Descriptive results could be narrative, graphical, or quantitative as long as no inference or uncertainty was reported (e.g. point estimates of descriptive statistics without any confidence interval or *p*-values).  Studies could use both inference and prediction as analysis strategies and so those categories were not mutually exclusive, but studies were only categorized as using a descriptive analysis approach if all results were descriptive only and the study used no inference or prediction.  
+
+### Agreement between two readers
+I used Krippendorff's *alpha* [@Krippendorff2004] to evaluate the agreement between two readers for each of `r ncol(cp)-1` variables that had been coded by two people.  [**Dina, any thoughts about Krippendorff's alpha or other measures of agreement?**]. I calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package [@irr2012].  For each case of disagreement between the two readers, I reviewed the article.  When the disagreement seemed to be due to an oversight or an obvious error (e.g. when one reader coded "results type - inference" as FALSE but the article reported 95% confidence intervals around estimates), I corrected the erroneous value.  In cases where the disagreement was not the result of an obvious oversight, I did not change either value.  I calculated Krippendorff's alpha to assess agreement both before and after I corrected obviously erroneous codings.  
 
 
 ```{r inter_coder_agreement_subset_dfs}
@@ -541,7 +577,9 @@ time_lm_full <- lm(log_years ~ 1 +
                      data.type...multiple.datasets.integrated.for.analysis + 
                      data.type...life.stage + 
                      data.type...voucher.available,
-                   data = rev) 
+                   data = rev, 
+                   na.action = na.exclude) 
+
 time_resids <- rstandard(time_lm_full) # calculate residuals
 if(diag_present) {
   print("Diagnostics for full model log_years ~ all 9 data types")
@@ -560,6 +598,8 @@ if(diag) time_summary
 ```
 
 Fitted vs. residuals plot shows some fanning.  
+
+**Question for Jon: print time_summary and see that the coefficient estimate for what, where, when does not produce a good prediction (expected value is lower than any value actual temp extent for those data).  I think there are a couple issues here.  1) the estimate of the effect of what, where, when is *after correcting for multiple datasets used in analysis*, which tends to have long studies.  2) many temp extents are NA, which means sample size is quite small (7-ish or less for wh,wh,wh == T).  So I don't think anything is going wrong with the model.**
 
 ```{r time_data_type_full_model_sig_test}
 # Test significance of full model
@@ -939,13 +979,13 @@ if(diag) {
 }
 ```
 
-The overall model using supplementary data types to predict the natural log of temporal extent of study (in years) was not significant ($F_{`r format(round(m_time_full_anova$Df[2], digits = 2), scientific = F)`, `r format(round(m_time_full_anova$Res.Df[2], digits = 2), scientific = F)`}$ = `r format(round(m_time_full_anova$F[2], digits = 2), scientific = F)`, p = `r format(round(m_time_full_anova[6][[1]][2], digits = 2), scientific = F)`, Adjusted $R^2%$ = `r format(round(time_summary$adj.r.squared, digits = 2), scientific = F)`).  
+The overall model using supplementary data types to predict the natural log of temporal extent of study (in years) was (not) significant ($F_{`r format(round(m_time_full_anova$Df[2], digits = 2), scientific = F)`, `r format(round(m_time_full_anova$Res.Df[2], digits = 2), scientific = F)`}$ = `r format(round(m_time_full_anova$F[2], digits = 2), scientific = F)`, p = `r format(round(m_time_full_anova[6][[1]][2], digits = 2), scientific = F)`, Adjusted $R^2%$ = `r format(round(time_summary$adj.r.squared, digits = 2), scientific = F)`).  
 
-If the overall model is significant, I will individually test whether each variable has a significant effect after accounting for the other variables.  I will interpret the effect direction and effect size of all variables in the context of the full model even if the variables are not significant on their own.
+If the overall model is significant, I will individually test whether each variable has a significant effect after accounting for the other variables.  I will interpret the effect direction and effect size of all variables in the context of the full model even if the variables are not significant on their own.  Example of how results will be written:
  
-The expected temporal extent covered by a study that uses only "what, where, when" data is `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[2])), digits = 1)` years.  **I'm a bit perplexed that this estimate is so low, as almost all the what where when only studies have temporal extents higher than this.  What is going on here?**
+The expected temporal extent covered by a study that uses only "what, where, when" data is `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[2])), digits = 1)` years when the data have no other data types.  When the data are "what, where, when" only but multiple datasets were integrated for analysis, the expected temporal extent covered by a study is `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[2] + time_lm_full$coefficients[8])), digits = 1)` years. 
 
-The expected temporal extent of studies is shorter for studies that include sampling effort information than for studies that use only "what, where, when" data (*p* = `r format(round(time_summary$coefficients[2, 4], digits = 3), scientific = F)`).  The effects of additional information on detection / non-detection and abundance were not significant after accounting for the effects of the other data types.  The signs of the effects of sampling effort information and detection / non-detection information were both negative, as expected.  However, the sign of the effect for abundance information was unexpectedly positive.  This may be because abundance is correlated with detection/non-detection and sampling effort.  When I fit a model with only the intercept and the abundance data type, the direction of the effect of abundance data was negative as expected.    
+Studies using data that includes sampling effort information have a shorter temporal extent after accounting for other data types that the data has (*p* = `r format(round(time_summary$coefficients[2, 4], digits = 3), scientific = F)`).  The effects of additional information on detection / non-detection and abundance were not significant after accounting for the effects of the other data types.  The signs of the effects of sampling effort information and detection / non-detection information were both negative, as expected.  However, the sign of the effect for abundance information was unexpectedly positive.  This may be because abundance is correlated with detection/non-detection and sampling effort, and so the effect of abundance data is positive after correcting for those other data types.  When I fit a model with only the intercept and the abundance data type, the direction of the effect of abundance data was negative as expected.    
 
 ```{r time_extent_results_plot}
 ## TODO: need to hand-annotate R2 and p-value in plot
