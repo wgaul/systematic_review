@@ -217,6 +217,7 @@ $H_a$: Studies are more likely to have at least one author from the institution 
 $H_0$: The probability that at least one author on a study is associated with the biological records provider is the same as the probabilities that at least one author on a study is associated with the provider of other types of prepared data.
 
 *Proposed Test*: `prop.test` in R, which seems to report Pearson's chi-squared test statistic.  But I think it can estimate the proportion +- 95% CI for each group, and can then compare those proportions, so doesn't require mutually exclusive groups, like a chi-squared test.  But I remain unsure about this.  Perhaps look at Agresti (2007) *An introduction to categorical data analysis*. 
+
 ------------------------------------------------------------------------------
 
 ## Variables I might not use

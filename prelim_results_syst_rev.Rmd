@@ -24,14 +24,25 @@ csl: ecology.csl
         - Paradigms
         - Specific focus
     - Analysis approach & data type
-- Results
+- Results - Statistical
     - Search results
         - eligibility, n vars coded, n studies coded, n double coded
     - Reader agreement
     - *Temporal extent* [DONE]
-    - Study question paradigm
-    - Study question specific focus
+    - Authors and Data Providing Institutions
+    - Study Question
+        - Paradigms
+        - Specific focus
     - Analysis approach & data type
+- Results - Descriptive
+    - Spatial extent
+    - *Data type by question paradigm* [DONE]
+    - Spatial bias correction
+    - Taxonomic group
+    - Role of biological records
+    - Prediction performance measure
+    - Tabulate analysis methods
+    - Author associated with data provider
 - Discussion
     - Article coding
         - Agreement
@@ -79,18 +90,22 @@ rev$temp_extent[which(
 ```
 
 ```{r voucher_data_to_whwhwh, include = F, eval = F}
+## TODO: eventually I can delete this chunk as I am not using it and don't
+## expect to in the future.
+## 
 ## This chunk could be turned on if I decide that:
 ## For the purposes of analysis, if there was a specimen available but the 
 # specimen was not used at all for analysis, then, if there are no other richer
 # data types, I will consider the data what, where, when-only.  I think this
-# best represents the use of physical.specimen data.  I do not think this would make sense
+# best represents the use of physical.specimen data.  I do not think this would 
+# make sense
 # for other data types (e.g. if there is abundance data but the analysis only
 # uses it as what, where, when) because that is a choice to strip usually 
 # meaningful information.  The physical specimen is likely not meaningful for
 # many analyses that use physical.specimens as a source of wh, wh, wh data.
 
-## But as of 23 August 2018 I think I will keep the physical.specimen data as "voucher
-## available" and not transform the whwhwh column.  
+## But as of 23 August 2018 I think I will keep the physical.specimen data as 
+## "voucher available" and not transform the whwhwh column.  
 
 print("Modifying what, where, when data type to TRUE if voucer specimen was not used.")
 for(i in 1:nrow(rev)) {
@@ -159,7 +174,7 @@ We considered studies estimating parameters and reporting some measure of uncert
 I used Krippendorff's *alpha* [@Krippendorff2004] to evaluate the agreement between two readers for each of `r ncol(cp)-1` variables that had been coded by two people.  [**Dina, any thoughts about Krippendorff's alpha or other measures of agreement?**]. I calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package [@irr2012].  For each case of disagreement between the two readers, I reviewed the article.  When the disagreement seemed to be due to an oversight or an obvious error (e.g. when one reader coded "results type - inference" as FALSE but the article reported 95% confidence intervals around estimates), I corrected the erroneous value.  In cases where the disagreement was not the result of an obvious oversight, I did not change either value.  I calculated Krippendorff's alpha to assess agreement both before and after I corrected obviously erroneous codings.  
 
 
-```{r inter_coder_agreement_subset_dfs}
+```{r inter_coder_agreement_subset_dfs, warning=TRUE}
 ## casey's pre-calibration results ------------------------------------------
 # remove columns that aren't coded variables
 cp_pre_cal <- cp_pre_cal[, which(colnames(cp_pre_cal) %nin% 
@@ -245,22 +260,22 @@ mult_coded_rev <- mult_coded_rev[, c(
 
 ## make sure all titles are present
 if(any(cp_pre_cal$title %nin% mult_coded_rev_orig$title)) {
-  warning("Some titles in cp_pre_cal are not in mult_coded_rev_orig. ")
+  warning("Some titles in cp_pre_cal are not in mult_coded_rev_orig. cp_pre_cal will be subsetted.")
   cp_pre_cal <- cp_pre_cal[which(cp_pre_cal$title %in% 
                                    mult_coded_rev_orig$title), ]
 }
 if(any(cp_orig$title %nin% mult_coded_rev_orig$title)) {
-  warning("Some titles in cp_orig are not in mult_coded_rev_orig. ")
+  warning("Some titles in cp_orig are not in mult_coded_rev_orig. cp_orig will be subsetted.")
   cp_orig <- cp_orig[which(cp_orig$title %in% mult_coded_rev_orig$title), ]
 }
 if(any(mult_coded_rev_orig$title %nin% cp_orig$title)) {
-  warning("Some titles in mult_coded_rev_orig are not in cp_orig. ")
+  warning("Some titles in mult_coded_rev_orig are not in cp_orig. mult_coded_rev_orig will be subsetted.")
   mult_coded_rev_orig <- mult_coded_rev_orig[which(mult_coded_rev_orig$title %in%
                                            cp_orig$title), ]
 }
 if(any(mult_coded_rev$title %nin% cp$title) | 
    any(cp$title %nin% mult_coded_rev$title)) {
-  warning("cp and mult_coded_rev don't have the same titles. ")
+  warning("cp and mult_coded_rev don't have the same titles. One or both of those data frames will be subsetted.")
   mult_coded_rev <- mult_coded_rev[which(mult_coded_rev$title %in% cp$title), ]
   cp <- cp[which(cp$title %in% mult_coded_rev$title), ]
 }
@@ -584,9 +599,9 @@ time_resids <- rstandard(time_lm_full) # calculate residuals
 if(diag_present) {
   print("Diagnostics for full model log_years ~ all 9 data types")
   plot(time_lm_full)
-  hist(time_resids, 
-       main = "standardized residuals of full model for temporal extent", 
-       xlab = "standardized residuals")
+  # hist(time_resids, 
+  #      main = "standardized residuals of full model for temporal extent", 
+  #      xlab = "standardized residuals")
   boxplot(time_resids, ylab = "standardized residuals")
 }
 time_summary <- summary(time_lm_full)
@@ -709,8 +724,53 @@ indiv_mods_time <- list(m_no_whwhwh, m_no_effort, m_no_abund, m_no_nonDet,
                         m_no_lifeStage, m_no_voucher)
 ```
 
+## Study Question
 
+**What is the most popular study question paradigm?**
 
+$H_a$: Some broad study question paradigms are more common than others in studies using biological records.
+
+$H_0$: The number of studies pursuing each of the broad study question paradigms is the same.
+
+*Proposed Test* One Poisson regression with study question paradigms (community, individual species, or other) as predictors. 
+
+**Jon - does a test here even make sense when I only have one observation of counts for each predictor?  Because no replicates, have no estimate of variance, so how can tell if means are different?  Assuming variance equals mean?  But do we have any evidence for that?  Can we assume that?**  I'm not sure that the inference here is telling us much, either with the significance or parameter estimates.  Especially because that inference is based on an assumption about variance that we have no evidence for.  I think we actually have just as much confidnce in the results by looking at the table as by looking at the inference (because difference is big, and assumptions of inferential model are questionable). 
+
+```{r make_study_question_paradigm_tibble}
+paradigm_df <- select(rev, title, individual.species.analysis, 
+                      community.analysis) %>%
+  gather(key = "paradigm", value = "used", individual.species.analysis:
+           community.analysis) %>%
+  filter(used == TRUE)
+
+paradigm_counts_df <- group_by(paradigm_df, paradigm) %>%
+  summarise(num_studies = sum(used))
+paradigm_counts_df[nrow(paradigm_counts_df) + 1, "paradigm"] <- "other"
+paradigm_counts_df[which(paradigm_counts_df$paradigm == "other"), 2] <- length(
+    which(rev$community.analysis == F & rev$individual.species.analysis == F))
+```
+
+```{r question_paradigm_poisson_regression}
+## fit poisson regression with number of studies as response and question 
+## paradigm as predictor
+
+## check unconditional mean and variance for possible overdispersion
+if(diag) {
+  mean(paradigm_counts_df$num_studies)
+  var(paradigm_counts_df$num_studies) # doesn't look good
+}
+
+qp_mod <- glm(num_studies ~ 1 + paradigm, data = paradigm_counts_df, 
+              family = "poisson") # full model
+
+# test significance of paradigm as a predictor for number of studies
+# Need to look at type-3 sums of squares (function from car package)
+qp_full_anova <- Anova(qp_mod, type = 3)  
+
+# check for overdispersion after model fit
+if(diag) qp_mod$deviance / qp_mod$df.residual # um, not sure how this works when I have only 1 obs for each predictor
+
+```
 
 
 
@@ -734,14 +794,25 @@ ____________________________________________________________________________
 
 ```{r caption_kripp_summary}
 kripp_sum_cap <- figs(name = "kripp_sum_cap", 
-                      "Reader agreement for 12 categories measured using Krippendorff's alpha.  The pre-calibration results are for only articles before a meeting to calibrate expectations and definitions (n = 11).  Post-calibration results are for only articles coded after the calibration meeting (n = 10). The all_pre_correct group shows results for the original codings for all articles (both those coded before and after the callibration meeting, n = 21).  The post-correct group shows agreement for all articles after I evaluated each individual case of disagreement and corrected obvious errors (n = 20). Dotted lines show values of alpha of 0.667 and 0.8, which are recommended minimum and preferred values at which variables can be relied upon for analysis.")
+                      paste0("Reader agreement for ", 
+                             length(which(colnames(mult_coded_rev) != "title")), 
+                             " categories measured using Krippendorff's alpha.  The pre-calibration results are for only articles before a meeting to calibrate expectations and definitions (n = ", 
+                             length(calibration_set), 
+                             ").  Post-calibration results are for only articles coded after the calibration meeting (n = ", 
+                             length(which(mult_coded_rev$title %nin% 
+                                            calibration_set)), 
+                             "). The all_pre_correct group shows results for the original codings for all articles (both those coded before and after the callibration meeting, n = ", 
+                             nrow(mult_coded_rev_orig), 
+                             ").  The post-correct group shows agreement for all articles (n = ", 
+                             nrow(mult_coded_rev), 
+                             ") after I evaluated each individual case of disagreement and corrected obvious errors. Dotted lines show values of alpha of 0.667 and 0.8, which are recommended minimum and preferred values at which variables can be relied upon for analysis."))
 ```
 
 ## Search results 
 The search returned `r nrow(elig)` potentially relevant studies, of which we have evaluated `r sum(!is.na(elig$qualifies))` for eligibility, and judged `r length(which(elig$qualifies == TRUE))` to be eligible for inclusion in the scoping review.  One reader has coded `r nrow(rev)` articles and a second reader has coded `r nrow(cp_orig)` of those. This preliminary analysis uses the `r nrow(rev)` articles coded so far.
 
 
-## Results for reader agreement
+## Reader agreement
 
 Krippendorff's alpha values for the variables that have been double coded indicate substantial disagreement between the two readers, and show few variables for which codings are reliable enough to be used in analysis (`r figs("kripp_sum_cap", display = "cite")`).  However, the number of articles that have been evaluated by two readers is probably too small for reliable estimation of Krippendorff's alpha given the proportions of the TRUE and FALSE classes for most variables (`r tabs("kripp_samp_size_cap", display = "cite")`).
 
@@ -851,7 +922,7 @@ if(diag) {
 }
 ```
 
-```{r kripp_agreement_wg_before_and_after_corrections}
+```{r kripp_agreement_wg_before_and_after_corrections, include = F, eval = F}
 # show agreement measure of how well my corrections based on looking at double
 # codings agree with my original codings.
 if(diag) {
@@ -861,20 +932,27 @@ if(diag) {
 }
 ```
 
-The calculation of agreement between my codings before and after I corrected them based on CP's codings kinda shows how reliable my original codings are. The assumption would be that if my original codings are reliable compared to my double-checking when prompted, then we can at least have confidence that my coding is consistent and I'm not making too many sloppy errors.  We can then use my codings (either original or corrected) for analysis, and view the second reader's role as highlighting cases of sloppy errors or careless oversight on my part.  This doesn't address the reproducability question of whether my categories are clear enough that an independent researcher trying to do the same study would come up with the same conclusions.  In order to answer that, we would need a second reader with adequate ability to code each category.  Lacking such a person, we'll have to use the second reader as an error catcher rather than an independent second opinion.
+We could use my codings (either original or corrected) for analysis, and view the second reader's role as highlighting cases of sloppy errors or careless oversight on my part.  This doesn't address the reproducability question of whether my categories are clear enough that an independent researcher trying to do the same study would come up with the same conclusions.  In order to answer that, we would need a second reader with adequate ability to code each category.  Lacking such a person, we'll have to use the second reader as an error catcher rather than an independent second opinion.
 
 Page 240 of the Krippendorf (2004) book has recommendations about sample size needed based on how many cases there are of the least common class.  `r tabs("kripp_samp_size_cap", display = "cite")` shows which variables have enough of the minority class that Krippendorff's alpha can be calculated with significance level of 0.1 and minimum acceptable Krippendorff's alpha of 0.667.
 
 ```{r kripp_samp_size_cap}
 kripp_samp_size_cap <- tabs(name = "kripp_samp_size_cap", 
-                            "Recommended sample size for accurate estimation of Krippendorff's alpha given the proportion of the minority class in the results, and a desired confidence level of 0.1 for a minimum Krippendorff's alpha value of 0.667 (Krippendorf 2004).")
+                            paste0("Recommended sample size for accurate estimation of Krippendorff's alpha given the proportion of the minority class in the results, and a desired confidence level of 0.1 for a minimum Krippendorff's alpha value of 0.667 (Krippendorf 2004).  So far there are ", nrow(mult_coded_rev), " double-coded studies."))
 ```
 
-`r tabs("kripp_samp_size_cap", display = "full")`
+`r if(diag_present) tabs("kripp_samp_size_cap", display = "full")`
 
 ```{r calculate_proportion_T}
-prob_of_values <- lapply(mult_coded_rev[, 2:ncol(mult_coded_rev)], 
-                         FUN = function(x) {sum(x, na.rm = T) / length(which(!is.na(x)))})
+## This calculates the proportion of TRUE values using wg's post-correction
+# codings for each variable.  Even though we are interested in kripp's alpha
+# pre-correction, I use the post-correction TRUEs as the best estimate of the
+# true proportion of TRUE values for each variable, and that best estimate of
+# the proportion is what I need to figure out required sample size for Kripp's a.
+prob_of_values <- lapply(
+  mult_coded_rev[, 2:ncol(mult_coded_rev)], 
+  FUN = function(x) {sum(x, na.rm = T) / length(which(!is.na(x)))})
+
 prob_of_values <- data.frame(variable = names(prob_of_values), 
                              prob_T = unlist(prob_of_values), 
                              row.names = NULL)
@@ -892,7 +970,7 @@ for(i in 1:nrow(prob_of_values)) {
 
 # On p 240 of Krippendorff book, it says that if acceptable alpha is 0.667 and 
 # desired significance level is 0.1, then sample size needed is as follows:
-prob_of_values$n_20_adequate <- prob_of_values$prob_small_class > 0.3
+prob_of_values$n_25_adequate <- prob_of_values$prob_small_class > 0.25
 prob_of_values$n_30_adequate <- prob_of_values$prob_small_class > 0.2
 prob_of_values$n_40_adequate <- prob_of_values$prob_small_class >= 0.143
 
@@ -902,6 +980,8 @@ if(diag_present) kable(prob_of_values[, -2], digits = 2)
 
 #### Notes about agreement 
 (*italics* means I've corrected it, **bold** means I need to deal with it.)
+
+**As of 2 Sep I haven't updated this list to include the last few articles that I coded to get up to speed with CP.**
 
 - biological records in facilitative role: generally, it looks like CP codes this as TRUE much more often than I do.
     - *"An assessment of bumblebee (Bombus spp) land use..." Casey coded this as T, but the species observation data were clearly used as a response variable.  Perhaps the confusion is because survey participants were identifed from a list of people who had participated in a previous survey.  Regardless, this should be FALSE.*
@@ -925,7 +1005,9 @@ if(diag_present) kable(prob_of_values[, -2], digits = 2)
     - *"Congruency in fungal phenology..." Casey coded TRUE, I coded FALSE.  This is not obviously an error by either of us, but is due to ambiguity in the study.  The local dataset used for Switzerland is from surveys in quadrats, and seems to be the result of a specific study.  I considered this not bio recs data but rather other data that was used in addition to bio recs data.  However, one could view this as bio recs data in the sense that bio recs are sometimes derived by searching published literature.  So it is a legitimate interpretation to call that bio recs data, in which case sampling effort = TRUE for this study.  I will not change anything as this is not an obvious error.*
     - *"Evaluating promotional approaches for citizen science..." Casey coded TRUE.  But despite records coming from named "schemes" (UK Ladybird Recording Scheme & BeeWatch), those named schemes are actually just data collection portals/websites for opportunistic records.  There is no organized monitoring effort, no regular survey protocol, locations, or times of surveys, and, as far as I can tell from looking at those scheme websites, no record of survey effort.  This is an error by CP and I will change it to FALSE.*
     - *"Large reorganizations in butterfly communities..." CP coded FALSE but the study uses UKBMS data which is collected on transects of known length.  This is an error by CP and I will change it to TRUE.*
+    - *"Setting temporal baselines for biodiversity..." CP coded F, I coded T.  I looked at DaEuMon website and browsed individual monitoring schemes.  The Jersey Butterfly Monitoring scheme uses transects and was entered into EuMon pre-2009, so presumably at least that scheme was included in this study and therefore at least some sampling effort is reported.  This is therefore an error by CP (though one that took a lot of digging to get correct) and I will change CP's coding to TRUE.*
     - *Edit instructions to make clear that what is being asked is whether the sampling effort is reported with the data, not whether sampling effort is reported in the study or article.  So a study that uses UK Butterfly Monitoring Scheme data is TRUE for sampling effort reported, because it is reported with the data, even if the study doesn't report that sampling effort (e.g. transect length).*
+    - **With this and all variables, I need to clarify and make explicit whether I am asking whether the data type is available, or whether it is used.  With the exception of physical specimens, I am asking whether it is available.  It could not be used either b/c the authors 1) chose not to use it or 2) it wasn't relevant to the question.  However, trying to determine whether it is relevant to the questions is a slippery slope, b/c questions may be changed to match the available data, and it's also not always clear whether the data is actually needed for the question.  So, I intend to make this ask about whether the data has those data types available at all, regardless of whether they were used.**
 - diversity as focus: 
     - CP seems to be coding TRUE way more often than I am.  I think the main issue here is that I didn't define clearly enough that by "diversity" I mean a narrow definition of either alpha/beta diversity (turnover) or a combination of species richness and evenness.  I am not considering species richness alone or narrative descriptions of communities as "diversity" as a study focus.
     - *"An assessment of bumblebee (Bombus spp) land use...".  This looks like clearly not diversity as an outcome to me.  This is an error by CP and I will change TRUE to FALSE.*
@@ -954,7 +1036,7 @@ if(diag_present) kable(prob_of_values[, -2], digits = 2)
 - inference: looks pretty good.
     * *Casey missed "Explaining European fungal fruiting..." that he marked as FALSE but that had bootstrap CIs on one plot.*
     * *On "Ocean current connectivity..." I put no inference b/c all the analyses using bio recs didn't use inference, while Casey put inference b/c there were other analyses with non-bio recs data that used inference.*
-- *spatial bias mentioned*
+- spatial bias mentioned
     - I wonder if I should narrow this to being TRUE only if some specific keywords are present (e.g. "spatial bias" or something like that), since it can be a little unclear whether authors are talking about spatial bias.  e.g. see "Evaluating promotional approaches..." in which they talk about bias, and talk about bio recs data being "geographically limited".
     - *"British phenological records indicate...". CP coded T, I coded F. I don't see any mention of spatial bias.  Maybe I'm missing it?  I guess I shouldn't change a T to F ever, b/c I may still be overlooking it?  So for now I will not change this.*
     - *"Evaluating promotional approaches...". CP coded T, I coded F. The article mentions datasets being "geographically limited" for some species, and also talks about general bias in bio recs data, so I think I was in error and this should be T.  I will change my value to TRUE.*
@@ -965,7 +1047,7 @@ if(diag_present) kable(prob_of_values[, -2], digits = 2)
     - *"Potential for coupling the monitoring of bush-crickets...". CP coded F, I coded T.  The introduction says "We validated these methods using data from intensive survey sites", so I think CP's code is an error and I will change it to TRUE.*
 
 
-## Results for temporal extent of studies
+## Temporal extent of studies
 
 ```{r print_time_anova}
 m_time_full_anova
@@ -1002,7 +1084,7 @@ print(ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + #, color
                 parse = TRUE) + 
   annotate("text", x = 3, y = 1200, 
            label = "paste(\"Overall model significance \", 
-                 italic(p), \" = 0.1\")", 
+                 italic(p), \" = ??\")", 
            parse = TRUE) +
         theme_bw() + 
         scale_color_discrete(name = "Significantly Different from\nWhat, Where, When-only\nstudies (alpha = 0.1 level)") + 
@@ -1035,31 +1117,97 @@ ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + #, color = sig
         text = element_text(size = t_size)) 
 ```
 
+-----------------------------------------------
 
 ## Study Question Paradigm
 
-**What is the most popular study question paradigm?**
+### What is the most popular study question paradigm?
 
 $H_a$: Some broad study question paradigms are more common than others in studies using biological records.
 
 $H_0$: The number of studies pursuing each of the broad study question paradigms is the same.
 
-*Proposed Test* One Poisson regression with study question paradigm as predictor. 
-
-```{r make_study_question_paradigm_tibble}
-paradigm_df <- select(rev, title, individual.species.analysis, 
-                      community.analysis) %>%
-  gather(key = "paradigm", value = "used", individual.species.analysis:
-           community.analysis) %>%
-  filter(used == TRUE)
-
-table(paradigm_df$paradigm)
-paste0("Studies that are neither community nor individual sp analyses: ", 
-       length(which(rev$community.analysis == F & 
-                      rev$individual.species.analysis == F)))
+```{r print_paradigm_model_results}
+if(diag_present) {
+  qp_full_anova
+  summary(qp_mod)
+}
 ```
 
-**What data types are used for each study question paradigm?**
+```{r print_study_question_paradigm_table}
+kable(paradigm_counts_df, col.names = c("paradigm", "number of studies"))
+```
+
+## Specific Study Focus
+
+Descriptive stats for studies focusing on policy or alien species, testing ecological theory, and testing methods of data correction.
+
+```{r specific_question_by_paradigm_bar_plot}
+qt_df <- select(rev, "title", 
+                "species.richness", "diversity", 
+                "distribution", "abundance", "phenology") 
+names(qt_df)[2:6] <- c("species.richness", "diversity", 
+                        "distribution", "abundance", "phenology")
+
+qt_df <- gather(qt_df, key = "study_question", value = "v_2", 
+                species.richness, diversity, distribution, abundance, 
+                phenology,
+                factor_key = T) %>%
+  filter(v_2 == TRUE) %>%
+  group_by(study_question) %>%
+  summarise(count = n()) %>%
+  mutate(percent = (count/sum(count)) * 100) %>%
+  mutate(paradigm = str_replace_all(study_question, 
+                                    c("species.richness|diversity" = 
+                                        "community", 
+                                      "distribution|abundance|phenology" = 
+                                        "individual species"))) 
+
+ggplot(data = qt_df, 
+       aes(x = factor(study_question, 
+                      levels = c("species.richness", "diversity", 
+                                 "distribution", "phenology", "abundance"), 
+                      labels = c("species richness", "diversity", 
+                                 "distribution", "phenology", "abundance")), 
+           y = percent, 
+           fill = paradigm)) + 
+  geom_bar(stat = "identity") + 
+ # scale_fill_brewer() + 
+  scale_fill_grey(end = 0.7) + 
+  xlab("Study Focus") + 
+  ylab("Percent of Studies") + 
+  theme_bw()
+```
+
+```{r specific_question_multi_paradigm_bar_plot}
+qt_df <- select(rev, "title", "methodology.development.or.analysis", 
+                "testing.macro.or.ecological.theory", "trends.over.time") 
+names(qt_df)[2:4] <- c("methodology", "testing.theory", "temporal.trends")
+
+qt_df <- gather(qt_df, key = "study_question", value = "v_2", 
+                temporal.trends,testing.theory, methodology,  
+         factor_key = T) %>%
+  filter(v_2 == TRUE) %>%
+  group_by(study_question) %>%
+  summarise(count = n()) %>%
+  mutate(percent = (count/sum(count)) * 100)
+
+ggplot(data = qt_df, 
+       aes(x = factor(study_question, 
+                      levels = c("temporal.trends", "methodology",
+                                 "testing.theory"), 
+                      labels = c("temporal trends", "methodology",
+                                 "testing theory")), 
+           y = percent)) + 
+  geom_bar(stat = "identity") + 
+  scale_fill_brewer() + 
+  xlab("Study Focus") + 
+  ylab("Percent of Studies") + 
+  theme_bw()
+```
+
+
+### What data types are used for each study question paradigm?
 [ descriptive results only ] 
 
 ```{r make_study_question_paradigm_by_dataType_tibble}
@@ -1097,73 +1245,6 @@ paradigm_data_df$paradigm <- gsub("individual.species.analysis",
 kable(table(paradigm_data_df$data_type, paradigm_data_df$paradigm))
 ```
 
-
-## Specific Study Focus
-
-Descriptive stats for studies focusing on policy or alien species, testing ecological theory, and testing methods of data correction.
-
-```{r specific_question_by_paradigm_bar_plot}
-qt_df <- select(rev, "title", 
-                "species.richness", "diversity", 
-                "distribution", "abundance", "phenology") 
-names(qt_df)[2:6] <- c("species.richness", "diversity", 
-                        "distribution", "abundance", "phenology")
-
-qt_df <- gather(qt_df, key = "study_question", value = "v_2", 
-                species.richness, diversity, distribution, abundance, 
-                phenology,
-                factor_key = T) %>%
-  filter(v_2 == TRUE) %>%
-  group_by(study_question) %>%
-  summarise(count = n()) %>%
-  mutate(percent = (count/sum(count)) * 100) %>%
-  mutate(paradigm = str_replace_all(study_question, 
-                                    c("species.richness|diversity" = 
-                                        "community", 
-                                      "distribution|abundance|phenology" = 
-                                        "individual species"))) 
-
-ggplot(data = qt_df, 
-       aes(x = factor(study_question, 
-                      levels = c("species.richness", "diversity", 
-                                 "distribution", "phenology", "abundance"), 
-                      labels = c("species richness", "diversity", 
-                                 "distribution", "phenology", "abundance")), 
-           y = percent, 
-           fill = paradigm)) + 
-  geom_bar(stat = "identity") + 
-  scale_fill_brewer() + 
-  xlab("Study Focus") + 
-  ylab("Percent of Studies") + 
-  theme_bw()
-```
-
-```{r specific_question_multi_paradigm_bar_plot}
-qt_df <- select(rev, "title", "methodology.development.or.analysis", 
-                "testing.macro.or.ecological.theory", "trends.over.time") 
-names(qt_df)[2:4] <- c("methodology", "testing.theory", "temporal.trends")
-
-qt_df <- gather(qt_df, key = "study_question", value = "v_2", 
-                temporal.trends,testing.theory, methodology,  
-         factor_key = T) %>%
-  filter(v_2 == TRUE) %>%
-  group_by(study_question) %>%
-  summarise(count = n()) %>%
-  mutate(percent = (count/sum(count)) * 100)
-
-ggplot(data = qt_df, 
-       aes(x = factor(study_question, 
-                      levels = c("temporal.trends", "methodology",
-                                 "testing.theory"), 
-                      labels = c("temporal trends", "methodology",
-                                 "testing theory")), 
-           y = percent)) + 
-  geom_bar(stat = "identity") + 
-  scale_fill_brewer() + 
-  xlab("Study Focus") + 
-  ylab("Percent of Studies") + 
-  theme_bw()
-```
 
 
 _____________________________________________________________________

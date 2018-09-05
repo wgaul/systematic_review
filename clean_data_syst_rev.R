@@ -157,6 +157,8 @@ cp[grep("Evaluating promotional app.*", cp$title),
    "data.type...sampling.effort.reported"] <- FALSE
 cp[grep("Large reorganizations in butterfly.*", cp$title), 
    "data.type...sampling.effort.reported"] <- TRUE
+cp[grep("Setting temporal baselines for bio.*", cp$title),
+   "data.type...sampling.effort.reported"] <- TRUE
 cp[grep("An assessment of bumblebee \\(Bombus sp.*", cp$title),
    "diversity"] <- FALSE
 cp[grep(".*Scragh Bog.*", cp$title),
