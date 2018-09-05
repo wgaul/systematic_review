@@ -1140,46 +1140,90 @@ kable(paradigm_counts_df, col.names = c("paradigm", "number of studies"))
 
 ## Specific Study Focus
 
-Descriptive stats for studies focusing on policy or alien species, testing ecological theory, and testing methods of data correction.
-
 ```{r specific_question_by_paradigm_bar_plot}
 qt_df <- select(rev, "title", 
+                "community.analysis", "individual.species.analysis", 
                 "species.richness", "diversity", 
-                "distribution", "abundance", "phenology") 
-names(qt_df)[2:6] <- c("species.richness", "diversity", 
-                        "distribution", "abundance", "phenology")
+                "distribution", "abundance", "phenology",
+                "trends.over.time", "methodology.development.or.analysis") 
+names(qt_df)[4:10] <- c("species.richness", "diversity", 
+                        "distribution", "abundance", "phenology", 
+                        "temporal.trends", "methodology")
+# make an "other" column indicating studies that are not community or individual
+# qt_df$paradigm.other <- rev$community.analysis == F & 
+#   rev$ individual.species.analysis == F
 
-qt_df <- gather(qt_df, key = "study_question", value = "v_2", 
-                species.richness, diversity, distribution, abundance, 
-                phenology,
+qt_df <- gather(qt_df, key = "paradigm", value = "parad_val", 
+                community.analysis, individual.species.analysis,  
                 factor_key = T) %>%
-  filter(v_2 == TRUE) %>%
-  group_by(study_question) %>%
-  summarise(count = n()) %>%
-  mutate(percent = (count/sum(count)) * 100) %>%
-  mutate(paradigm = str_replace_all(study_question, 
-                                    c("species.richness|diversity" = 
-                                        "community", 
-                                      "distribution|abundance|phenology" = 
-                                        "individual species"))) 
+  filter(parad_val == TRUE) %>%
+  gather(key = "focus", value = "foc_val", 
+         species.richness, diversity, distribution, abundance, phenology, 
+         temporal.trends, methodology, 
+         factor_key = T) %>%
+  filter(foc_val == TRUE) %>%
+  group_by(paradigm, focus) %>%
+  summarise(count = n()) %>% 
+  # filter odd combinations of paradigm and focus
+  filter(!(paradigm == "community.analysis" & 
+             focus %in% c("distribution", "abundance", "phenology"))) %>%
+  filter(!(paradigm == "individual.species.analysis" & 
+             focus %in% c("species.richness", "diversity"))) 
 
 ggplot(data = qt_df, 
-       aes(x = factor(study_question, 
+       aes(x = factor(paradigm, 
+                      levels = c("community.analysis", 
+                                 "individual.species.analysis"), 
+                      labels = c("community", "individual species")), 
+           y = count, 
+           fill = factor(focus, 
                       levels = c("species.richness", "diversity", 
-                                 "distribution", "phenology", "abundance"), 
+                                 "distribution", "phenology", "abundance", 
+                                 "temporal.trends", "methodology"), 
                       labels = c("species richness", "diversity", 
-                                 "distribution", "phenology", "abundance")), 
-           y = percent, 
-           fill = paradigm)) + 
-  geom_bar(stat = "identity") + 
- # scale_fill_brewer() + 
-  scale_fill_grey(end = 0.7) + 
+                                 "distribution", "phenology", "abundance", 
+                                 "temporal trends", "methodology")))) + 
+  geom_bar(position = "dodge", stat = "identity") + 
+  scale_fill_brewer(type = "qual", palette = 2) + 
+  #scale_fill_grey(end = 0.7) + 
   xlab("Study Focus") + 
-  ylab("Percent of Studies") + 
-  theme_bw()
+  ylab("Number of Studies") + 
+  theme_bw() + 
+  theme(legend.title = element_blank())
+
+# qt_df <- gather(qt_df, key = "study_question", value = "v_2", 
+#                 species.richness, diversity, distribution, abundance, 
+#                 phenology,
+#                 factor_key = T) %>%
+#   filter(v_2 == TRUE) %>%
+#   group_by(study_question) %>%
+#   summarise(count = n()) %>%
+#   mutate(percent = (count/sum(count)) * 100) %>%
+#   mutate(paradigm = str_replace_all(study_question, 
+#                                     c("species.richness|diversity" = 
+#                                         "community", 
+#                                       "distribution|abundance|phenology" = 
+#                                         "individual species"))) 
+# 
+# ggplot(data = qt_df, 
+#        aes(x = factor(study_question, 
+#                       levels = c("species.richness", "diversity", 
+#                                  "distribution", "phenology", "abundance"), 
+#                       labels = c("species richness", "diversity", 
+#                                  "distribution", "phenology", "abundance")), 
+#            y = percent, 
+#            fill = paradigm)) + 
+#   geom_bar(stat = "identity") + 
+#  # scale_fill_brewer() + 
+#   scale_fill_grey(end = 0.7) + 
+#   xlab("Study Focus") + 
+#   ylab("Percent of Studies") + 
+#   theme_bw()
 ```
 
-```{r specific_question_multi_paradigm_bar_plot}
+```{r specific_question_multi_paradigm_bar_plot, eval = F, include = F}
+## as of 4 Sep 2018, don't need this anymore - this is incorporated in the 
+## above plot
 qt_df <- select(rev, "title", "methodology.development.or.analysis", 
                 "testing.macro.or.ecological.theory", "trends.over.time") 
 names(qt_df)[2:4] <- c("methodology", "testing.theory", "temporal.trends")
@@ -1206,6 +1250,7 @@ ggplot(data = qt_df,
   theme_bw()
 ```
 
+[ Descriptive stats for studies focusing on policy or alien species, testing ecological theory, and testing methods of data correction. ]
 
 ### What data types are used for each study question paradigm?
 [ descriptive results only ] 
