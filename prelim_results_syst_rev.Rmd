@@ -469,7 +469,6 @@ print(ggpairs(dt_df, columns = 1:ncol(dt_df),
               labeller = label_wrap_gen(width = 10)) + 
         ggtitle("Correlation of data type predictor variables") + 
         theme(axis.text.x = element_text(angle = 50, hjust = 1)))
-  
 ```
 
 
@@ -734,7 +733,6 @@ $H_0$: The number of studies pursuing each of the broad study question paradigms
 
 *Proposed Test* One Poisson regression with study question paradigms (community, individual species, or other) as predictors. 
 
-**Jon - does a test here even make sense when I only have one observation of counts for each predictor?  Because no replicates, have no estimate of variance, so how can tell if means are different?  Assuming variance equals mean?  But do we have any evidence for that?  Can we assume that?**  I'm not sure that the inference here is telling us much, either with the significance or parameter estimates.  Especially because that inference is based on an assumption about variance that we have no evidence for.  I think we actually have just as much confidnce in the results by looking at the table as by looking at the inference (because difference is big, and assumptions of inferential model are questionable). 
 
 ```{r make_study_question_paradigm_tibble}
 paradigm_df <- select(rev, title, individual.species.analysis, 
@@ -1127,6 +1125,8 @@ $H_a$: Some broad study question paradigms are more common than others in studie
 
 $H_0$: The number of studies pursuing each of the broad study question paradigms is the same.
 
+**Jon - does a test here even make sense when I only have one observation of counts for each predictor?  Because no replicates, have no estimate of variance, so how can tell if means are different?  Assuming variance equals mean?  But do we have any evidence for that?  Can we assume that? Use bootstrapping to estimate variance to check assumptions?**  I'm not sure that the inference here is telling us much, either with the significance or parameter estimates.  Especially because that inference is based on an assumption about variance that we have no evidence for.  I think we actually have just as much confidnce in the results by looking at the table as by looking at the inference (because difference is big, and assumptions of inferential model are questionable). 
+
 ```{r print_paradigm_model_results}
 if(diag_present) {
   qp_full_anova
@@ -1290,7 +1290,114 @@ paradigm_data_df$paradigm <- gsub("individual.species.analysis",
 kable(table(paradigm_data_df$data_type, paradigm_data_df$paradigm))
 ```
 
+```{r data_type_by_paradigm_pairs_plot, fig.height=8, fig.width = 8, eval = F}
+### plot data type by study question paradigm ----------------------
+### I think this is not how I want to visualize this.  Trying a new approach in following chunk
+dt_pd_df <- rev[, which(
+  colnames(rev) %in% 
+    c("data.type...what.where.when.only", 
+      "data.type...sampling.effort.reported", 
+      "data.type...abundance", 
+      "data.type...detection...non.detection", 
+      "data.type...organized.data.collection.scheme", 
+      "data.type...visit.specific.covariates", 
+      "data.type...multiple.datasets.integrated.for.analysis", 
+      "data.type...life.stage", 
+      "data.type...voucher.available", 
+      "community.analysis", 
+      "individual.species.analysis"))]
+for(i in 1:ncol(dt_pd_df)) {
+  dt_pd_df[, i] <- as.factor(as.character(data.frame(dt_pd_df)[, i]))
+}
 
+# set attributes of columns
+attr(dt_pd_df, "data types") <- c(
+  "data.type...what.where.when.only", 
+  "data.type...sampling.effort.reported", 
+  "data.type...abundance", 
+  "data.type...detection...non.detection", 
+  "data.type...organized.data.collection.scheme", 
+  "data.type...visit.specific.covariates", 
+  "data.type...multiple.datasets.integrated.for.analysis", 
+  "data.type...life.stage", 
+  "data.type...voucher.available")
+attr(dt_pd_df, "study paradigm") <- c("community.analysis", 
+                                      "individual.species.analysis")
+
+data_type_vars <- attr(dt_pd_df, "data type")
+paradigm_vars <- attr(dt_pd_df, "study paradigm")
+
+print(ggduo(dt_pd_df, data_type_vars, paradigm_vars, 
+            title = "testing", 
+            columnLabelsX = c("what where when only", 
+                               "sampling effort",
+                               "abundance",
+                               "non detection", 
+                               "organized scheme", 
+                               "visit specific covariates", 
+                               "multiple datasets", 
+                               "life stage", 
+                               "voucher available"), 
+            columnLabelsY = c("community", "individual species"), 
+            labeller = label_wrap_gen(width = 10)) + 
+        theme(axis.text.x = element_text(angle = 50, hjust = 1), 
+              axis.text.y = element_text(angle = 50, hjust = 0)))
+```
+
+```{r data_type_by_paradigm_barplot}
+### plot data type by study question paradigm ----------------------
+dt_pd_df <- select(rev, data.type...what.where.when.only, 
+      data.type...sampling.effort.reported, 
+      data.type...abundance, 
+      data.type...detection...non.detection, 
+      data.type...organized.data.collection.scheme, 
+      data.type...multiple.datasets.integrated.for.analysis, 
+      data.type...life.stage, 
+      data.type...voucher.available,
+      community.analysis, 
+      individual.species.analysis) %>%
+  gather(key = "data_type", value = "dt_val", data.type...what.where.when.only:
+           data.type...voucher.available) %>%
+  filter(dt_val == TRUE) %>%
+  gather(key = "paradigm", value = "pd_val", community.analysis, 
+         individual.species.analysis) %>%
+  filter(pd_val == TRUE) %>%
+  count(paradigm, data_type) %>%
+  complete(paradigm, data_type, fill = list(n = 0))
+
+ggplot(dt_pd_df, 
+       aes(x = factor(paradigm, 
+                      levels = c("community.analysis", 
+                                 "individual.species.analysis"), 
+                      labels = c("community", "individual species")), 
+           y = n, 
+           fill = factor(data_type, 
+                         levels = c("data.type...what.where.when.only", 
+                           "data.type...sampling.effort.reported", 
+                           "data.type...abundance", 
+                           "data.type...detection...non.detection", 
+                           "data.type...organized.data.collection.scheme", 
+                           "data.type...multiple.datasets.integrated.for.analysis",
+                           "data.type...life.stage", 
+                           "data.type...voucher.available"), 
+                         labels = c("what where when only", 
+                                    "sampling effort", 
+                                    "abundance", 
+                                    "non detection", 
+                                    "organized scheme", 
+                                    "multiple datasets", 
+                                    "life stage", 
+                                    "voucher available")))) + 
+  geom_bar(position = position_dodge(preserve = "single"), stat = "identity") + 
+  ggtitle("Data use based on study question paradigm") + 
+  scale_fill_discrete(name = "Data Type") + 
+  xlab("Study question paradigm") + 
+  ylab("Number of studies") + 
+  scale_y_continuous(breaks = seq(0, max(table(dt_pd_df$data_type)), 5)) + 
+  theme_bw() 
+```
+
+**Jon - Too many data types to interpret well?  Drop life stage?  Is there any useful statistical work to be done here?  I don't think so - would require lots of data, not sure it adds much to understanding.**  I think the story is that data use is roughly similar between question paradigms, except maybe that vouchers seem to be
 
 _____________________________________________________________________
 # Discussion
