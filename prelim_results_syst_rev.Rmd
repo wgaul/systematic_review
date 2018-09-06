@@ -1,12 +1,12 @@
 ---
 title: "Biological Records Systematic Review - Preliminary Results"
+csl: ecology.csl
 output:
   html_document: default
+  fig_caption: yes
   html_notebook: default
-  word_document: 
-  fig_caption: true
+  word_document: null
 bibliography: phd_sources_Aug2018.bib
-csl: ecology.csl
 ---
 
 **TODO:**
@@ -31,18 +31,19 @@ csl: ecology.csl
     - *Temporal extent* [DONE]
     - Authors and Data Providing Institutions
     - Study Question
-        - Paradigms
-        - Specific focus
+        - *Paradigms* [DONE]
     - Analysis approach & data type
 - Results - Descriptive
     - Spatial extent
-    - *Data type by question paradigm* [DONE]
+    - *Study Question* [DONE]
+        - *Data type by question paradigm* [DONE]
+        - *Specific focus* [DONE]
+    - Author associated with data provider
     - Spatial bias correction
     - Taxonomic group
     - Role of biological records
     - Prediction performance measure
     - Tabulate analysis methods
-    - Author associated with data provider
 - Discussion
     - Article coding
         - Agreement
@@ -157,8 +158,6 @@ Grey literature was included and therefore peer review was not required.  Studie
 ### Data Type
 We coded twelve variables describing aspects of data type: what, where, when only; sampling effort reported; abundance; detection / non-detection; organized monitoring scheme; visit-specific covariates; multiple datasets integrated for analysis; life stage information; physical specimen; photo; audio; video. Data types are not mutually exclusive except fot the "what where when only" data type, which cannot be true if any other data type is true.  We considered "what, where, when" as the baseline data type and considered all other data types supplementary additions to that basic data type.
 
-~~For statistical analyses, we used only the sampling effort reported, abundance, and detection / non-detection data type variables based on *a-priori* expectations about their expected benefit in enabling inferential and predictive modelling and their expected cost in terms of complexity in collecting, recording, and storing the data.~~
-
 For most analyses, we grouped the data types "physical specimen", "photo", "audio", and "video" into a "voucher specimen" group, but we coded them individually in order to identify emerging trends in how vouchers are collected.
 
 For statistical analyses, we kept data type variables in models based on *a-priori* expectations about the variables' influence on data analysis strategy and based on expectations about different levels of complexity and effort involved in collecting, recording, and storing the data.  The data type variables we kept in models were: what, where, when only; sampling effort reported; abundance; detection / non-detection; organized monitoring scheme; visit-specific covariates; multiple datasets integrated for analysis; life stage information; voucher specimen. 
@@ -171,7 +170,36 @@ We classified the broad analysis approach used by each study into one of three c
 We considered studies estimating parameters and reporting some measure of uncertainty (e.g. *p*-values, confidence intervals, posterior probability distributions) to be using inference.  We considered studies that built models and made predictions to be using an analysis strategy of prediction, even if no uncertainty or inference was reported with the predictions.  Finally, we considered the analysis approach to be descriptive only if results were descriptive with no prediction or inference.  Descriptive results could be narrative, graphical, or quantitative as long as no inference or uncertainty was reported (e.g. point estimates of descriptive statistics without any confidence interval or *p*-values).  Studies could use both inference and prediction as analysis strategies and so those categories were not mutually exclusive, but studies were only categorized as using a descriptive analysis approach if all results were descriptive only and the study used no inference or prediction.  
 
 ### Agreement between two readers
-I used Krippendorff's *alpha* [@Krippendorff2004] to evaluate the agreement between two readers for each of `r ncol(cp)-1` variables that had been coded by two people.  [**Dina, any thoughts about Krippendorff's alpha or other measures of agreement?**]. I calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package [@irr2012].  For each case of disagreement between the two readers, I reviewed the article.  When the disagreement seemed to be due to an oversight or an obvious error (e.g. when one reader coded "results type - inference" as FALSE but the article reported 95% confidence intervals around estimates), I corrected the erroneous value.  In cases where the disagreement was not the result of an obvious oversight, I did not change either value.  I calculated Krippendorff's alpha to assess agreement both before and after I corrected obviously erroneous codings.  
+I used Krippendorff's *alpha* [@Krippendorff2004] to evaluate the agreement between two readers for each of `r ncol(cp)-1` variables that had been coded by two people.  [**Dina, any thoughts about Krippendorff's alpha or other measures of agreement?**]. I calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package [@irr2012].  For each case of disagreement between the two readers, I reviewed the article.  When the disagreement seemed to be due to an oversight or an obvious error (e.g. when one reader coded "results type - inference" as FALSE but the article reported 95% confidence intervals around estimates), I corrected the erroneous value.  In cases where the disagreement was not the result of an obvious oversight, I did not change either value.  I calculated Krippendorff's alpha to assess agreement both before and after I corrected obviously erroneous codings. 
+
+Krippendorff's *alpha* for binary data is calculated as:
+
+$\alpha = 1 - D_O/D_E$
+
+Where $D_o$ is the observed disagreement between readers and $D_e$ is the disagreement expected by chance.  The number of agreements (and disagreements) expected by chance is calculated using the observed values by calculating a coincidence matrix of values expected by chance:
+
+|   |    0     |     1    |
+|---|----------|----------| 
+| 0 | $E_{00}$ | $E_{01}$ | 
+| 1 | $E_{10}$ | $E_{11}$ | 
+
+where $E_{00} = n_0 \times\ (n_0 - 1)/(n-1)$
+
+$E_{01} = E_{10} = n_0 \times\ n_1/(n - 1)$
+
+$E_{11} = n_1 \times\ (n_1 - 1) / (n - 1)$
+
+$n$ is the number of observations (twice the number of coded units when there are two observers), $n_0$ is the number of zeros in all observed pairs, and $n_1$ is the number of ones in all observed pairs.
+
+The coincidence matrix for observed values is:
+
+|   |    0     |     1    |
+|---|----------|----------|
+| 0 | $O_{00}$ | $O_{01}$ | 
+| 1 | $O_{10}$ | $O_{11}$ | 
+
+"Coincidences sum contingencies and their inverses, thereby omitting the references to the individual observers..." @Krippendorff2004
+
 
 
 ```{r inter_coder_agreement_subset_dfs, warning=TRUE}
@@ -613,7 +641,7 @@ if(diag) time_summary
 
 Fitted vs. residuals plot shows some fanning.  
 
-**Question for Jon: print time_summary and see that the coefficient estimate for what, where, when does not produce a good prediction (expected value is lower than any value actual temp extent for those data).  I think there are a couple issues here.  1) the estimate of the effect of what, where, when is *after correcting for multiple datasets used in analysis*, which tends to have long studies.  2) many temp extents are NA, which means sample size is quite small (7-ish or less for wh,wh,wh == T).  So I don't think anything is going wrong with the model.**
+The coefficient estimate for what, where, when data does not produce a good prediction (expected value is lower than any value actual temp extent for those data).  I think there are a couple issues here.  1) the estimate of the effect of what, where, when is *after correcting for multiple datasets used in analysis*, which tends to have long studies.  2) many temp extents are NA, which means sample size is quite small (7-ish or less for wh,wh,wh == T).  So I don't think anything is going wrong with the model.
 
 ```{r time_data_type_full_model_sig_test}
 # Test significance of full model
@@ -1125,7 +1153,7 @@ $H_a$: Some broad study question paradigms are more common than others in studie
 
 $H_0$: The number of studies pursuing each of the broad study question paradigms is the same.
 
-**Jon - does a test here even make sense when I only have one observation of counts for each predictor?  Because no replicates, have no estimate of variance, so how can tell if means are different?  Assuming variance equals mean?  But do we have any evidence for that?  Can we assume that? Use bootstrapping to estimate variance to check assumptions?**  I'm not sure that the inference here is telling us much, either with the significance or parameter estimates.  Especially because that inference is based on an assumption about variance that we have no evidence for.  I think we actually have just as much confidnce in the results by looking at the table as by looking at the inference (because difference is big, and assumptions of inferential model are questionable). 
+**Jon - does a test here even make sense when I only have one observation of counts for each predictor?  Because no replicates, have no estimate of variance, so how can tell if means are different?  Assuming variance equals mean?  But do we have any evidence for that?  Can we assume that? Use bootstrapping to estimate variance to check assumptions?**  I'm not sure that the inference here is telling us much, either with the significance or parameter estimates.  Especially because that inference is based on an assumption about variance that we have no evidence for.  I think we actually have just as much confidence in the results by looking at the table as by looking at the inference (because difference is big, and assumptions of inferential model are questionable). 
 
 ```{r print_paradigm_model_results}
 if(diag_present) {
@@ -1253,9 +1281,10 @@ ggplot(data = qt_df,
 [ Descriptive stats for studies focusing on policy or alien species, testing ecological theory, and testing methods of data correction. ]
 
 ### What data types are used for each study question paradigm?
-[ descriptive results only ] 
 
-```{r make_study_question_paradigm_by_dataType_tibble}
+```{r make_study_question_paradigm_by_dataType_tibble, eval = F, include = F}
+## I don't think a table is a good way to present this.  Too hard to see.
+## But if I include this again later, should add all data type variables.
 paradigm_data_df <- select(rev, title, individual.species.analysis, 
                       community.analysis, data.type...what.where.when.only, 
                       data.type...sampling.effort.reported, 
@@ -1393,12 +1422,13 @@ ggplot(dt_pd_df,
   scale_fill_discrete(name = "Data Type") + 
   xlab("Study question paradigm") + 
   ylab("Number of studies") + 
-  scale_y_continuous(breaks = seq(0, max(table(dt_pd_df$data_type)), 5)) + 
+  scale_y_continuous(breaks = seq(0, max(dt_pd_df$n), 5)) + 
   theme_bw() 
 ```
 
-**Jon - Too many data types to interpret well?  Drop life stage?  Is there any useful statistical work to be done here?  I don't think so - would require lots of data, not sure it adds much to understanding.**  I think the story is that data use is roughly similar between question paradigms, except maybe that vouchers seem to be
+**Jon - Too many data types to interpret well?  Drop life stage?  Is there any useful statistical work to be done here?  I don't think so - would require lots of data, not sure it adds much to understanding.**  I think the story is that data use is roughly similar between question paradigms, except maybe that voucher data seems to be used more often in individual species studies.  Also integrating multiple datasets for analyses is common in both question paradigms, and so it is worth making an effort to ensure that published datasets are in standardized, compatible formats.  
 
+## Analysis approach & data type
 _____________________________________________________________________
 # Discussion
 
@@ -1410,6 +1440,13 @@ The technique of having me do a "tie breaker" evaluation of all disagreement cas
 A final solution that is perhaps worth pursuing is only coding and analyzing variables for which coding can be done based entirely or largely on character string matching.  This would provide greater reliability, but at the cost of less interesting, informative, and insightful analysis (Krippendorff 2004, Section 11.1).
 
 There are two goals of having two readers.  First, to estimate how replicatable the analysis is.  If another researcher could code the articles in the same way I do, then it provides confidence that the analysis is revealing some sort of true characteristics of the literature.  Second, to improve the quality of this specific analysis by identifying and correcting sloppy errors on my part.  This is not necessarily replicatable, though, as I am doing the correcting, so the categories basically still show "Willson's inner vision of the literature" rather than some more widely true characteristics. 
+
+## Variables to abandon
+
+- **policy focus**. Too hard to decide b/c many articles mention possible policy applications even though they don't seem to specifically address them in any way.  Saying "policy" doesn't overcome the science/policy divide.  I originally wanted to know how many studies using bio recs data are directly informing policy (e.g. Emission mapping report), but it's too hard to tell from a journal publication.
+- **non-detection inferred using taxonomic group**.  Is this actually helping me answer an important question?  This is relevant only in a very narrow sense of whether studies create some sort of a pseudo-absence based on the taxonomic group that is subsequently used as absence data in a model.  This is really not relevant for any study that doesn't use a SDM that needs absence data.  Almost all analyses and models do this implicitly, but that is hard to describe or categorize.  So this is really a different, smaller focused systematic review of species distribution modelling studies to see how absence data are generated.  
+- **spatial bias mentioned** I wonder if I should narrow this to being TRUE only if some specific keywords are present (e.g. "spatial bias" or something like that), since it can be a little unclear whether authors are talking about spatial bias.  e.g. see "Evaluating promotional approaches..." in which they talk about bias, and talk about bio recs data being "geographically limited".  Or drop it based on the very bad Krippendorff's alpha and no clear explanation.
+
 
 _________________________________________________________________________
 
