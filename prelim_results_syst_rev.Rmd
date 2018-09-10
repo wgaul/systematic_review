@@ -1443,10 +1443,6 @@ There are two goals of having two readers.  First, to estimate how replicatable 
 
 ## Variables to abandon
 
-- **policy focus**. Too hard to decide b/c many articles mention possible policy applications even though they don't seem to specifically address them in any way.  Saying "policy" doesn't overcome the science/policy divide.  I originally wanted to know how many studies using bio recs data are directly informing policy (e.g. Emission mapping report), but it's too hard to tell from a journal publication.
-- **non-detection inferred using taxonomic group**.  Is this actually helping me answer an important question?  This is relevant only in a very narrow sense of whether studies create some sort of a pseudo-absence based on the taxonomic group that is subsequently used as absence data in a model.  This is really not relevant for any study that doesn't use a SDM that needs absence data.  Almost all analyses and models do this implicitly, but that is hard to describe or categorize.  So this is really a different, smaller focused systematic review of species distribution modelling studies to see how absence data are generated.  
-- **spatial bias mentioned** I wonder if I should narrow this to being TRUE only if some specific keywords are present (e.g. "spatial bias" or something like that), since it can be a little unclear whether authors are talking about spatial bias.  e.g. see "Evaluating promotional approaches..." in which they talk about bias, and talk about bio recs data being "geographically limited".  Or drop it based on the very bad Krippendorff's alpha and no clear explanation.
-
 
 _________________________________________________________________________
 
