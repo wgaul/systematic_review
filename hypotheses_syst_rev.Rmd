@@ -226,10 +226,10 @@ Drop these from coding?  Code just in case?  How to report that, then?
 
 * data gridded
 * grid resolution
-* non-detection inferred from other presences
-* entire taxonomic group analyzed (DROP)
-* results format - hypothesis testing (DROP)
-* compiled individual (DROP)
+* non-detection inferred from other presences (DROPED)
+* entire taxonomic group analyzed (DROPED)
+* results format - hypothesis testing (DROPED)
+* compiled individual (DROPED)
 
 ## Variables to add
 

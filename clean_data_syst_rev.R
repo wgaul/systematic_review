@@ -137,6 +137,8 @@ rev[grep(".*Scragh.*", rev$title),
     "policy.focus"] <- TRUE
 rev[grep("Evaluating promotional approaches.*", rev$title), 
     "spatial.bias.mentioned"] <- TRUE
+rev[grep("Big data integration.*", rev$title), 
+    "data.type...physical.specimen"] <- TRUE
 
 # cp codings
 cp <- cp_orig
@@ -185,6 +187,11 @@ cp[grep("Population variability in species can be deduced.*", cp$title),
    "testing.using.independent.dataset"] <- TRUE
 cp[grep("Potential for coupling the monitoring of bush.*", cp$title),
    "testing.using.independent.dataset"] <- TRUE
+cp[grep("Using geographic profiling.*", cp$title),
+   "testing.using.independent.dataset"] <- TRUE
+cp[grep("Light pollution:.*", cp$title),
+   "biological.records.in.facilitative.role.but.not.analyzed"] <- FALSE
+
 
 ## end correct errors ---------------------------------------------------------
 
