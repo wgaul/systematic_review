@@ -11,6 +11,8 @@ bibliography: phd_sources_Aug2018.bib
 
 **TODO: As of 10 Sep, I have removed columns from the 'systematic_review_coded_results.ods' spreadsheet.  Need to check to make sure that this all still runs appropriately (e.g. that columns are not accessed by number position, etc).**
 
+Consider adding a step after the agreement calculation where I summarize studies for which there was a lot of disagreement overall - ie disagreement on many categories.  These may be particularly perplexing, novel, or creative studies that could be removed from the formal analyses because they are poorly characterized by the existing categories.  But report number removed, and discuss them separately in discussion.  How to calculate agreement over all categories?  Kripp alpha but with categories as the replicate coded units?  Then use cluster analyses on the K's alphas for all individual studies?  I expect 2 groups - studies that are generally well characterized, and studies that are generally poorly characterized.
+
 **TODO:**
 
 - Methods
@@ -23,23 +25,22 @@ bibliography: phd_sources_Aug2018.bib
     - *Temporal Extent* [DONE]
     - Authors and Data Providing Institutions
     - Study Question
-        - Paradigms
+        - *Paradigms* [DONE]
         - Specific focus
     - Analysis approach & data type
 - Results - Statistical
     - Search results
-        - eligibility, n vars coded, n studies coded, n double coded
+        - n returned, n not returned by multiple searche methods (represents incompleteness of search), eligibility, n vars coded, n studies coded, n double coded
     - Reader agreement
     - *Temporal extent* [DONE]
     - Authors and Data Providing Institutions
     - Study Question
-        - *Paradigms* [DONE]
+        - *Paradigm* [DONE]
+        - Data type by question paradigm (add stats)
     - Analysis approach & data type
 - Results - Descriptive
     - Spatial extent
-    - *Study Question* [DONE]
-        - *Data type by question paradigm* [DONE]
-        - *Specific focus* [DONE]
+    - *Specific focus* [DONE]
     - Author associated with data provider
     - Spatial bias correction
     - Taxonomic group
@@ -52,6 +53,7 @@ bibliography: phd_sources_Aug2018.bib
     - Temporal extent
     - Study question
     - Analysis approach & data type
+    - Bio recs as predictors, facilitative roles (horizon scanning)
  
 
 ```{r, echo=F}
@@ -62,6 +64,7 @@ knitr::opts_chunk$set(echo=F, message=F, warning=T, cache=F)
 setwd("~/Documents/Data_Analysis/UCD/systematic_review/")
 library(wgutil)
 library(Hmisc)
+library(boot)
 library(irr)
 library(captioner)
 library(knitr)
@@ -165,6 +168,7 @@ For most analyses, we grouped the data types "physical specimen", "photo", "audi
 For statistical analyses, we kept data type variables in models based on *a-priori* expectations about the variables' influence on data analysis strategy and based on expectations about different levels of complexity and effort involved in collecting, recording, and storing the data.  The data type variables we kept in models were: what, where, when only; sampling effort reported; abundance; detection / non-detection; organized monitoring scheme; visit-specific covariates; multiple datasets integrated for analysis; life stage information; voucher specimen. 
 
 ### Study Question
+[TODO]
 
 ### Analysis approach
 We classified the broad analysis approach used by each study into one of three categories: 1) inference; 2) prediction; or 3) descriptive only.  For each study, we evaluated the analysis approach only for analyses within the study that used biological records data.  
@@ -760,44 +764,66 @@ indiv_mods_time <- list(m_no_whwhwh, m_no_effort, m_no_abund, m_no_nonDet,
 $H_a$: Some broad study question paradigms are more common than others in studies using biological records.
 
 $H_0$: The number of studies pursuing each of the broad study question paradigms is the same.
+ 
+We counted the number of studies that asked questions within each of the three broad study question areas (individual species questions, community questions, and other questions).  We estimated 95% confidence intervals around the number of studies asking each type of study question using bias-corrected accelerated bootstrap confidence intervals @Efron1993.
 
-*Proposed Test* One Poisson regression with study question paradigms (community, individual species, or other) as predictors. 
-
-
-```{r make_study_question_paradigm_tibble}
-paradigm_df <- select(rev, title, individual.species.analysis, 
-                      community.analysis) %>%
-  gather(key = "paradigm", value = "used", individual.species.analysis:
-           community.analysis) %>%
-  filter(used == TRUE)
-
-paradigm_counts_df <- group_by(paradigm_df, paradigm) %>%
-  summarise(num_studies = sum(used))
-paradigm_counts_df[nrow(paradigm_counts_df) + 1, "paradigm"] <- "other"
-paradigm_counts_df[which(paradigm_counts_df$paradigm == "other"), 2] <- length(
-    which(rev$community.analysis == F & rev$individual.species.analysis == F))
+```{r make_other_paradigm_category}
+# make an "other paradigm" column for all studies that are not community or 
+# individual species studies (this will be a catch-all category for methodology
+# studies and whatever else)
+rev$other_paradigm <- rev$community.analysis == F & 
+  rev$individual.species.analysis == F
 ```
 
-```{r question_paradigm_poisson_regression}
-## fit poisson regression with number of studies as response and question 
-## paradigm as predictor
+```{r make_study_question_paradigm_tibble}
+# # for printing in results
+# paradigm_df <- select(rev, title, individual.species.analysis, 
+#                       community.analysis) %>%
+#   gather(key = "paradigm", value = "used", individual.species.analysis:
+#            community.analysis) %>%
+#   filter(used == TRUE)
+# 
+# paradigm_counts_df <- group_by(paradigm_df, paradigm) %>%
+#   summarise(num_studies = sum(used))
+# paradigm_counts_df[nrow(paradigm_counts_df) + 1, "paradigm"] <- "other"
+# paradigm_counts_df[which(paradigm_counts_df$paradigm == "other"), 2] <- length(
+#     which(rev$community.analysis == F & rev$individual.species.analysis == F))
+```
 
-## check unconditional mean and variance for possible overdispersion
-if(diag) {
-  mean(paradigm_counts_df$num_studies)
-  var(paradigm_counts_df$num_studies) # doesn't look good
+```{r paradigm_bootstrap}
+count_fun <- function(x, indices) {
+  # ARGS: x - a vector of TRUE/FALSE values, for which the TRUES will be counted
+  #       indices - a vector of indices as required by boot
+  x_b <- x[indices]
+  sum(as.numeric(x_b), na.rm = TRUE)
 }
 
-qp_mod <- glm(num_studies ~ 1 + paradigm, data = paradigm_counts_df, 
-              family = "poisson") # full model
+# make a list to hold bootstrap results and CIs for each study questions paradigm
+# paradigm_list <- list(community = list(obs = rev$community.analysis, 
+#                                        boot_obj = NA, 
+#                                        ci_obj = NA), 
+#                       individual_sp = list(
+#                         obs = rev$individual.species.analysis, 
+#                         boot_obj = NA, 
+#                         ci_obj = NA),
+#                       other = list(obs = rev$other_paradigm, 
+#                                    boot_obj = NA, 
+#                                    ci_obj = NA))
 
-# test significance of paradigm as a predictor for number of studies
-# Need to look at type-3 sums of squares (function from car package)
-qp_full_anova <- Anova(qp_mod, type = 3)  
 
-# check for overdispersion after model fit
-if(diag) qp_mod$deviance / qp_mod$df.residual # um, not sure how this works when I have only 1 obs for each predictor
+boot_paradigm <- function(x) {
+  b_o <- boot(x, count_fun, R = 10000, stype = "i")
+  ci_o <- boot.ci(b_o, conf = 0.95, type = "bca")
+  to_return <- list(obs = x, 
+                    boot_obj = b_o, 
+                    ci_obj = ci_o)
+  to_return
+}
 
+paradigm_list <- lapply(list(community = rev$community.analysis, 
+                             individual_sp = rev$individual.species.analysis, 
+                             other = rev$other_paradigm), 
+                        FUN = boot_paradigm)
 ```
 
 
@@ -837,7 +863,11 @@ kripp_sum_cap <- figs(name = "kripp_sum_cap",
 ```
 
 ## Search results 
-The search returned `r nrow(elig)` potentially relevant studies, of which we have evaluated `r sum(!is.na(elig$qualifies))` for eligibility, and judged `r length(which(elig$qualifies == TRUE))` to be eligible for inclusion in the scoping review.  One reader has coded `r nrow(rev)` articles and a second reader has coded `r nrow(cp_orig)` of those. This preliminary analysis uses the `r nrow(rev)` articles coded so far.
+The search returned `r nrow(elig)` potentially relevant studies, of which we have evaluated `r sum(!is.na(elig$qualifies))` for eligibility, and judged `r length(which(elig$qualifies == TRUE))` to be eligible for inclusion in the scoping review.  ??? percent of potentially relevant studies were returned by more than one search method, while ??? percent of potentially relevant studies were returned by only one search method.  This suggests that additional searching is likely to be less rewarding as most studies identified by the later searches had already been identified by earlier searches.  
+
+One reader has coded `r nrow(rev)` articles and a second reader has coded `r nrow(cp_orig)` of those. 
+
+This preliminary analysis uses the `r nrow(rev)` articles coded so far.  
 
 
 ## Reader agreement
@@ -1009,8 +1039,6 @@ if(diag_present) kable(prob_of_values[, -2], digits = 2)
 #### Notes about agreement 
 (*italics* means I've corrected it, **bold** means I need to deal with it.)
 
-**As of 2 Sep I haven't updated this list to include the last few articles that I coded to get up to speed with CP.**
-
 - biological records in facilitative role: generally, it looks like CP codes this as TRUE much more often than I do.
     - *"An assessment of bumblebee (Bombus spp) land use..." Casey coded this as T, but the species observation data were clearly used as a response variable.  Perhaps the confusion is because survey participants were identifed from a list of people who had participated in a previous survey.  Regardless, this should be FALSE.*
     - *"Modelling and mapping UK emissions..." Casey coded TRUE, but to me this is a pretty clear case of biological records as a predictor (used to modify the response variable of emissions).  I think this is an error from lack of understanding of what it would look like to have bio recs as a predictor variable.  I don't think there's actually much ambiguity about how this article would be coded, I think perhaps there is ambiguity in my instructions about this category.  So, I changed this to FALSE.*
@@ -1134,6 +1162,16 @@ ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + #, color = sig
 
 -----------------------------------------------
 
+```{r paradigm_table_caption}
+paradigm_table_caption <- tabs("paradigm_table_caption", 
+                               paste0("The number of studies published between 2014 and 2018 addressing different broad types of questions using biological records data.  The 'other' category includes methodology studies and other studies that did not focus specifically on questions about individual species or communities."))
+```
+
+```{r paradigm_plot_cap}
+paradigm_plot_cap <- figs("paradigm_plot_cap", 
+                          "The number of studies published between 2014 and 2018 addressing different broad types of questions using biological records data.  The 'other' category includes methodology studies and other studies that did not focus specifically on questions about individual species or communities.  Vertical lines show 95% bootstrap confidence intervals.")
+```
+
 ## Study Question Paradigm
 
 ### What is the most popular study question paradigm?
@@ -1142,17 +1180,53 @@ $H_a$: Some broad study question paradigms are more common than others in studie
 
 $H_0$: The number of studies pursuing each of the broad study question paradigms is the same.
 
-**Jon - does a test here even make sense when I only have one observation of counts for each predictor?  Because no replicates, have no estimate of variance, so how can tell if means are different?  Assuming variance equals mean?  But do we have any evidence for that?  Can we assume that? Use bootstrapping to estimate variance to check assumptions?**  I'm not sure that the inference here is telling us much, either with the significance or parameter estimates.  Especially because that inference is based on an assumption about variance that we have no evidence for.  I think we actually have just as much confidence in the results by looking at the table as by looking at the inference (because difference is big, and assumptions of inferential model are questionable). 
+The number of studies asking questions about individual species (`r paradigm_list$individual_sp$ci_obj$t0` studies, 95% bootstrap CI [`r paradigm_list$individual_sp$ci_obj$bca[4]`, `r paradigm_list$individual_sp$ci_obj$bca[5]`]) was significantly higher than the number of studies asking questions about communities (`r paradigm_list$community$ci_obj$t0` studies, 95% bootstrap CI [`r paradigm_list$community$ci_obj$bca[4]`, `r paradigm_list$community$ci_obj$bca[5]`]) or asking other types of questions (`r paradigm_list$other$ci_obj$t0` studies, 95% bootstrap CI [`r paradigm_list$other$ci_obj$bca[4]`, `r paradigm_list$other$ci_obj$bca[5]`]) (`r tabs("paradigm_table_caption", display = "cite")`, `r figs("paradigm_plot_cap", display = "cite")`). 
 
-```{r print_paradigm_model_results}
-if(diag_present) {
-  qp_full_anova
-  summary(qp_mod)
-}
-```
+`r tabs("paradigm_table_caption", display = "full")`
 
 ```{r print_study_question_paradigm_table}
-kable(paradigm_counts_df, col.names = c("paradigm", "number of studies"))
+paradigm_count_df <- data.frame(matrix(nrow = length(paradigm_list), 
+                                        ncol = 4))
+colnames(paradigm_count_df) <- c("paradigm", "n_studies", "l_95ci", "u_95ci")
+
+# fill paradigm counts data frame using the list of paradigm bootstrap results
+for(i in 1:length(paradigm_list)) {
+  paradigm_count_df[i, "paradigm"] <- names(paradigm_list)[i]
+  paradigm_count_df[i, "n_studies"] <- paradigm_list[[i]]$ci_obj$t0
+  paradigm_count_df[i, "l_95ci"] <- paradigm_list[[i]]$ci_obj$bca[4]
+  paradigm_count_df[i, "u_95ci"] <- paradigm_list[[i]]$ci_obj$bca[5]
+}
+
+kable(paradigm_count_df, col.names = c("broad type of study question", 
+                                       "number of studies", 
+                                       "lower 95% bootstrap CI", 
+                                       "upper 95% bootstrap CI"))
+```
+
+```{r plot_paradigm_counts, fig.cap=paradigm_plot_cap}
+# plot number of studies in each paradigm, with 95% CIs
+print(ggplot(data = paradigm_count_df, 
+             aes(x = factor(paradigm, 
+                            levels = c("individual_sp", 
+                                       "community", 
+                                       "other"), 
+                            labels = c("individual species questions", 
+                                       "community questions", 
+                                       "other types of questions")), 
+                 y = n_studies)) + 
+        geom_point() + 
+        geom_linerange(aes(x = factor(paradigm, 
+                            levels = c("individual_sp", 
+                                       "community", 
+                                       "other"), 
+                            labels = c("individual species questions", 
+                                       "community questions", 
+                                       "other types of questions")), 
+                      ymin = l_95ci, 
+                      ymax = u_95ci)) + 
+        xlab(element_blank()) + 
+        ylab("Number of Studies") + 
+        theme_bw())
 ```
 
 ## Specific Study Focus
@@ -1267,7 +1341,7 @@ ggplot(data = qt_df,
   theme_bw()
 ```
 
-[ Descriptive stats for studies focusing on policy or alien species, testing ecological theory, and testing methods of data correction. ]
+[ Descriptive stats for studies focusing on alien species, testing ecological theory, and testing methods of data correction. ]
 
 ### What data types are used for each study question paradigm?
 
@@ -1432,6 +1506,12 @@ There are two goals of having two readers.  First, to estimate how replicatable 
 
 ## Variables to abandon
 
+* bio recs as predictor - Are these being used in any questions? If not, drop.
+* bio recs as response
+* bio recs in facilitative role?  (This is more interesting, but harder to code.  Perhaps keep for wg to code alone.  Yes, wg codes this as a "horizon scanning" type variable to keep track of examples of interesting things, but only clear cases will be discussed in article.  No need for double checking this because it won't be analyzed in any specific way.)
+* testing spatial bias correction (not used for any questions I think)
+* testing other data quality correction (for this and previous)
+* ADD a "methodology focus" text field variable that wg fills in if "methodology development/test" is TRUE.  This would help inform questions and categories if later I decide to re-visit and code all methodology studies to explore what methodology studies are currently focusing on.  I think that for this to be useful, it would have to be more detailed than just "testing spatial bias correction."  I would want more categories to say exactly what the methodolgy is trying to do.  
 
 _________________________________________________________________________
 
