@@ -9,7 +9,9 @@ output:
 bibliography: phd_sources_Aug2018.bib
 ---
 
-**TODO: As of 10 Sep, I have removed columns from the 'systematic_review_coded_results.ods' spreadsheet.  Need to check to make sure that this all still runs appropriately (e.g. that columns are not accessed by number position, etc).**
+**TODO: As of 13 Sep, I have removed columns from the 'systematic_review_coded_results.ods' spreadsheet and changed a bunch of column names.  Need to revise this script to make sure that this all still runs appropriately (e.g. that columns are not accessed by number position, etc).**
+
+**TODO: Generate a column indicating whether WhWhWh is the ONLY data type for ALL data.  By new definitions (13 Sep) the whwhwh data type is no longer mutually exclusive, but I do want to present results showing studies that used no data types other than that.  So need to construct that column in script.**
 
 Consider adding a step after the agreement calculation where I summarize studies for which there was a lot of disagreement overall - ie disagreement on many categories.  These may be particularly perplexing, novel, or creative studies that could be removed from the formal analyses because they are poorly characterized by the existing categories.  But report number removed, and discuss them separately in discussion.  How to calculate agreement over all categories?  Kripp alpha but with categories as the replicate coded units?  Then use cluster analyses on the K's alphas for all individual studies?  I expect 2 groups - studies that are generally well characterized, and studies that are generally poorly characterized.
 
@@ -765,7 +767,7 @@ $H_a$: Some broad study question paradigms are more common than others in studie
 
 $H_0$: The number of studies pursuing each of the broad study question paradigms is the same.
  
-We counted the number of studies that asked questions within each of the three broad study question areas (individual species questions, community questions, and other questions).  We estimated 95% confidence intervals around the number of studies asking each type of study question using bias-corrected accelerated bootstrap confidence intervals @Efron1993.
+We counted the number of studies that asked questions within each of the three broad study question areas (individual species questions, community questions, and other questions).  We estimated 95% confidence intervals around the number of studies asking each type of study question using bias-corrected accelerated bootstrap confidence intervals @Efron1993. **Should I do an explicit test of difference or adjust these CIs to account for multiple tests?**
 
 ```{r make_other_paradigm_category}
 # make an "other paradigm" column for all studies that are not community or 
@@ -1492,6 +1494,8 @@ ggplot(dt_pd_df,
 **Jon - Too many data types to interpret well?  Drop life stage?  Is there any useful statistical work to be done here?  I don't think so - would require lots of data, not sure it adds much to understanding.**  I think the story is that data use is roughly similar between question paradigms, except maybe that voucher data seems to be used more often in individual species studies.  Also integrating multiple datasets for analyses is common in both question paradigms, and so it is worth making an effort to ensure that published datasets are in standardized, compatible formats.  
 
 ## Analysis approach & data type
+[**TODO**]
+
 _____________________________________________________________________
 # Discussion
 
@@ -1506,12 +1510,10 @@ There are two goals of having two readers.  First, to estimate how replicatable 
 
 ## Variables to abandon
 
-* bio recs as predictor - Are these being used in any questions? If not, drop.
-* bio recs as response
-* bio recs in facilitative role?  (This is more interesting, but harder to code.  Perhaps keep for wg to code alone.  Yes, wg codes this as a "horizon scanning" type variable to keep track of examples of interesting things, but only clear cases will be discussed in article.  No need for double checking this because it won't be analyzed in any specific way.)
-* testing spatial bias correction (not used for any questions I think)
-* testing other data quality correction (for this and previous)
-* ADD a "methodology focus" text field variable that wg fills in if "methodology development/test" is TRUE.  This would help inform questions and categories if later I decide to re-visit and code all methodology studies to explore what methodology studies are currently focusing on.  I think that for this to be useful, it would have to be more detailed than just "testing spatial bias correction."  I would want more categories to say exactly what the methodolgy is trying to do.  
+* bio recs as predictor (keep, but wg only - horizon scanning)
+* bio recs as response (keep, but wg only - horizon scanning)
+* bio recs in facilitative role?  (This is more interesting, but hard to code.  wg will code this as a "horizon scanning" type variable to keep track of examples of interesting things, but only clear cases will be discussed in article.  No need for double checking this because it won't be analyzed in any specific way.)
+
 
 _________________________________________________________________________
 
