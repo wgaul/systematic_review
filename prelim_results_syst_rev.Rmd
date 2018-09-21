@@ -249,7 +249,7 @@ $H_0$: The mean temporal extent of studies using what, where, when-only data is 
 
 *Proposed Test*: Linear regression with natural-log transformed time (in years) as the outcome and data types as predictors.
 
-We used linear regression with natural-log transformed time (in years) as the response variable.  We used nine binary predictor variables indicating whether the data had the following information: 1) only what where when data, 2) sampling effort, 3) abundance, 4) detection / non-detection, 5) organized monitoring scheme, 6) visit-specific covariates, 7) multiple different datasets, 8) life stage information, and 9) voucher specimens.  While the predictor variables are correlated, we kept all variables in the multiple regression model because we are interested in the effect of each additional type of information *after accounting for other information types* (e.g. is there an additional effect of having abundance data after adjusting for whether the data came from an organized monitoring scheme).
+We used linear regression with natural-log transformed time (in years) as the response variable.  We used nine binary predictor variables indicating whether the study used data with the following characteristics: 1) all data contained only what, where, when information, 2) at least some records associated with known sampling effort, 3) at least some records contained abundance data, 4) at least some data contained explicit non-detection information, 5) at least some data came from an organized monitoring scheme, 6) at least some records included visit-specific covariates, 7) multiple different biological records datasets were integrated for analyses, 8) at least some records contained life stage information, and 9) voucher specimens were used for the analysis.  While the predictor variables are correlated, we kept all variables in the multiple regression model because we are interested in the effect of each additional type of information *after accounting for other information types* (e.g. is there an additional effect of having abundance data after adjusting for whether the data came from an organized monitoring scheme).
 
 Note that because the variables are not mutually exclusive these are each individual variables - these are not dummy variables representing a single categorical factor level "data type" variable.  
 
@@ -264,7 +264,7 @@ dt_df <- wg[, which(
       "data.structure...sampling.effort.known", 
       "data.structure...non.detection", 
       "data.structure...multiple.datasets.integrated.for.analysis", 
-      "data.type...what.where.when.only", 
+      "data.type...exclusively.whwhwh", 
       "data.type...abundance", 
       "data.type...visit.specific.covariates", 
       "data.type...life.stage", 
@@ -281,7 +281,7 @@ print(ggpairs(dt_df, columns = 1:ncol(dt_df),
                                "sampling effort",
                                "non detection",
                                "multiple datasets", 
-                               "what where when only", 
+                               "exclusively what where when", 
                                "abundance",
                                "visit specific covariates", 
                                "life stage", 
@@ -449,84 +449,84 @@ m_time_full_anova <- anova(m0, time_lm_full)
 # TODO: Does this need multiple comparison correction?
 
 m_no_whwhwh <- lm(log_years ~ 1 + 
-                    data.structure...sampling.effort.known + 
-                    data.type...abundance +
-                    data.structure...non.detection + 
-                    data.structure...organized.data.collection.scheme + 
-                    data.type...visit.specific.covariates + 
-                    data.structure...multiple.datasets.integrated.for.analysis +
-                    data.type...life.stage + 
-                    data.type...voucher.of.some.kind.necessary.for.analysis,
+                     data.structure...sampling.effort.known + 
+                     data.type...abundance +
+                     data.structure...non.detection + 
+                     data.structure...organized.data.collection.scheme + 
+                     data.type...visit.specific.covariates + 
+                     data.structure...multiple.datasets.integrated.for.analysis +
+                     data.type...life.stage + 
+                     data.type...voucher.of.some.kind.necessary.for.analysis,
                   data = wg)
 m_no_effort <- lm(log_years ~ 1 + 
-                    data.type...exclusively.whwhwh + 
-                    data.type...abundance +
-                    data.structure...non.detection + 
-                    data.structure...organized.data.collection.scheme + 
-                    data.type...visit.specific.covariates + 
-                    data.structure...multiple.datasets.integrated.for.analysis +
-                    data.type...life.stage + 
-                    data.type...voucher.of.some.kind.necessary.for.analysis,
+                     data.type...exclusively.whwhwh + 
+                     data.type...abundance +
+                     data.structure...non.detection + 
+                     data.structure...organized.data.collection.scheme + 
+                     data.type...visit.specific.covariates + 
+                     data.structure...multiple.datasets.integrated.for.analysis +
+                     data.type...life.stage + 
+                     data.type...voucher.of.some.kind.necessary.for.analysis,
                   data = wg)
 m_no_abund <- lm(log_years ~ 1 + 
-                   data.type...exclusively.whwhwh + 
-                   data.structure...sampling.effort.known + 
-                   data.structure...non.detection + 
-                   data.structure...organized.data.collection.scheme + 
-                   data.type...visit.specific.covariates + 
-                   data.structure...multiple.datasets.integrated.for.analysis +
-                   data.type...life.stage + 
-                   data.type...voucher.of.some.kind.necessary.for.analysis,
+                     data.type...exclusively.whwhwh + 
+                     data.structure...sampling.effort.known + 
+                     data.structure...non.detection + 
+                     data.structure...organized.data.collection.scheme + 
+                     data.type...visit.specific.covariates + 
+                     data.structure...multiple.datasets.integrated.for.analysis +
+                     data.type...life.stage + 
+                     data.type...voucher.of.some.kind.necessary.for.analysis,
                  data = wg)
 m_no_nonDet <- lm(log_years ~ 1 + 
-                    data.type...exclusively.whwhwh + 
-                    data.structure...sampling.effort.known + 
-                    data.type...abundance +
-                    data.structure...organized.data.collection.scheme + 
-                    data.type...visit.specific.covariates + 
-                    data.structure...multiple.datasets.integrated.for.analysis +
-                    data.type...life.stage + 
-                    data.type...voucher.of.some.kind.necessary.for.analysis,
+                     data.type...exclusively.whwhwh + 
+                     data.structure...sampling.effort.known + 
+                     data.type...abundance +
+                     data.structure...organized.data.collection.scheme + 
+                     data.type...visit.specific.covariates + 
+                     data.structure...multiple.datasets.integrated.for.analysis +
+                     data.type...life.stage + 
+                     data.type...voucher.of.some.kind.necessary.for.analysis,
                   data = wg)
 m_no_scheme <- lm(log_years ~ 1 + 
-                    data.type...exclusively.whwhwh + 
-                    data.structure...sampling.effort.known + 
-                    data.type...abundance +
-                    data.structure...non.detection + 
-                    data.type...visit.specific.covariates + 
-                    data.structure...multiple.datasets.integrated.for.analysis +
-                    data.type...life.stage + 
-                    data.type...voucher.of.some.kind.necessary.for.analysis,
+                     data.type...exclusively.whwhwh + 
+                     data.structure...sampling.effort.known + 
+                     data.type...abundance +
+                     data.structure...non.detection + 
+                     data.type...visit.specific.covariates + 
+                     data.structure...multiple.datasets.integrated.for.analysis +
+                     data.type...life.stage + 
+                     data.type...voucher.of.some.kind.necessary.for.analysis,
                   data = wg)
 m_no_visitCovs <- lm(log_years ~ 1 + 
-                       data.type...exclusively.whwhwh + 
-                       data.structure...sampling.effort.known + 
-                       data.type...abundance +
-                       data.structure...non.detection + 
-                       data.structure...organized.data.collection.scheme + 
-                       data.structure...multiple.datasets.integrated.for.analysis +
-                       data.type...life.stage + 
-                       data.type...voucher.of.some.kind.necessary.for.analysis,
+                     data.type...exclusively.whwhwh + 
+                     data.structure...sampling.effort.known + 
+                     data.type...abundance +
+                     data.structure...non.detection + 
+                     data.structure...organized.data.collection.scheme + 
+                     data.structure...multiple.datasets.integrated.for.analysis +
+                     data.type...life.stage + 
+                     data.type...voucher.of.some.kind.necessary.for.analysis,
                      data = wg)
 m_no_multData <- lm(log_years ~ 1 + 
-                      data.type...exclusively.whwhwh + 
-                      data.structure...sampling.effort.known + 
-                      data.type...abundance +
-                      data.structure...non.detection + 
-                      data.structure...organized.data.collection.scheme + 
-                      data.type...visit.specific.covariates + 
-                      data.type...life.stage + 
-                      data.type...voucher.of.some.kind.necessary.for.analysis,
+                     data.type...exclusively.whwhwh + 
+                     data.structure...sampling.effort.known + 
+                     data.type...abundance +
+                     data.structure...non.detection + 
+                     data.structure...organized.data.collection.scheme + 
+                     data.type...visit.specific.covariates + 
+                     data.type...life.stage + 
+                     data.type...voucher.of.some.kind.necessary.for.analysis,
                     data = wg)
 m_no_lifeStage <- lm(log_years ~ 1 + 
-                       data.type...exclusively.whwhwh + 
-                       data.structure...sampling.effort.known + 
-                       data.type...abundance +
-                       data.structure...non.detection + 
-                       data.structure...organized.data.collection.scheme + 
-                       data.type...visit.specific.covariates + 
-                       data.structure...multiple.datasets.integrated.for.analysis +
-                       data.type...voucher.of.some.kind.necessary.for.analysis,
+                     data.type...exclusively.whwhwh + 
+                     data.structure...sampling.effort.known + 
+                     data.type...abundance +
+                     data.structure...non.detection + 
+                     data.structure...organized.data.collection.scheme + 
+                     data.type...visit.specific.covariates + 
+                     data.structure...multiple.datasets.integrated.for.analysis +
+                     data.type...voucher.of.some.kind.necessary.for.analysis,
                      data = wg)
 m_no_voucher <- lm(log_years ~ 1 + 
                      data.type...exclusively.whwhwh + 
@@ -546,7 +546,7 @@ indiv_mods_time <- list(m_no_whwhwh, m_no_effort, m_no_abund, m_no_nonDet,
 
 ## Study Question
 
-**What is the most popular study question paradigm?**
+### What is the most popular study question paradigm?
 
 $H_a$: Some broad study question paradigms are more common than others in studies using biological records.
 
@@ -561,7 +561,6 @@ We counted the number of studies that asked questions within each of the three b
 wg$other_paradigm <- wg$community.question == F & 
   wg$individual.species.question == F
 ```
-
 
 ```{r paradigm_bootstrap}
 count_fun <- function(x, indices) {
