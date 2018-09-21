@@ -6,11 +6,8 @@ output:
   fig_caption: yes
   html_notebook: default
   word_document: null
-bibliography: phd_sources_Aug2018.bib
+bibliography: PhD_references.bib
 ---
-
-**TODO: As of 13 Sep, I have removed columns from the 'systematic_review_coded_results.ods' spreadsheet and changed a bunch of column names.  Need to revise this script to make sure that this all still runs appropriately (e.g. that columns are not accessed by number position, etc).**
-
 
 Consider adding a step after the agreement calculation where I summarize studies for which there was a lot of disagreement overall - ie disagreement on many categories.  These may be particularly perplexing, novel, or creative studies that could be removed from the formal analyses because they are poorly characterized by the existing categories.  But report number removed, and discuss them separately in discussion.  How to calculate agreement over all categories?  Kripp alpha but with categories as the replicate coded units?  Then use cluster analyses on the K's alphas for all individual studies?  I expect 2 groups - studies that are generally well characterized, and studies that are generally poorly characterized.
 
@@ -140,7 +137,7 @@ We classified the broad analysis approach used by each study into one of three c
 We considered studies estimating parameters and reporting some measure of uncertainty (e.g. *p*-values, confidence intervals, posterior probability distributions) to be using inference.  We considered studies that built models and made predictions to be using an analysis strategy of prediction, even if no uncertainty or inference was reported with the predictions.  Finally, we considered the analysis approach to be descriptive only if results were descriptive with no prediction or inference.  Descriptive results could be narrative, graphical, or quantitative as long as no inference or uncertainty was reported (e.g. point estimates of descriptive statistics without any confidence interval or *p*-values).  Studies could use both inference and prediction as analysis strategies and so those categories were not mutually exclusive, but studies were only categorized as using a descriptive analysis approach if all results were descriptive only and the study used no inference or prediction.  
 
 ### Agreement between two readers
-I used Krippendorff's *alpha* [@Krippendorff2004] to evaluate the agreement between two readers for each of `r ncol(cp)-1` variables that had been coded by two people.  [**Dina, any thoughts about Krippendorff's alpha or other measures of agreement?**]. I calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package [@irr2012].  For each case of disagreement between the two readers, I reviewed the article.  When the disagreement seemed to be due to an oversight or an obvious error (e.g. when one reader coded "results type - inference" as FALSE but the article reported 95% confidence intervals around estimates), I corrected the erroneous value.  In cases where the disagreement was not the result of an obvious oversight, I did not change either value.  I calculated Krippendorff's alpha to assess agreement both before and after I corrected obviously erroneous codings. 
+I used Krippendorff's *alpha* [@Krippendorff2004] to evaluate the agreement between two readers for each of `r ncol(er)-1` variables that had been coded by two people.  [**Dina, any thoughts about Krippendorff's alpha or other measures of agreement?**]. I calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package [@irr2012].  For each case of disagreement between the two readers, I reviewed the article.  When the disagreement seemed to be due to an oversight or an obvious error (e.g. when one reader coded "results type - inference" as FALSE but the article reported 95% confidence intervals around estimates), I corrected the erroneous value.  In cases where the disagreement was not the result of an obvious oversight, I did not change either value.  I calculated Krippendorff's alpha to assess agreement both before and after I corrected obviously erroneous codings. 
 
 Krippendorff's *alpha* for binary data is calculated as:
 
@@ -173,24 +170,22 @@ The coincidence matrix for observed values is:
 
 
 ```{r inter_coder_agreement_subset_dfs, warning=TRUE}
-# TODO replace this with Ellie's results
- 
-## casey's results ----------------------------------------------------
+## ellie's results ----------------------------------------------------
 # remove columns that aren't coded variables 
-cp <- cp[, which(colnames(cp) %nin% 
+er <- er[, which(colnames(er) %nin% 
                              c("link", "qualifies", "authors", "publication", 
                                "doi", "year", "coding.DONE"))]
-cp <- cp[order(cp$title), ] # order rows
-cp <- cp[, order(colnames(cp))] # order columns
+er <- er[order(er$title), ] # order rows
+er <- er[, order(colnames(er))] # order columns
 # put title column first
-cp <- cp[, c(which(colnames(cp) == "title"), 
-                       which(colnames(cp) != "title"))]
-## end casey's results --------------------------------- ------------------
+er <- er[, c(which(colnames(er) == "title"), 
+                       which(colnames(er) != "title"))]
+## end ellie's results --------------------------------- ------------------
 
 ## my results after error correction ---------------------------------------
-# subset my coded results to titles and columns coded by casey
-mult_coded_wg <- wg[which(wg$title %in% cp$title), 
-                      which(colnames(wg) %in% colnames(cp))]
+# subset my coded results to titles and columns coded by ellie
+mult_coded_wg <- wg[which(wg$title %in% er$title), 
+                      which(colnames(wg) %in% colnames(er))]
 # order rows
 mult_coded_wg <- mult_coded_wg[order(mult_coded_wg$title), ] 
 # order cols
@@ -201,32 +196,32 @@ mult_coded_wg <- mult_coded_wg[, c(
 ## end my results after error correction --------------------------------------
 
 ## make sure all titles are present
-if(any(mult_coded_wg$title %nin% cp$title) | 
-   any(cp$title %nin% mult_coded_wg$title)) {
-  warning("cp and mult_coded_wg don't have the same titles. One or both of those data frames will be subsetted.")
-  mult_coded_wg <- mult_coded_wg[which(mult_coded_wg$title %in% cp$title), ]
-  cp <- cp[which(cp$title %in% mult_coded_wg$title), ]
+if(any(mult_coded_wg$title %nin% er$title) | 
+   any(er$title %nin% mult_coded_wg$title)) {
+  warning("er and mult_coded_wg don't have the same titles. One or both of those data frames will be subsetted.")
+  mult_coded_wg <- mult_coded_wg[which(mult_coded_wg$title %in% er$title), ]
+  er <- er[which(er$title %in% mult_coded_wg$title), ]
 }
 
 ## make sure df rows and cols are in the same order
-if(!identical(colnames(cp), colnames(mult_coded_wg))) {
-  stop("Columns in cp and mult_coded_wg must be identical and in the same order. They must be in the same order for creating the variable data frames that will be used to calculate Krippendorf's alpha. ")
+if(!identical(colnames(er), colnames(mult_coded_wg))) {
+  stop("Columns in er and mult_coded_wg must be identical and in the same order. They must be in the same order for creating the variable data frames that will be used to calculate Krippendorf's alpha. ")
 }
 ```
 
 ```{r make_dfs_of_double_coded_variables_all_studies}
 # each row is codings from one person
 # each column is a study
-post_correct_list <- list()
-if(colnames(cp)[1] != "title" | colnames(mult_coded_wg)[1] != "title") {
-  stop("The first column of cp and mult_coded_wg must be the study title")}
+dbl_coded_list <- list()
+if(colnames(er)[1] != "title" | colnames(mult_coded_wg)[1] != "title") {
+  stop("The first column of er and mult_coded_wg must be the study title")}
 
-for(i in 2:ncol(cp)) {
-  post_correct_list[[i-1]] <- data.frame(matrix(
-    data = c(cp[, i][[1]], mult_coded_wg[, i][[1]]), 
-    nrow = 2, ncol = nrow(cp), byrow = T))
+for(i in 2:ncol(er)) {
+  dbl_coded_list[[i-1]] <- data.frame(matrix(
+    data = c(er[, i][[1]], mult_coded_wg[, i][[1]]), 
+    nrow = 2, ncol = nrow(er), byrow = T))
 }
-names(post_correct_list) <- colnames(cp)[2:ncol(cp)]
+names(dbl_coded_list) <- colnames(er)[2:ncol(er)]
 ```
 
 ```{r krippendorfs_alpha_calc, warning=FALSE, message=FALSE}
@@ -237,13 +232,8 @@ do_kripp.alpha <- function(x, method) {
   kripp.alpha(as.matrix(x), method = method)
 }
 
-kripp_all_pre_correct <- lapply(pre_correct_list, FUN = do_kripp.alpha, 
-                               method = "nominal")
-kripp_all_post_correct <- lapply(post_correct_list, FUN = do_kripp.alpha, 
+kripp_all_dbl_coded <- lapply(dbl_coded_list, FUN = do_kripp.alpha, 
                                  method = "nominal")
-kripp_pre_cal <- lapply(pre_cal_list, FUN = do_kripp.alpha, method = "nominal")
-kripp_post_cal <- lapply(post_cal_list, FUN = do_kripp.alpha, 
-                         method = "nominal")
 ```
 
 
@@ -342,7 +332,7 @@ temp_extent$data_type <- factor(as.character(temp_extent$data_type),
                                        "visit specific covariates", 
                                        "multiple datasets", 
                                        "life stage", 
-                                       "voucher available"))
+                                       "voucher used"))
 ```
 
 Evaluate normality of raw data:
@@ -620,22 +610,15 @@ ____________________________________________________________________________
 kripp_sum_cap <- figs(name = "kripp_sum_cap", 
                       paste0("Reader agreement for ", 
                              length(which(colnames(mult_coded_wg) != "title")), 
-                             " categories measured using Krippendorff's alpha.  The pre-calibration results are for only articles before a meeting to calibrate expectations and definitions (n = ", 
-                             length(calibration_set), 
-                             ").  Post-calibration results are for only articles coded after the calibration meeting (n = ", 
-                             length(which(mult_coded_wg$title %nin% 
-                                            calibration_set)), 
-                             "). The all_pre_correct group shows results for the original codings for all articles (both those coded before and after the callibration meeting, n = ", 
-                             nrow(mult_coded_wg_orig), 
-                             ").  The post-correct group shows agreement for all articles (n = ", 
+                             " categories measured using Krippendorff's alpha. The ??? group shows agreement for all articles (n = ", 
                              nrow(mult_coded_wg), 
-                             ") after I evaluated each individual case of disagreement and corrected obvious errors. Dotted lines show values of alpha of 0.667 and 0.8, which are recommended minimum and preferred values at which variables can be relied upon for analysis."))
+                             ").  Dotted lines show values of alpha of 0.667 and 0.8, which are recommended minimum and preferred values at which variables can be relied upon for analysis."))
 ```
 
 ## Search results 
 The search returned `r nrow(elig)` potentially relevant studies, of which we have evaluated `r sum(!is.na(elig$qualifies))` for eligibility, and judged `r length(which(elig$qualifies == TRUE))` to be eligible for inclusion in the scoping review.  ??? percent of potentially relevant studies were returned by more than one search method, while ??? percent of potentially relevant studies were returned by only one search method.  This suggests that additional searching is likely to be less rewarding as most studies identified by the later searches had already been identified by earlier searches.  
 
-One reader has coded `r nrow(wg)` articles and a second reader has coded `r nrow(cp_orig)` of those. 
+One reader has coded `r nrow(wg)` articles and a second reader has coded `r nrow(er)` of those. 
 
 This preliminary analysis uses the `r nrow(wg)` articles coded so far.  
 
@@ -648,37 +631,21 @@ The poor agreement between the two readers for any given category could be due t
 
 Possible solutions are: 1) refine definitions and instructions, when possible specifying specific words or phrases that can be searched for in the article; 2) removing from analysis variables for which many articles are difficult to definitively categorize; 3) requiring a higher level of skill or knowledge of the readers, or treating the less-skilled readers' categorizations as a trigger for a "tie breaker" 3rd review to reveal obvious errors by the first reader, but not as reliable codings in their own right; 4) require readers to read the entire article rather than skimming it, or using disagreements as a trigger for a 3rd "tie breaker" review.
 
-During the third "tie breaker" evaluation of disagreement cases, I judged that the disagreement was due to an obvious error and therefore changed the original (erroneous) value for `r length(which(mult_coded_wg != mult_coded_wg_orig[which(mult_coded_wg_orig$title %in% mult_coded_wg$title), ]))` of Willson's original codings and `r length(which(cp != cp_orig[which(cp_orig$title %in% cp$title), ]))` of CP's original codings.  Disagreements were not a result of obvious errors and values were therefore not changed in `r length(which(mult_coded_wg != cp))` cases.
 
 
 ```{r krippendorfs_alpha_summary, fig.cap = kripp_sum_cap}
-kripp_summary_precorrect_long <- data.frame(
-  set = c(rep("pre calibration", length(kripp_pre_cal)), 
-          rep("post calibration", length(kripp_post_cal)), 
-          rep("all_pre_correct", length(kripp_all_pre_correct)), 
-          rep("all_post_correct", length(kripp_all_post_correct))), 
-  variable = c(names(kripp_pre_cal), 
-               names(kripp_post_cal), 
-               names(kripp_all_pre_correct), 
-               names(kripp_all_post_correct)), 
-  krip_alpha = c(sapply(kripp_pre_cal, 
-                        FUN = function(x) {x$value}), 
-                 sapply(kripp_post_cal, 
-                        FUN = function(x) {x$value}), 
-                 sapply(kripp_all_pre_correct, 
-                        FUN = function(x) {x$value}), 
-                 sapply(kripp_all_post_correct, 
-                        FUN = function(x) {x$value})))
+kripp_summary_long <- data.frame(
+  set = rep("all_dbl_coded", length(kripp_all_dbl_coded)), 
+  variable = names(kripp_all_dbl_coded), 
+  krip_alpha = sapply(kripp_all_dbl_coded, 
+                        FUN = function(x) {x$value}))
 
-kripp_summary_precorrect_long$set <- factor(kripp_summary_precorrect_long$set, 
-                                 levels = c("pre calibration", 
-                                            "post calibration", 
-                                            "all_pre_correct", 
-                                            "all_post_correct"))
+kripp_summary_long$set <- factor(kripp_summary_long$set, 
+                                 levels = c("all_dbl_coded"))
 
 if(diag_present) {
   print(
-    ggplot(data = kripp_summary_precorrect_long, 
+    ggplot(data = kripp_summary_long, 
            mapping = aes(y = krip_alpha, x = set)) + 
       geom_boxplot() + 
       geom_point() + 
@@ -696,46 +663,21 @@ if(diag_present) {
 ```{r plot_kripp_by_nTRUE}
 # this is exploratory to see if krippendorff's alpha is varying wildly b/c
 # of insufficient variation
-alpha_df_all <- data.frame(
-  set = rep("all", length(names(kripp_pre_cal))), 
-  variable = names(kripp_all_pre_correct),  
-  alpha = sapply(kripp_all_pre_correct, FUN = function(x) {x$value}),
-  n_wg_T = sapply(names(kripp_all_pre_correct), 
-                  FUN = function(x, df = mult_coded_wg_orig) {
+alpha_df <- data.frame(
+  set = rep("all", length(names(kripp_all_dbl_coded))), 
+  variable = names(kripp_all_dbl_coded),  
+  alpha = sapply(kripp_all_dbl_coded, FUN = function(x) {x$value}),
+  n_wg_T = sapply(names(kripp_all_dbl_coded), 
+                  FUN = function(x, df = mult_coded_wg) {
                     df <- data.frame(df)
                     col_vec <- df[, which(colnames(df) == x)]
-                    sum(col_vec)}), 
+                    if(is.logical(col_vec)) {
+                      sum(col_vec)
+                    } else NA
+                  }), 
   stringsAsFactors = FALSE,
-  row.names = 1:length(names(kripp_all_pre_correct))
+  row.names = 1:length(names(kripp_all_dbl_coded))
 )
-
-alpha_df_pre_cal <- data.frame(
-  set = rep("pre calibration", length(names(kripp_pre_cal))), 
-  variable = names(kripp_pre_cal), 
-  alpha = sapply(kripp_pre_cal, FUN = function(x) {x$value}), 
-  n_wg_T = sapply(names(kripp_pre_cal), 
-                  FUN = function(x, df = mult_coded_wg_orig) {
-                    df <- data.frame(df)
-                    col_vec <- df[, which(colnames(df) == x)]
-                    sum(col_vec)}),
-  stringsAsFactors = FALSE, 
-  row.names = 1:length(names(kripp_pre_cal))
-)
-
-alpha_df_post_cal <- data.frame(
-  set = rep("post calibration", length(names(kripp_post_cal))), 
-  variable = names(kripp_post_cal), 
-  alpha = sapply(kripp_post_cal, FUN = function(x) {x$value}), 
-  n_wg_T = sapply(names(kripp_post_cal), 
-                  FUN = function(x, df = mult_coded_wg_orig) {
-                    df <- data.frame(df)
-                    col_vec <- df[, which(colnames(df) == x)]
-                    sum(col_vec)}), 
-  stringsAsFactors = FALSE,
-  row.names = 1:length(names(kripp_post_cal))
-)
-
-alpha_df <- bind_rows(list(alpha_df_all, alpha_df_pre_cal, alpha_df_post_cal))
 
 if(diag) {
   print(
@@ -743,22 +685,13 @@ if(diag) {
       geom_point() + 
       geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
       geom_hline(aes(yintercept = 0.8), lty = "dotted") + 
-      ggtitle("Krippendorff's alpha by the number\nof TRUEs in Willson's coding\nOriginal Codings Before Correcting Errors") + 
+      ggtitle("Krippendorff's alpha by the number\nof TRUEs in Willson's coding") + 
       xlab("Number of TRUE values in Willson's coding") + 
       theme_bw()
   )
 }
 ```
 
-```{r kripp_agreement_wg_before_and_after_corrections, include = F, eval = F}
-# show agreement measure of how well my corrections based on looking at double
-# codings agree with my original codings.
-if(diag) {
-  hist(sapply(kripp_wg_comparison, FUN = function(x) {x$value}))
-  summary(sapply(kripp_wg_comparison, FUN = function(x) {x$value}))
-  sapply(kripp_wg_comparison, FUN = function(x) {x$value})
-}
-```
 
 We could use my codings (either original or corrected) for analysis, and view the second reader's role as highlighting cases of sloppy errors or careless oversight on my part.  This doesn't address the reproducability question of whether my categories are clear enough that an independent researcher trying to do the same study would come up with the same conclusions.  In order to answer that, we would need a second reader with adequate ability to code each category.  Lacking such a person, we'll have to use the second reader as an error catcher rather than an independent second opinion.
 
@@ -792,22 +725,24 @@ prob_of_values <- lapply(
                                   "analysis.method", "predictor.variables", 
                                   "methodology.focus", 
                                   "coding.DONE", 
-                                  "temp_extent", "log_years"))], 
+                                  "temp_extent", "log_years", 
+                                  "data.type...exclusively.whwhwh", 
+                                  "other_paradigm"))], 
   FUN = function(x) {sum(x, na.rm = T) / length(which(!is.na(x)))})
 
 prob_of_values <- data.frame(variable = names(prob_of_values), 
                              prob_T = unlist(prob_of_values), 
                              row.names = NULL)
 prob_of_values$prob_small_class <- NA
-prob_of_values$kripp_pre_correct <- NA
+prob_of_values$kripp_all <- NA
 for(i in 1:nrow(prob_of_values)) {
   if(prob_of_values$prob_T[i] <= 0.5) { # calc prob of minority class
     prob_of_values$prob_small_class[i] <- prob_of_values$prob_T[i]
   } else prob_of_values$prob_small_class[i] <- 1 - prob_of_values$prob_T[i]
   
   # add krippendorff's alpha for codings
-  prob_of_values$kripp_all[i] <- kripp_all[[which(
-    names(kripp_all) == prob_of_values$variable[i])]]$value
+  prob_of_values$kripp_all[i] <- kripp_all_dbl_coded[[which(
+    names(kripp_all_dbl_coded) == prob_of_values$variable[i])]]$value
 }
 
 # On p 240 of Krippendorff book, it says that if acceptable alpha is 0.667 and 
@@ -1027,8 +962,8 @@ ggplot(data = qt_df,
 ## But if I include this again later, should add all data type variables.
 paradigm_data_df <- select(wg, title, individual.species.question, 
                       community.question, data.type...what.where.when.only, 
-                      data.type...sampling.effort.reported, 
-                      data.type...detection...non.detection, 
+                      data.structure...sampling.effort.known, 
+                      data.structure...non.detection, 
                       data.type...abundance) %>%
   gather(key = "paradigm", value = "parad_used", individual.species.question:
            community.question) %>%
@@ -1040,10 +975,10 @@ paradigm_data_df <- select(wg, title, individual.species.question,
 paradigm_data_df$data_type <- gsub("data.type...what.where.when.only", 
                                    "what, where, when only", 
                                    paradigm_data_df$data_type)
-paradigm_data_df$data_type <- gsub("data.type...sampling.effort.reported", 
+paradigm_data_df$data_type <- gsub("data.type...sampling.effort.known", 
                                    "sampling effort", 
                                    paradigm_data_df$data_type)
-paradigm_data_df$data_type <- gsub("data.type...detection...non.detection", 
+paradigm_data_df$data_type <- gsub("data.structure...non.detection", 
                                    "detection / non-detection", 
                                    paradigm_data_df$data_type)
 paradigm_data_df$data_type <- gsub("data.type...abundance", 
@@ -1059,74 +994,21 @@ paradigm_data_df$paradigm <- gsub("individual.species.question",
 kable(table(paradigm_data_df$data_type, paradigm_data_df$paradigm))
 ```
 
-```{r data_type_by_paradigm_pairs_plot, fig.height=8, fig.width = 8, eval = F}
-### plot data type by study question paradigm ----------------------
-### I think this is not how I want to visualize this.  Trying a new approach in following chunk
-dt_pd_df <- wg[, which(
-  colnames(wg) %in% 
-    c("data.type...what.where.when.only", 
-      "data.type...sampling.effort.reported", 
-      "data.type...abundance", 
-      "data.type...detection...non.detection", 
-      "data.type...organized.data.collection.scheme", 
-      "data.type...visit.specific.covariates", 
-      "data.type...multiple.datasets.integrated.for.analysis", 
-      "data.type...life.stage", 
-      "data.type...voucher.available", 
-      "community.question", 
-      "individual.species.question"))]
-for(i in 1:ncol(dt_pd_df)) {
-  dt_pd_df[, i] <- as.factor(as.character(data.frame(dt_pd_df)[, i]))
-}
-
-# set attributes of columns
-attr(dt_pd_df, "data types") <- c(
-  "data.type...what.where.when.only", 
-  "data.type...sampling.effort.reported", 
-  "data.type...abundance", 
-  "data.type...detection...non.detection", 
-  "data.type...organized.data.collection.scheme", 
-  "data.type...visit.specific.covariates", 
-  "data.type...multiple.datasets.integrated.for.analysis", 
-  "data.type...life.stage", 
-  "data.type...voucher.available")
-attr(dt_pd_df, "study paradigm") <- c("community.question", 
-                                      "individual.species.question")
-
-data_type_vars <- attr(dt_pd_df, "data type")
-paradigm_vars <- attr(dt_pd_df, "study paradigm")
-
-print(ggduo(dt_pd_df, data_type_vars, paradigm_vars, 
-            title = "testing", 
-            columnLabelsX = c("what where when only", 
-                               "sampling effort",
-                               "abundance",
-                               "non detection", 
-                               "organized scheme", 
-                               "visit specific covariates", 
-                               "multiple datasets", 
-                               "life stage", 
-                               "voucher available"), 
-            columnLabelsY = c("community", "individual species"), 
-            labeller = label_wrap_gen(width = 10)) + 
-        theme(axis.text.x = element_text(angle = 50, hjust = 1), 
-              axis.text.y = element_text(angle = 50, hjust = 0)))
-```
 
 ```{r data_type_by_paradigm_barplot}
 ### plot data type by study question paradigm ----------------------
 dt_pd_df <- select(wg, data.type...what.where.when.only, 
-      data.type...sampling.effort.reported, 
+      data.structure...sampling.effort.known, 
       data.type...abundance, 
-      data.type...detection...non.detection, 
-      data.type...organized.data.collection.scheme, 
-      data.type...multiple.datasets.integrated.for.analysis, 
+      data.structure...non.detection, 
+      data.structure...organized.data.collection.scheme, 
+      data.structure...multiple.datasets.integrated.for.analysis, 
       data.type...life.stage, 
-      data.type...voucher.available,
+      data.type...voucher.of.some.kind.necessary.for.analysis,
       community.question, 
       individual.species.question) %>%
   gather(key = "data_type", value = "dt_val", data.type...what.where.when.only:
-           data.type...voucher.available) %>%
+           data.type...voucher.of.some.kind.necessary.for.analysis) %>%
   filter(dt_val == TRUE) %>%
   gather(key = "paradigm", value = "pd_val", community.question, 
          individual.species.question) %>%
@@ -1142,13 +1024,13 @@ ggplot(dt_pd_df,
            y = n, 
            fill = factor(data_type, 
                          levels = c("data.type...what.where.when.only", 
-                           "data.type...sampling.effort.reported", 
+                           "data.structure...sampling.effort.known", 
                            "data.type...abundance", 
-                           "data.type...detection...non.detection", 
-                           "data.type...organized.data.collection.scheme", 
-                           "data.type...multiple.datasets.integrated.for.analysis",
+                           "data.structure...non.detection", 
+                           "data.structure...organized.data.collection.scheme", 
+                           "data.structure...multiple.datasets.integrated.for.analysis",
                            "data.type...life.stage", 
-                           "data.type...voucher.available"), 
+                           "data.type...voucher.of.some.kind.necessary.for.analysis"), 
                          labels = c("what where when only", 
                                     "sampling effort", 
                                     "abundance", 
@@ -1166,7 +1048,7 @@ ggplot(dt_pd_df,
   theme_bw() 
 ```
 
-**Jon - Too many data types to interpret well?  Drop life stage?  Is there any useful statistical work to be done here?  I don't think so - would require lots of data, not sure it adds much to understanding.**  I think the story is that data use is roughly similar between question paradigms, except maybe that voucher data seems to be used more often in individual species studies.  Also integrating multiple datasets for analyses is common in both question paradigms, and so it is worth making an effort to ensure that published datasets are in standardized, compatible formats.  
+**Jon - Is there any useful statistical work to be done here? TODO: Yes, fit full model w/interaction and w/out interactin to see if distribution of bars is different in community v. individual sp studies.**  I think the story is that data use is roughly similar between question paradigms, except maybe that voucher data seems to be used more often in individual species studies.  Also integrating multiple datasets for analyses is common in both question paradigms, and so it is worth making an effort to ensure that published datasets are in standardized, compatible formats.  
 
 ## Analysis approach & data type
 [**TODO**]
@@ -1194,102 +1076,6 @@ _________________________________________________________________________
 
 # Old versions below here
 
-## Types of questions  
-Analyses may appear in this table or graph more than once.  For example, a study proposing a new method for estimating species richness and then using that method to test predictions about a productivity/richness relationship would appear in the counts in three columns.
-
-```{r questions_by_data_type}
-qt_df <- select(wg, "title", "year", "methodology.development.or.analysis", 
-                "distribution", "abundance", "phenology", 
-                "testing.macro.or.ecological.theory", "trends.over.time", 
-                "data.type...what.where.when.only", 
-                "data.type...detection...non.detection", 
-                "data.type...abundance", "data.type...sampling.effort.reported", 
-                "data.type...organized.data.collection.scheme") 
-names(qt_df)[3:8] <- c("methodology", "distribution", "abundance",
-                        "phenology", "testing.theory", "temporal.trends")
-
-qt_df <- gather(qt_df, key = "study_question", value = "v_1", 
-                methodology:temporal.trends, factor_key = T) %>%
-  filter(v_1 == TRUE) %>%
-  gather(key = "data.type", value = "v_2", 
-         data.type...what.where.when.only:
-           data.type...organized.data.collection.scheme, 
-         factor_key = T) %>%
-  filter(v_2 == TRUE)
-
-
-kable(table(qt_df$data.type, qt_df$study_question), 
-      caption = "The types of questions addressed by studies that use biological records, according to what type of data they use.")
-
-### testing stuff
-chisq.test(table(qt_df$data.type, qt_df$study_question), simulate.p.value = T)
-```
-
-```{r}
-qt_df <- select(wg, "title", "year", "methodology.development.or.analysis", 
-                "individual.species.question", "community.question", 
-                "compiled.individual.species.question", "distribution", 
-                "abundance", "phenology", "testing.macro.or.ecological.theory", 
-                "trends.over.time") 
-names(qt_df)[3:10] <- c("methodology", "individual.species", "community", 
-                        "compiled.individual", "distribution", "abundance",
-                        "phenology", "testing.theory")
-
-qt_df <- gather(qt_df, key = "population", value = "v_1", individual.species, 
-                compiled.individual, community, factor_key = T) %>%
-  filter(v_1 == TRUE) %>%
-  gather(key = "study_question", value = "v_2", distribution, abundance, 
-         phenology, testing.theory, methodology, trends.over.time, 
-         factor_key = T) %>%
-  filter(v_2 == TRUE)
-
-
-kable(table(qt_df$study_question, qt_df$population) / length(unique(qt_df$title)), digits = 2, 
-      caption = "The types of questions addressed by studies that use biological records.  Values are the proportion of all studies.  Study populations are columns, topic of the study is in rows.")
-```
-
-
-
-
-## Taxonomic Group
-```{r}
-taxa <- select(wg, title, year, taxonomic.group, distribution, abundance, 
-               phenology, testing.macro.or.ecological.theory, trends.over.time)
-
-tax_names <- unlist(strsplit(taxa$taxonomic.group, "; "))
-tax_names <- unique(tax_names)
-tax_names <- tax_names[which(!is.na(tax_names))]
-tax_names <- tax_names[order(tax_names)]
-
-temp_df <- data.frame(matrix(nrow = nrow(taxa), ncol = length(tax_names)))
-colnames(temp_df) <- tax_names
-taxa <- cbind(taxa, temp_df)
-rm(temp_df) 
-
-for(i in 1:nrow(taxa)) {
-  groups <- taxa$taxonomic.group[i]
-  groups <- unlist(strsplit(groups, "; "))
-  taxa[i, which(colnames(taxa) %in% groups)] <- T
-}
-
-taxa <- gather(taxa, key = "tax_group", value = "value", 
-               all:wasps) %>%
-  filter(value == T) 
-
-table(taxa$tax_group)[order(table(taxa$tax_group), decreasing = T)]
-```
-
-```{r}
-if(diag) {
-  taxa <- gather(taxa, key = "question", value = "v_2", 
-                 distribution:trends.over.time, factor_key = T) %>%
-    filter(v_2 == T)
-  
-  table(taxa$tax_group, taxa$question)
-}
-```
-Above is good.  Need to simplify taxonomic groups.  Might not end up using this table, b/c the patterns it shows probably have more to do with the type of data (abundance, semi-structure) than taxonomic group.  So, butterflies don't lend themselves to abundance and phenology studies, but the monitoring scheme used for butterflies does lend itself to those types of analyses.
-
 
 --------------------------------------------------------------------
 
@@ -1306,126 +1092,9 @@ $H_03$: The ?rate? at which wh,wh,wh-only data is analyzed with prediction is no
 
 $H_a3$: The ?rate? at which wh,wh,wh-only data is analyzed with prediction is greater than for richer data types.
 
-```{r analysis_approach_data_prep}
-rf <- select(wg, c(title, data.type...what.where.when.only:
-                      results.type...descriptive.only)) %>%
-  gather(key = "data_type", value = "v_1", 
-         data.type...what.where.when.only:data.type...detection...non.detection, 
-         data.type...abundance:data.type...physical.specimen, 
-         factor_key = T) %>%
-  filter(v_1 ==T) %>%
-  gather(key = "results_format", value = v_2, 
-         results.type...inference:results.type...descriptive.only, 
-         factor_key = T) %>%
-  filter(v_2 == T)
-
-# make names prettier
-rf$results_format <- gsub("results.type...", "", rf$results_format)
-rf$data_type <- gsub("data.type...", "", rf$data_type)
-
-rf$results_format <- factor(as.character(rf$results_format), 
-                            levels = c("inference", "prediction", "descriptive.only"), 
-                            labels = c("inference", "prediction", "descriptive only"),
-                            ordered = T)
-```
-
-```{r analysis_approach_by_data_type_assumptions_poisson_reg}
-if(diag) {
-  table(rf$data_type, rf$results_format)
-  hist(table(rf$data_type, rf$results_format)) # doesn't look poisson-y
-  
-  addmargins(table(rf$data_type, rf$results_format))
-  
-  # check unconditional mean and variance - doesn't look the same
-  mean(as.numeric(table(rf$data_type, rf$results_format)))
-  var(as.numeric(table(rf$data_type, rf$results_format))) 
-
-  
-}
-```
-
-```{r resultsFormatByDataType}
 
 
-if(diag) {
-  pander(table(wg$results.type...descriptive.only), caption = "Descriptive Only Results (need at least 10 events/non evenst per predictor)")
-}
-
-dt_table <- table(rf$data_type)
-names(dt_table) <- c("What, Where,\nWhen", "Abundance", "Known\nEffort", 
-                     "Semi-\nStructured", "Visit-specific\nCovariates", 
-                     "physical\nspecimen")
-# pander(dt_table, caption = "Table of the gathered data_type column (compare to number of studies included)", keep.line.breaks = T)
-
-
-kable(table(rf$data_type, rf$results_format), 
-      caption = "Results formats produced using different types of data (this is counting studies, not counting analyses).  Is there a chi-squared-type test for when grouping variable categories are not mutually exclusive?")
-
-```
-
-
-
-
-Above looks ok, but probably need to do a chi-squared test or something to compare expected v. observed counts.  Or do glm with inference & hypothesis testing (or H testing, inference, and prediction) as positive class, “descriptive” as negative class, and data type as categorical predictors?  
-
-### $H_02$
-
-```{r results_by_data}
-wg$quantitative <- wg$results.type...hypothesis.testing == T |
-  wg$results.type...inference == T | wg$results.type...prediction == T
-
-long_wg <- select(wg, title, quantitative, data.type...what.where.when.only:
-                     data.type...detection...non.detection, 
-                   data.type...sampling.effort.reported:data.type...physical.specimen) %>%
-  gather(key = "data_type", value = "v_1", 
-         data.type...what.where.when.only:data.type...physical.specimen) %>%
-  filter(v_1 == T)
-
-long_wg$quantitative <- gsub("TRUE", "inference/prediction", as.character(long_wg$quantitative))
-long_wg$quantitative <- gsub("FALSE", "descriptive", as.character(long_wg$quantitative))
-kable(table(long_wg$data_type, long_wg$quantitative))
-
-```
-
-```{r, echo = T}
-if(diag) {
-  table(wg$data.type...what.where.when.only)
-  table(wg$data.type...abundance)
-  table(wg$data.type...detection...non.detection)
-  table(wg$data.type...sampling.effort.reported)
-  table(wg$data.type...organized.data.collection.scheme)
-  table(wg$data.type...visit.specific.covariates)
-  table(wg$data.type...physical.specimen)
-}
-```
-
-```{r fit_glm_analysis_approach}
-results_data_model <- glm(quantitative ~ 
-                            as.factor(data.type...what.where.when.only) + 
-                            as.factor(data.type...abundance) + 
-                            as.factor(data.type...detection...non.detection) + 
-                            as.factor(data.type...sampling.effort.reported) + 
-                            as.factor(data.type...organized.data.collection.scheme) + 
-                            as.factor(data.type...visit.specific.covariates) + 
-                            as.factor(data.type...physical.specimen), 
-                          family = binomial, 
-                          data = wg)
-```
-
-```{r glm_results}
-# one_cov_mod <- glm(quantitative ~ data.type...what.where.when.only + 
-#                             data.type...abundance, 
-#                           family = binomial, 
-#                           data = wg)
-
-# summary(results_data_model)
-# library(car)
-# vif(results_data_model)
-```
-
-
-
-
+# References
 
 
 
