@@ -11,7 +11,7 @@
 ## 
 ## author: Willson Gaul wgaul@hotmail.com
 ## created: 27 Aug 2018
-## last modified: 17 Sep 2018
+## last modified: 6 Nov 2018
 ###########################################
 
 library(tidyverse)
@@ -20,8 +20,8 @@ setwd("~/Documents/Data_Analysis/UCD/systematic_review/")
 
 # read in data
 elig <- read_csv("~/Documents/UCD/PhD_Project/systematic_review/master_eligibility_results.csv")
-wg <- read_csv("./data/wg_systematic_review_coding.csv")
-er <- read_csv("./data/fake_ellie.csv")
+wg <- read_csv("./data/wg_systematic_review_coding_6Nov.csv")
+er <- read_csv("./data/ellie_systematic_review_coding_02.csv")
 
 
 ## remove columns which are used as visual separators with no data ------------
@@ -37,9 +37,21 @@ if(any(grepl("X.*", colnames(er)))) {
 }
 colnames(er) <- make.names(colnames(er))
 
-## tidy some column names manually --------------------------------------------
-# (not needed right now)
+## clean some column names and data values ------------------------------------
+# names ok right now
+er$data.type...photo[which(er$data.type...photo == "f")] <- "FALSE"
 
+dfs <- list(er = er, wg = wg) # make a list of data for cleaning
+for(i in 1:length(dfs)) {
+  dfs[[i]] <- data.frame(apply(dfs[[i]], MARGIN = 2, FUN = function(x) {
+    gsub("not stated|unknown|not clear|unclear", replacement = "unknown", x = x, 
+         ignore.case = TRUE)
+  }), stringsAsFactors = FALSE)
+  dfs[[i]] <- 
+}
+
+list2env(dfs, envir = environment()) # unpack the data from the list
+## end clean column names and data values -------------------------------------
 
 ## subset to qualifying articles for which coding is done ---------------------
 # wg data

@@ -88,7 +88,7 @@ source("./clean_data_syst_rev.R")
 wg$temp_extent <- as.numeric(wg$end.year) - as.numeric(wg$start.year)
 # individually assign values to studies with temporal extent < 1 year
 if(diag) paste0("The following article has a temporal extent of zero: ", 
-                wg$title[wg$temp_extent == 0])
+                wg$title[which(wg$temp_extent == 0)])
 wg$temp_extent[which(
   grepl("An assessment of bumblebee .* land use and floral.*", 
         wg$title))] <- 0.33
@@ -172,9 +172,9 @@ The coincidence matrix for observed values is:
 ```{r inter_coder_agreement_subset_dfs, warning=TRUE}
 ## ellie's results ----------------------------------------------------
 # remove columns that aren't coded variables 
-er <- er[, which(colnames(er) %nin% 
-                             c("link", "qualifies", "authors", "publication", 
-                               "doi", "year", "coding.DONE"))]
+er <- er[, which(colnames(er) %nin% c("link", "qualifies", "authors", 
+                                      "publication", "doi", "year", 
+                                      "coding.DONE"))]
 er <- er[order(er$title), ] # order rows
 er <- er[, order(colnames(er))] # order columns
 # put title column first
@@ -218,7 +218,7 @@ if(colnames(er)[1] != "title" | colnames(mult_coded_wg)[1] != "title") {
 
 for(i in 2:ncol(er)) {
   dbl_coded_list[[i-1]] <- data.frame(matrix(
-    data = c(er[, i][[1]], mult_coded_wg[, i][[1]]), 
+    data = c(er[, i], mult_coded_wg[, i]), 
     nrow = 2, ncol = nrow(er), byrow = T))
 }
 names(dbl_coded_list) <- colnames(er)[2:ncol(er)]
@@ -579,9 +579,9 @@ boot_paradigm <- function(x) {
   to_return
 }
 
-paradigm_list <- lapply(list(community = wg$community.question, 
-                             individual_sp = wg$individual.species.question, 
-                             other = wg$other_paradigm), 
+paradigm_list <- lapply(list(community = factor(wg$community.question), 
+                             individual_sp = factor(wg$individual.species.question), 
+                             other = factor(wg$other_paradigm)), 
                         FUN = boot_paradigm)
 ```
 
@@ -634,61 +634,57 @@ Possible solutions are: 1) refine definitions and instructions, when possible sp
 
 ```{r krippendorfs_alpha_summary, fig.cap = kripp_sum_cap}
 kripp_summary_long <- data.frame(
-  set = rep("all_dbl_coded", length(kripp_all_dbl_coded)), 
   variable = names(kripp_all_dbl_coded), 
   krip_alpha = sapply(kripp_all_dbl_coded, 
                         FUN = function(x) {x$value}))
 
-kripp_summary_long$set <- factor(kripp_summary_long$set, 
-                                 levels = c("all_dbl_coded"))
-
 if(diag_present) {
   print(
     ggplot(data = kripp_summary_long, 
-           mapping = aes(y = krip_alpha, x = set)) + 
+           mapping = aes(y = krip_alpha)) + 
       geom_boxplot() + 
-      geom_point() + 
-      geom_line(aes(group = variable)) + 
+      geom_point(aes(x = 0)) + 
       geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
-      geom_hline(aes(yintercept = 0.8), lty = "dotted") + 
+      geom_hline(aes(yintercept = 0.8), lty = "dashed") + 
       ggtitle("Reader agreement using Krippendorff's alpha") + 
       xlab("") +
       ylab("Krippendorff's alpha") + 
-      theme_bw()
+      theme_bw() + 
+      theme(axis.text.x = element_blank())
   )
 }
 ```
 
 ```{r plot_kripp_by_nTRUE}
+## As of 8 Nov this is broken because I have columns that aren't just T/F
 # this is exploratory to see if krippendorff's alpha is varying wildly b/c
 # of insufficient variation
-alpha_df <- data.frame(
-  set = rep("all", length(names(kripp_all_dbl_coded))), 
-  variable = names(kripp_all_dbl_coded),  
-  alpha = sapply(kripp_all_dbl_coded, FUN = function(x) {x$value}),
-  n_wg_T = sapply(names(kripp_all_dbl_coded), 
-                  FUN = function(x, df = mult_coded_wg) {
-                    df <- data.frame(df)
-                    col_vec <- df[, which(colnames(df) == x)]
-                    if(is.logical(col_vec)) {
-                      sum(col_vec)
-                    } else NA
-                  }), 
-  stringsAsFactors = FALSE,
-  row.names = 1:length(names(kripp_all_dbl_coded))
-)
-
-if(diag) {
-  print(
-    ggplot(alpha_df, aes(x = n_wg_T, y = alpha, color = set)) + 
-      geom_point() + 
-      geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
-      geom_hline(aes(yintercept = 0.8), lty = "dotted") + 
-      ggtitle("Krippendorff's alpha by the number\nof TRUEs in Willson's coding") + 
-      xlab("Number of TRUE values in Willson's coding") + 
-      theme_bw()
-  )
-}
+# alpha_df <- data.frame(
+#   variable = names(kripp_all_dbl_coded),  
+#   alpha = sapply(kripp_all_dbl_coded, FUN = function(x) {x$value}),
+#   n_wg_T = sapply(names(kripp_all_dbl_coded), 
+#                   FUN = function(x, df = mult_coded_wg) {
+#                     df <- data.frame(df)
+#                     col_vec <- df[, which(colnames(df) == x)]
+#                     if(is.logical(col_vec)) {
+#                       sum(col_vec, na.rm = T)
+#                     } else NA
+#                   }), 
+#   stringsAsFactors = FALSE,
+#   row.names = 1:length(names(kripp_all_dbl_coded))
+# )
+# 
+# if(diag) {
+#   print(
+#     ggplot(alpha_df, aes(x = n_wg_T, y = alpha)) + 
+#       geom_point() + 
+#       geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
+#       geom_hline(aes(yintercept = 0.8), lty = "dotted") + 
+#       ggtitle("Krippendorff's alpha by the number\nof TRUEs in Willson's coding") + 
+#       xlab("Number of TRUE values in Willson's coding") + 
+#       theme_bw()
+#   )
+# }
 ```
 
 
@@ -704,41 +700,27 @@ kripp_samp_size_cap <- tabs(name = "kripp_samp_size_cap",
 `r if(diag_present) tabs("kripp_samp_size_cap", display = "full")`
 
 ```{r calculate_proportion_T}
-## This calculates the proportion of TRUE values using wg's 
-# codings for each variable.  Even though we are interested in kripp's alpha
-# for double-coded articls, I use the post-correction TRUEs as the best 
-# estimate of the
-# true proportion of TRUE values for each variable, and that best estimate of
-# the proportion is what I need to figure out required sample size for Kripp's a.
+## This calculates the probability of the smallest class for each variable, for 
+## use in calculating minimum sample size needed for Kripp's alpha for that 
+## variable.  
+## This treats all variables as factor variables.
 prob_of_values <- lapply(
-  wg[, which(colnames(wg) %nin% c("title", "qualifies", "authors", 
-                                  "publication", "year", "keywords", 
-                                  "institution.of.first.author", 
-                                  "institution.of.last.author", 
-                                  "proximate.data.source", 
-                                  "country.of.study", "spatial.extent.of.study", 
-                                  "start.year", "end.year", 
-                                  "taxonomic.group",
-                                  "grid.resolution", 
-                                  "prediction.performance.measure", 
-                                  "analysis.method", "predictor.variables", 
-                                  "methodology.focus", 
-                                  "coding.DONE", 
-                                  "temp_extent", "log_years", 
-                                  "data.type...exclusively.whwhwh", 
-                                  "other_paradigm"))], 
-  FUN = function(x) {sum(x, na.rm = T) / length(which(!is.na(x)))})
+  wg[, which(colnames(wg) %in% names(kripp_all_dbl_coded))], 
+  FUN = function(x) {
+    x <- factor(x)
+    mn <- 1
+    for(j in 1:length(levels(x))) {
+      prob <- length(which(x == levels(x)[j])) / length(which(!is.na(x)))
+      if(prob < mn) mn <- prob
+    }
+    mn
+  })
 
 prob_of_values <- data.frame(variable = names(prob_of_values), 
-                             prob_T = unlist(prob_of_values), 
+                             prob_small_class = unlist(prob_of_values), 
                              row.names = NULL)
-prob_of_values$prob_small_class <- NA
 prob_of_values$kripp_all <- NA
 for(i in 1:nrow(prob_of_values)) {
-  if(prob_of_values$prob_T[i] <= 0.5) { # calc prob of minority class
-    prob_of_values$prob_small_class[i] <- prob_of_values$prob_T[i]
-  } else prob_of_values$prob_small_class[i] <- 1 - prob_of_values$prob_T[i]
-  
   # add krippendorff's alpha for codings
   prob_of_values$kripp_all[i] <- kripp_all_dbl_coded[[which(
     names(kripp_all_dbl_coded) == prob_of_values$variable[i])]]$value
@@ -750,8 +732,33 @@ prob_of_values$n_25_adequate <- prob_of_values$prob_small_class > 0.25
 prob_of_values$n_30_adequate <- prob_of_values$prob_small_class > 0.2
 prob_of_values$n_40_adequate <- prob_of_values$prob_small_class >= 0.143
 
-if(diag_present) kable(prob_of_values[, -2], digits = 2)
+if(diag_present) {
+  kable(prob_of_values[order(
+  prob_of_values$kripp_all, decreasing = T), -2], digits = 2)
+  
+  # list only those for which sample size is adequate
+  samp_adequate <- prob_of_values[which(prob_of_values$n_30_adequate == T), ]
+  kable(samp_adequate[order(
+  samp_adequate$kripp_all, decreasing = T), -2], digits = 2)
+  rm(samp_adequate)
+}
 ```
+
+```{r plot_kripp_for_adequate_sample_size}
+# plot krippendorf's alpha values for only variables that have adequate sample size
+ggplot(data = prob_of_values[which(prob_of_values$n_30_adequate == T), ], 
+       aes(y = kripp_all)) +
+  geom_boxplot() + 
+  geom_point(aes(x = 0)) + 
+  geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
+  geom_hline(aes(yintercept = 0.8), lty = "dashed") + 
+  ggtitle("Krippendorf's alpha for the variables for\nwhich we have adequate sample size") +
+  ylab("Krippendorf's Alpha value") + 
+  xlab("") +
+  theme_bw() + 
+  theme(axis.text.x = element_blank())
+```
+
 
 
 #### Notes about agreement 
