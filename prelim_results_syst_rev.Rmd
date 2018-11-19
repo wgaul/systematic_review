@@ -9,8 +9,6 @@ output:
 bibliography: PhD_references.bib
 ---
 
-Consider adding a step after the agreement calculation where I summarize studies for which there was a lot of disagreement overall - ie disagreement on many categories.  These may be particularly perplexing, novel, or creative studies that could be removed from the formal analyses because they are poorly characterized by the existing categories.  But report number removed, and discuss them separately in discussion.  How to calculate agreement over all categories?  Kripp alpha but with categories as the replicate coded units?  Then use cluster analyses on the K's alphas for all individual studies?  I expect 2 groups - studies that are generally well characterized, and studies that are generally poorly characterized.
-
 **TODO:**
 
 - Methods
@@ -73,7 +71,7 @@ library(car)
 library(GGally)
 library(tidyverse)
 
-diag <- F # produce exploratory & diagnostics plots & results
+diag <- T # produce exploratory & diagnostics plots & results
 diag_present <- T # produce diagnostics for report to Dina
 
 if(diag == F) { # turn off warnings when not running diagnostics
@@ -81,17 +79,6 @@ if(diag == F) { # turn off warnings when not running diagnostics
 }
 
 source("./clean_data_syst_rev.R")
-```
-
-```{r calc_temp_extent}
-# calculate number of years covered by study
-wg$temp_extent <- as.numeric(wg$end.year) - as.numeric(wg$start.year)
-# individually assign values to studies with temporal extent < 1 year
-if(diag) paste0("The following article has a temporal extent of zero: ", 
-                wg$title[which(wg$temp_extent == 0)])
-wg$temp_extent[which(
-  grepl("An assessment of bumblebee .* land use and floral.*", 
-        wg$title))] <- 0.33
 ```
 
 ```{r numberingPrep}
@@ -104,69 +91,43 @@ tabs <- captioner(prefix = "Table")
 This document states every question I plan to ask and shows methods, figures, tables and results text that I expect to use to answer each question in the biological records systematic review. Specific results and interpretations will change when I code the rest of the articles.
 
 # Methods
-We did a systematic review of original research published since 2014 that used biological records from Ireland and the UK.  We generated a list of relevant articles from Web of Science, Scopus, ProQuest, GoogleScholar, and the Global Biodiversity Information Facility (GBIF) website.  I evaluated each article for inclusion eligibility and coded information on [**??**] characteristics for each eligible article.  This coding was validated for a subset of articles by a second reader.  Agreement between the two readers was evaluated using Krippendorff's alpha (Krippendorff 2004).
+We did a systematic review of original research published since 2014 that used biological records from Ireland and the UK.  We generated a list of relevant articles from Web of Science, Scopus, ProQuest, GoogleScholar, and the Global Biodiversity Information Facility (GBIF) website.  One researcher evaluated each article for inclusion eligibility and coded information on 46 variables describing characteristics of each article.  A second reader coded all variables for a subset of 20% of the articles.  Agreement between the two readers was evaluated using Krippendorff's alpha (Krippendorff 2004).  Variables that did not meet minimum standards for reader agreement were not used in subsequent analyses.  
 
 ## Study eligibility
-Studies were eligible for inclusion if they met all of the following criteria:
+Studies were eligible for inclusion if they:
 
-1) original research
-2) English language
+1) presented original research
+2) were written in the English language
 3) used opportunistic biological data collected with non-standardized or semi-standardized protocols
 4) included (but were not necessarily limited to) data from Ireland or the UK
-5) the full text of the study was available through the UCD library online platform, Google, GoogleScholar, or ResearchGate.  
-6) performs at least one analysis of the data (data papers and biotic atlases were not eligible)
-7) sample size greater than 20
-8) not restricted to fossil records
+5) were available in full-text versions through the UCD library online platform, Google, GoogleScholar, or ResearchGate.  
+6) performed at least one analysis of the data (data papers and biotic atlases were not eligible)
+7) used a sample size greater than 20
+8) were not restricted to fossil records
 
-Grey literature was included and therefore peer review was not required.  Studies using semi-standardized data collection schemes (e.g. UK Butterfly Monitoring Scheme) were included as long as they included some opportunistic elements (e.g. locations chosen opportunistically by volunteers). Studies for which all data was collected by the study authors were excluded.  
+Grey literature was included and therefore peer review was not required.  Studies using semi-standardized data collection schemes (e.g. UK Butterfly Monitoring Scheme) were included as long as data collection included some opportunistic elements (e.g. locations chosen opportunistically by volunteers). Studies for which all data was collected by the study authors were excluded.  
 
 ## Article coding
+
+For a list of the variables along with a description of each, see Appendix **[??]** *Instructions for Coders*.  Here we provide a brief summary of the broad types of information we coded.
+
 ### Data Type
-We coded twelve variables describing aspects of data type: what, where, when only; sampling effort reported; abundance; detection / non-detection; organized monitoring scheme; visit-specific covariates; multiple datasets integrated for analysis; life stage information; physical specimen; photo; audio; video. Data types are not mutually exclusive except fot the "what where when only" data type, which cannot be true if any other data type is true.  We considered "what, where, when" as the baseline data type and considered all other data types supplementary additions to that basic data type.
+We coded thirteen variables describing aspects of the type and structure of the biological records data.  The data type categories are not mutually exclusive.  
 
 For most analyses, we grouped the data types "physical specimen", "photo", "audio", and "video" into a "voucher specimen" group, but we coded them individually in order to identify emerging trends in how vouchers are collected.
 
-For statistical analyses, we kept data type variables in models based on *a-priori* expectations about the variables' influence on data analysis strategy and based on expectations about different levels of complexity and effort involved in collecting, recording, and storing the data.  The data type variables we kept in models were: what, where, when only; sampling effort reported; abundance; detection / non-detection; organized monitoring scheme; visit-specific covariates; multiple datasets integrated for analysis; life stage information; voucher specimen. 
+For statistical analyses, we kept data type variables in models based on *a-priori* expectations about the variables' influence on data analysis strategy and based on expectations about different levels of complexity and effort involved in collecting, recording, and storing the data.  The data type variables we kept in models were: what, where, when only; sampling effort reported; abundance; non-detection; organized monitoring scheme; visit-specific covariates; multiple datasets integrated for analysis; life stage information; and voucher specimen. 
 
-### Study Question
-[TODO]
+### Study Questions
+We described the main focus(es) of each study in terms of whether the study was asking questions about individual species, ecological communities, or about methodology.
 
 ### Analysis approach
-We classified the broad analysis approach used by each study into one of three categories: 1) inference; 2) prediction; or 3) descriptive only.  For each study, we evaluated the analysis approach only for analyses within the study that used biological records data.  
+We classified the broad analysis approach used by each study into one of three categories: 1) inference; 2) prediction; or 3) descriptive only.  For each study, we evaluated the analysis approach only for analyses that used biological records data.
 
 We considered studies estimating parameters and reporting some measure of uncertainty (e.g. *p*-values, confidence intervals, posterior probability distributions) to be using inference.  We considered studies that built models and made predictions to be using an analysis strategy of prediction, even if no uncertainty or inference was reported with the predictions.  Finally, we considered the analysis approach to be descriptive only if results were descriptive with no prediction or inference.  Descriptive results could be narrative, graphical, or quantitative as long as no inference or uncertainty was reported (e.g. point estimates of descriptive statistics without any confidence interval or *p*-values).  Studies could use both inference and prediction as analysis strategies and so those categories were not mutually exclusive, but studies were only categorized as using a descriptive analysis approach if all results were descriptive only and the study used no inference or prediction.  
 
 ### Agreement between two readers
-I used Krippendorff's *alpha* [@Krippendorff2004] to evaluate the agreement between two readers for each of `r ncol(er)-1` variables that had been coded by two people.  [**Dina, any thoughts about Krippendorff's alpha or other measures of agreement?**]. I calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package [@irr2012].  For each case of disagreement between the two readers, I reviewed the article.  When the disagreement seemed to be due to an oversight or an obvious error (e.g. when one reader coded "results type - inference" as FALSE but the article reported 95% confidence intervals around estimates), I corrected the erroneous value.  In cases where the disagreement was not the result of an obvious oversight, I did not change either value.  I calculated Krippendorff's alpha to assess agreement both before and after I corrected obviously erroneous codings. 
-
-Krippendorff's *alpha* for binary data is calculated as:
-
-$\alpha = 1 - D_O/D_E$
-
-Where $D_o$ is the observed disagreement between readers and $D_e$ is the disagreement expected by chance.  The number of agreements (and disagreements) expected by chance is calculated using the observed values by calculating a coincidence matrix of values expected by chance:
-
-|   |    0     |     1    |
-|---|----------|----------| 
-| 0 | $E_{00}$ | $E_{01}$ | 
-| 1 | $E_{10}$ | $E_{11}$ | 
-
-where $E_{00} = n_0 \times\ (n_0 - 1)/(n-1)$
-
-$E_{01} = E_{10} = n_0 \times\ n_1/(n - 1)$
-
-$E_{11} = n_1 \times\ (n_1 - 1) / (n - 1)$
-
-$n$ is the number of observations (twice the number of coded units when there are two observers), $n_0$ is the number of zeros in all observed pairs, and $n_1$ is the number of ones in all observed pairs.
-
-The coincidence matrix for observed values is:
-
-|   |    0     |     1    |
-|---|----------|----------|
-| 0 | $O_{00}$ | $O_{01}$ | 
-| 1 | $O_{10}$ | $O_{11}$ | 
-
-"Coincidences sum contingencies and their inverses, thereby omitting the references to the individual observers..." @Krippendorff2004
-
+We used Krippendorff's *alpha* [@Krippendorff2004] to evaluate the agreement between two readers for each of `r ncol(er)-6` variables that were coded by two people.  [**Dina, any thoughts about Krippendorff's alpha or other measures of agreement?**]. We calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package [@irr2012].  Krippendorff's alpha measures agreement between multiple coders while accounting for aggrement by chance.  Values of Krippendorff's alpha range from **[??]** to 1, where 1 represents perfect agreement.  Rule-of-thumb guidelines suggest that Krippendorff's alpha values below 0.67 indicate poor agreement such that the data cannot be trusted for analysis; values between 0.67 and 0.8 suggest that the data are moderately reliable and may be suitable for only tentative interpretation, and values above 0.8 indicate that the data are reliable.  We removed variables with Krippendorff's alpha values below 0.67 from all analyses; all other variables were kept, but we make note of variables for which Krippendorff's alpha values indicate only moderate reliability of the data. 
 
 
 ```{r inter_coder_agreement_subset_dfs, warning=TRUE}
@@ -174,38 +135,37 @@ The coincidence matrix for observed values is:
 # remove columns that aren't coded variables 
 er <- er[, which(colnames(er) %nin% c("link", "qualifies", "authors", 
                                       "publication", "doi", "year", 
-                                      "coding.DONE"))]
+                                      "keywords", "coding.DONE"))]
 er <- er[order(er$title), ] # order rows
 er <- er[, order(colnames(er))] # order columns
 # put title column first
 er <- er[, c(which(colnames(er) == "title"), 
                        which(colnames(er) != "title"))]
-## end ellie's results --------------------------------- ------------------
+## end reorder ellie's results ------------------------------------------------
 
-## my results after error correction ---------------------------------------
+## reorder my results  --------------------------------------------------------
 # subset my coded results to titles and columns coded by ellie
-mult_coded_wg <- wg[which(wg$title %in% er$title), 
-                      which(colnames(wg) %in% colnames(er))]
+raw_wg <- wg # store a copy of wg's codings before removing single-coded vars.
+wg <- wg[which(wg$title %in% er$title), which(colnames(wg) %in% colnames(er))]
 # order rows
-mult_coded_wg <- mult_coded_wg[order(mult_coded_wg$title), ] 
+wg <- wg[order(wg$title), ] 
 # order cols
-mult_coded_wg <- mult_coded_wg[, order(colnames(mult_coded_wg))] 
-mult_coded_wg <- mult_coded_wg[, c(
-  which(colnames(mult_coded_wg) == "title"), 
-  which(colnames(mult_coded_wg) != "title"))] # put title column first
-## end my results after error correction --------------------------------------
+wg <- wg[, order(colnames(wg))] 
+wg <- wg[, c(which(colnames(wg) == "title"), 
+             which(colnames(wg) != "title"))] # put title column first
+## end reorder my results  ----------------------------------------------------
 
 ## make sure all titles are present
-if(any(mult_coded_wg$title %nin% er$title) | 
-   any(er$title %nin% mult_coded_wg$title)) {
-  warning("er and mult_coded_wg don't have the same titles. One or both of those data frames will be subsetted.")
-  mult_coded_wg <- mult_coded_wg[which(mult_coded_wg$title %in% er$title), ]
-  er <- er[which(er$title %in% mult_coded_wg$title), ]
+if(any(wg$title %nin% er$title) | 
+   any(er$title %nin% wg$title)) {
+  warning("er and wg don't have the same titles. One or both of those data frames will be subsetted.")
+  wg <- wg[which(wg$title %in% er$title), ]
+  er <- er[which(er$title %in% wg$title), ]
 }
 
 ## make sure df rows and cols are in the same order
-if(!identical(colnames(er), colnames(mult_coded_wg))) {
-  stop("Columns in er and mult_coded_wg must be identical and in the same order. They must be in the same order for creating the variable data frames that will be used to calculate Krippendorf's alpha. ")
+if(!identical(colnames(er), colnames(wg))) {
+  stop("Columns in er and wg must be identical and in the same order. They must be in the same order for creating the variable data frames that will be used to calculate Krippendorf's alpha. ")
 }
 ```
 
@@ -213,12 +173,12 @@ if(!identical(colnames(er), colnames(mult_coded_wg))) {
 # each row is codings from one person
 # each column is a study
 dbl_coded_list <- list()
-if(colnames(er)[1] != "title" | colnames(mult_coded_wg)[1] != "title") {
-  stop("The first column of er and mult_coded_wg must be the study title")}
+if(colnames(er)[1] != "title" | colnames(wg)[1] != "title") {
+  stop("The first column of er and wg must be the study title")}
 
 for(i in 2:ncol(er)) {
   dbl_coded_list[[i-1]] <- data.frame(matrix(
-    data = c(er[, i], mult_coded_wg[, i]), 
+    data = c(er[, i], wg[, i]), 
     nrow = 2, ncol = nrow(er), byrow = T))
 }
 names(dbl_coded_list) <- colnames(er)[2:ncol(er)]
@@ -238,7 +198,6 @@ kripp_all_dbl_coded <- lapply(dbl_coded_list, FUN = do_kripp.alpha,
 
 
 
-
 --------------------------
 
 ## Temporal Extent
@@ -249,12 +208,21 @@ $H_0$: The mean temporal extent of studies using what, where, when-only data is 
 
 *Proposed Test*: Linear regression with natural-log transformed time (in years) as the outcome and data types as predictors.
 
-We used linear regression with natural-log transformed time (in years) as the response variable.  We used nine binary predictor variables indicating whether the study used data with the following characteristics: 1) all data contained only what, where, when information, 2) at least some records associated with known sampling effort, 3) at least some records contained abundance data, 4) at least some data contained explicit non-detection information, 5) at least some data came from an organized monitoring scheme, 6) at least some records included visit-specific covariates, 7) multiple different biological records datasets were integrated for analyses, 8) at least some records contained life stage information, and 9) voucher specimens were used for the analysis.  While the predictor variables are correlated, we kept all variables in the multiple regression model because we are interested in the effect of each additional type of information *after accounting for other information types* (e.g. is there an additional effect of having abundance data after adjusting for whether the data came from an organized monitoring scheme).
+We used linear regression with natural-log transformed time (in years) as the response variable.  We used nine binary predictor variables indicating whether the study used at least some data that had the following characteristics or information: 1) only what, where, when information, 2) known sampling effort, 3) abundance, 4) explicit non-detection information, 5) data came from an organized monitoring scheme, 6) visit-specific covariates, 7) multiple different biological records datasets were integrated for analyses, 8) life stage information, and 9) voucher specimens available.  While the predictor variables are correlated, we kept all variables in the multiple regression model because we are interested in the effect of each additional type of information *after accounting for other information types* (e.g. is there an additional effect of having abundance data after adjusting for whether the data came from an organized monitoring scheme).
 
-Note that because the variables are not mutually exclusive these are each individual variables - these are not dummy variables representing a single categorical factor level "data type" variable.  
+Because the variables are not mutually exclusive, each category is treated as an individual variable, rather than treating each variable as a dummy variable representing a single level of a categorical "data type" variable.  
 
 The intercept-only model in this analysis is the mean temporal extent of all studies.  
-
+```{r calc_temp_extent}
+# calculate number of years covered by study
+wg$temp_extent <- as.numeric(wg$end.year) - as.numeric(wg$start.year)
+# individually assign values to studies with temporal extent < 1 year
+if(diag) paste0("The following article has a temporal extent of zero: ", 
+                wg$title[which(wg$temp_extent == 0)])
+wg$temp_extent[which(
+  grepl("An assessment of bumblebee .* land use and floral.*", 
+        wg$title))] <- 0.33
+```
 
 ```{r time_assess_correlation_predictors, fig.height=8, fig.width = 8}
 ### assess correlation between data type predictors ----------------------
@@ -264,7 +232,7 @@ dt_df <- wg[, which(
       "data.structure...sampling.effort.known", 
       "data.structure...non.detection", 
       "data.structure...multiple.datasets.integrated.for.analysis", 
-      "data.type...exclusively.whwhwh", 
+      "data.type...what.where.when.only", 
       "data.type...abundance", 
       "data.type...visit.specific.covariates", 
       "data.type...life.stage", 
@@ -273,15 +241,16 @@ for(i in 1:ncol(dt_df)) {
   dt_df[, i] <- as.factor(as.character(data.frame(dt_df)[, i]))
 }
 
-print(ggpairs(dt_df, columns = 1:ncol(dt_df), 
-              upper = list(discrete = "ratio"),
-              lower = list(discrete = "facetbar"), 
+if(diag_present) {
+  print(ggpairs(dt_df, columns = 1:ncol(dt_df), 
+              upper = list(discrete = "blank"),
+               lower = list(discrete = "ratio"), 
               diag = list(discrete = "barDiag"), 
               columnLabels = c("organized scheme", 
                                "sampling effort",
                                "non detection",
                                "multiple datasets", 
-                               "exclusively what where when", 
+                               "what where when only", 
                                "abundance",
                                "visit specific covariates", 
                                "life stage", 
@@ -289,13 +258,15 @@ print(ggpairs(dt_df, columns = 1:ncol(dt_df),
               labeller = label_wrap_gen(width = 10)) + 
         ggtitle("Correlation of data type predictor variables") + 
         theme(axis.text.x = element_text(angle = 50, hjust = 1)))
+}
+
 ```
 
 
 ```{r prepare_temporal_extent_df}
 temp_extent <- select(
   wg, c(title, temp_extent, 
-        data.type...exclusively.whwhwh, 
+        data.type...what.where.when.only, 
         data.structure...sampling.effort.known, 
         data.type...abundance,
         data.structure...non.detection,
@@ -305,7 +276,7 @@ temp_extent <- select(
         data.type...life.stage, 
         data.type...voucher.of.some.kind.necessary.for.analysis)) %>%
   gather(key = "data_type", value = "dt_value", 
-         data.type...exclusively.whwhwh:data.type...voucher.of.some.kind.necessary.for.analysis, 
+         data.type...what.where.when.only:data.type...voucher.of.some.kind.necessary.for.analysis, 
          factor_key = T) %>%
   filter(dt_value == T) %>%
   group_by(data_type)
@@ -315,7 +286,7 @@ temp_extent$data_type <- gsub("data.type...", "", temp_extent$data_type)
 temp_extent$data_type <- gsub("data.structure...", "", temp_extent$data_type)
 
 temp_extent$data_type <- factor(as.character(temp_extent$data_type), 
-                            levels = c("exclusively.whwhwh", 
+                            levels = c("what.where.when.only", 
                                        "sampling.effort.known",
                                        "abundance",
                                        "non.detection", 
@@ -324,7 +295,7 @@ temp_extent$data_type <- factor(as.character(temp_extent$data_type),
                                        "multiple.datasets.integrated.for.analysis", 
                                        "life.stage", 
                                        "voucher.of.some.kind.necessary.for.analysis"), 
-                            labels = c("exclusively what where when", 
+                            labels = c("only what where when", 
                                        "sampling effort known",
                                        "abundance",
                                        "non detection", 
@@ -387,8 +358,9 @@ if(diag_present) {
   if(diag) {
     for(i in unique(temp_extent$data_type)) { 
       # distribution of log(years) by data type
-      hist(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)])
-      qqnorm(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)])
+      #hist(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)])
+      qqnorm(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)], 
+             main = i)
       qqline(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)])
     }
   }
@@ -403,7 +375,7 @@ Fit full model and evaluate residuals for assumptions of linear regression.
 wg$log_years <- log(wg$temp_extent)
 # variables added based on a-priori expectation of most to least important
 time_lm_full <- lm(log_years ~ 1 + 
-                     data.type...exclusively.whwhwh + 
+                     data.type...what.where.when.only + 
                      data.structure...sampling.effort.known + 
                      data.type...abundance +
                      data.structure...non.detection + 
@@ -432,9 +404,6 @@ if(diag) time_summary
 # changes by (e^beta1 - 1)*100 percent
 ```
 
-Fitted vs. residuals plot shows some fanning.  
-
-The coefficient estimate for what, where, when data does not produce a good prediction (expected value is lower than any value actual temp extent for those data).  I think there are a couple issues here.  1) the estimate of the effect of what, where, when is *after correcting for multiple datasets used in analysis*, which tends to have long studies.  2) many temp extents are NA, which means sample size is quite small (7-ish or less for wh,wh,wh == T).  So I don't think anything is going wrong with the model.
 
 ```{r time_data_type_full_model_sig_test}
 # Test significance of full model
@@ -459,7 +428,7 @@ m_no_whwhwh <- lm(log_years ~ 1 +
                      data.type...voucher.of.some.kind.necessary.for.analysis,
                   data = wg)
 m_no_effort <- lm(log_years ~ 1 + 
-                     data.type...exclusively.whwhwh + 
+                     data.type...what.where.when.only + 
                      data.type...abundance +
                      data.structure...non.detection + 
                      data.structure...organized.data.collection.scheme + 
@@ -469,7 +438,7 @@ m_no_effort <- lm(log_years ~ 1 +
                      data.type...voucher.of.some.kind.necessary.for.analysis,
                   data = wg)
 m_no_abund <- lm(log_years ~ 1 + 
-                     data.type...exclusively.whwhwh + 
+                     data.type...what.where.when.only + 
                      data.structure...sampling.effort.known + 
                      data.structure...non.detection + 
                      data.structure...organized.data.collection.scheme + 
@@ -479,7 +448,7 @@ m_no_abund <- lm(log_years ~ 1 +
                      data.type...voucher.of.some.kind.necessary.for.analysis,
                  data = wg)
 m_no_nonDet <- lm(log_years ~ 1 + 
-                     data.type...exclusively.whwhwh + 
+                     data.type...what.where.when.only + 
                      data.structure...sampling.effort.known + 
                      data.type...abundance +
                      data.structure...organized.data.collection.scheme + 
@@ -489,7 +458,7 @@ m_no_nonDet <- lm(log_years ~ 1 +
                      data.type...voucher.of.some.kind.necessary.for.analysis,
                   data = wg)
 m_no_scheme <- lm(log_years ~ 1 + 
-                     data.type...exclusively.whwhwh + 
+                     data.type...what.where.when.only + 
                      data.structure...sampling.effort.known + 
                      data.type...abundance +
                      data.structure...non.detection + 
@@ -499,7 +468,7 @@ m_no_scheme <- lm(log_years ~ 1 +
                      data.type...voucher.of.some.kind.necessary.for.analysis,
                   data = wg)
 m_no_visitCovs <- lm(log_years ~ 1 + 
-                     data.type...exclusively.whwhwh + 
+                     data.type...what.where.when.only + 
                      data.structure...sampling.effort.known + 
                      data.type...abundance +
                      data.structure...non.detection + 
@@ -509,7 +478,7 @@ m_no_visitCovs <- lm(log_years ~ 1 +
                      data.type...voucher.of.some.kind.necessary.for.analysis,
                      data = wg)
 m_no_multData <- lm(log_years ~ 1 + 
-                     data.type...exclusively.whwhwh + 
+                     data.type...what.where.when.only + 
                      data.structure...sampling.effort.known + 
                      data.type...abundance +
                      data.structure...non.detection + 
@@ -519,7 +488,7 @@ m_no_multData <- lm(log_years ~ 1 +
                      data.type...voucher.of.some.kind.necessary.for.analysis,
                     data = wg)
 m_no_lifeStage <- lm(log_years ~ 1 + 
-                     data.type...exclusively.whwhwh + 
+                     data.type...what.where.when.only + 
                      data.structure...sampling.effort.known + 
                      data.type...abundance +
                      data.structure...non.detection + 
@@ -529,7 +498,7 @@ m_no_lifeStage <- lm(log_years ~ 1 +
                      data.type...voucher.of.some.kind.necessary.for.analysis,
                      data = wg)
 m_no_voucher <- lm(log_years ~ 1 + 
-                     data.type...exclusively.whwhwh + 
+                     data.type...what.where.when.only + 
                      data.structure...sampling.effort.known + 
                      data.type...abundance +
                      data.structure...non.detection + 
@@ -543,6 +512,8 @@ indiv_mods_time <- list(m_no_whwhwh, m_no_effort, m_no_abund, m_no_nonDet,
                         m_no_scheme, m_no_visitCovs, m_no_multData, 
                         m_no_lifeStage, m_no_voucher)
 ```
+
+**TODO: Here 19 Nov 2018**
 
 ## Study Question
 
@@ -608,9 +579,9 @@ ____________________________________________________________________________
 ```{r caption_kripp_summary}
 kripp_sum_cap <- figs(name = "kripp_sum_cap", 
                       paste0("Reader agreement for ", 
-                             length(which(colnames(mult_coded_wg) != "title")), 
+                             length(which(colnames(wg) != "title")), 
                              " categories measured using Krippendorff's alpha. The ??? group shows agreement for all articles (n = ", 
-                             nrow(mult_coded_wg), 
+                             nrow(wg), 
                              ").  Dotted lines show values of alpha of 0.667 and 0.8, which are recommended minimum and preferred values at which variables can be relied upon for analysis."))
 ```
 
@@ -663,7 +634,7 @@ if(diag_present) {
 #   variable = names(kripp_all_dbl_coded),  
 #   alpha = sapply(kripp_all_dbl_coded, FUN = function(x) {x$value}),
 #   n_wg_T = sapply(names(kripp_all_dbl_coded), 
-#                   FUN = function(x, df = mult_coded_wg) {
+#                   FUN = function(x, df = wg) {
 #                     df <- data.frame(df)
 #                     col_vec <- df[, which(colnames(df) == x)]
 #                     if(is.logical(col_vec)) {
@@ -694,7 +665,7 @@ Page 240 of the Krippendorf (2004) book has recommendations about sample size ne
 
 ```{r kripp_samp_size_cap}
 kripp_samp_size_cap <- tabs(name = "kripp_samp_size_cap", 
-                            paste0("Recommended sample size for accurate estimation of Krippendorff's alpha given the proportion of the minority class in the results, and a desired confidence level of 0.1 for a minimum Krippendorff's alpha value of 0.667 (Krippendorf 2004).  So far there are ", nrow(mult_coded_wg), " double-coded studies."))
+                            paste0("Recommended sample size for accurate estimation of Krippendorff's alpha given the proportion of the minority class in the results, and a desired confidence level of 0.1 for a minimum Krippendorff's alpha value of 0.667 (Krippendorf 2004).  So far there are ", nrow(wg), " double-coded studies."))
 ```
 
 `r if(diag_present) tabs("kripp_samp_size_cap", display = "full")`
@@ -1063,6 +1034,8 @@ _____________________________________________________________________
 # Discussion
 
 ## Reader Agreement
+Consider adding a step after the agreement calculation where I summarize studies for which there was a lot of disagreement overall - ie disagreement on many categories.  These may be particularly perplexing, novel, or creative studies that could be removed from the formal analyses because they are poorly characterized by the existing categories.  But report number removed, and discuss them separately in discussion.  
+
 The seemingly poor agreement between WG's and CP's codings either reflects true ambiguity in how to code the variables or errors by one of the readers.  My review of all cases of disagreement revealed many cases that I believe to be obvious errors or oversights.  Of the obviously erroneous values, most were CP's, though some were mine.  This suggest that either I have given poor instructions to CP or CP is carrying out the instructions poorly.  It is probably not possible to figure out which of these things is happening without having a third reader, and preferable one with a higher skill level.  In some cases, my instructions were clearly insufficient.  I have now edited the instructions and hopefully solved those problems for the 12 variables CP double coded (though similar inadequate instructions probably still exist for the other variables).  The best test now would be to test these same 12 variables with another reader with a higher level of ability.  If that reader also has substantial disagreement, then either the categories themselves or the instructions will need to be majorly revised.  If that $3^{rd}$ higher-ability reader agrees with my original codings better, then it indicates that a highly skilled reader is required for the second readings.  
 
 The technique of having me do a "tie breaker" evaluation of all disagreement cases is a partial solution.  This method would basically treat the $2^{nd}$ reader's codings as a check for error's in my coding that trigger a tie breaker review.  Cases in which the $2^{nd}$ readers coding is judged to be obviously erroneous would not be of much concern, and would be attributed to insufficient knowledge (e.g. not knowing that "fungarium" is a collection of physical specimens) or to skimming the articles quickly rather than reading them (CP seemed to spend less than 30 minutes per article).  Cases in which my original coding is judged to be obviously erroneous would be of concern.  Those values could be corrected for analysis, and/or the overall reliability of my original codings would need to be evaluated in some way to determine if a $2^{nd}$ check is needed for all studies and variables or whether my errors are few enough that they introduce an acceptable amount of error/uncertainty into the analysis. The ideal soluttion would be to have a highly-skilled second reader and to calculate Krippendorff's alpha for agreement between the two readers.  However, lacking such a person, I think it would be acceptable to use a less skilled second reader as a trigger for a 3rd tie breaker review done by me.  I do need to decide whether the trigger/tie breaker approach requires checking all studies and variables, or whether there is an adequate way to estimate the reliability of my original codings. I am not sure whether Ellie would be knowledgable enough to be a highly-skilled second reader.  Perhaps not. 

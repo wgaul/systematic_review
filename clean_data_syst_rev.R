@@ -11,17 +11,17 @@
 ## 
 ## author: Willson Gaul wgaul@hotmail.com
 ## created: 27 Aug 2018
-## last modified: 6 Nov 2018
+## last modified: 19 Nov 2018
 ###########################################
 
 library(tidyverse)
 
-setwd("~/Documents/Data_Analysis/UCD/systematic_review/")
+# setwd("~/Documents/Data_Analysis/UCD/systematic_review/")
 
 # read in data
 elig <- read_csv("~/Documents/UCD/PhD_Project/systematic_review/master_eligibility_results.csv")
-wg <- read_csv("./data/wg_systematic_review_coding_6Nov.csv")
-er <- read_csv("./data/ellie_systematic_review_coding_02.csv")
+wg <- read_csv("./data/wg_systematic_review_coding.csv")
+er <- read_csv("./data/ellie_systematic_review_coding_04.csv")
 
 
 ## remove columns which are used as visual separators with no data ------------
@@ -42,12 +42,28 @@ colnames(er) <- make.names(colnames(er))
 er$data.type...photo[which(er$data.type...photo == "f")] <- "FALSE"
 
 dfs <- list(er = er, wg = wg) # make a list of data for cleaning
+# define which columns should be logical
+logic_cols <- colnames(wg)[which(sapply(wg, class) == "logical")]
 for(i in 1:length(dfs)) {
+  # standardize phrases for "unclear" and similar entries
   dfs[[i]] <- data.frame(apply(dfs[[i]], MARGIN = 2, FUN = function(x) {
     gsub("not stated|unknown|not clear|unclear", replacement = "unknown", x = x, 
          ignore.case = TRUE)
   }), stringsAsFactors = FALSE)
-  dfs[[i]] <- 
+  
+  # get T/F columns into logical class (must deal with "0" "1" entries in er)
+  # TODO 19 NOV
+  for (j in 1:ncol(dfs[[i]])) {
+    if (colnames(dfs[[i]])[j] %in% logic_cols) {
+      dfs[[i]][, j] <- parse_logical(dfs[[i]][, j])
+    }
+  }
+  
+  # clean data.type...gridded separately
+  dfs[[i]]$data.type...gridded <- gsub("1|T", "TRUE", 
+                                       x = dfs[[i]]$data.type...gridded)
+  dfs[[i]]$data.type...gridded <- gsub("0|F", "FALSE", 
+                                       x = dfs[[i]]$data.type...gridded)
 }
 
 list2env(dfs, envir = environment()) # unpack the data from the list
