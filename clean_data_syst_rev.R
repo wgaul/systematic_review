@@ -37,7 +37,7 @@ if(any(grepl("X.*", colnames(er)))) {
 }
 colnames(er) <- make.names(colnames(er))
 
-## clean some column names and data values ------------------------------------
+### clean some column names and data values ------------------------------------
 # names ok right now
 er$data.type...photo[which(er$data.type...photo == "f")] <- "FALSE"
 
@@ -51,25 +51,425 @@ for(i in 1:length(dfs)) {
          ignore.case = TRUE)
   }), stringsAsFactors = FALSE)
   
-  # get T/F columns into logical class (must deal with "0" "1" entries in er)
-  # TODO 19 NOV
+  ## get T/F columns into logical class (must deal with "0" "1" entries in er)
   for (j in 1:ncol(dfs[[i]])) {
     if (colnames(dfs[[i]])[j] %in% logic_cols) {
       dfs[[i]][, j] <- parse_logical(dfs[[i]][, j])
     }
   }
   
-  # clean data.type...gridded separately
+  ## clean data.type...gridded separately
   dfs[[i]]$data.type...gridded <- gsub("1|T", "TRUE", 
                                        x = dfs[[i]]$data.type...gridded)
   dfs[[i]]$data.type...gridded <- gsub("0|F", "FALSE", 
                                        x = dfs[[i]]$data.type...gridded)
+  
+  ## clean institution names so they all match
+  for(j in which(colnames(dfs[[i]]) %in% c("institution.of.first.author", 
+                                          "institution.of.last.author", 
+                                          "proximate.data.source"))) {
+    # the big unlist(sapply(sapply(strsplit()))) calls here apply gsub to the 
+    # split string components of each cell, then paste the components of each
+    # cell back together with ";" as a seperator, and finally unlist the results
+    # of the last sapply into a single vector which can be assigned to the
+    # column.  
+    
+    # NBN
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "NBN.*|National Biodiversity Network.*", 
+             replacement = "National Biodiversity Network"), 
+      FUN = paste, collapse = ";"))
+    
+    # NBDC
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "NBDC|NBDC.*Ireland", 
+             replacement = "National Biodiversity Data Centre"), 
+      FUN = paste, collapse = ";"))
+    # GBIF
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "GBIF", 
+             replacement = "Global Biodiversity Information Facility"), 
+      FUN = paste, collapse = ";"))
+    # BTO
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "BTO.*", 
+             replacement = "British Trust for Ornithology"), 
+      FUN = paste, collapse = ";"))
+    # NPWS
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "NPWS|National Parks and Wild.*Ireland|National Parks and Wildlife Service$", 
+             replacement = "National Parks and Wildlife Service Ireland"), 
+      FUN = paste, collapse = ";"))
+    # BSBI
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "BSBI", 
+             replacement = "Botanical Society of Britain and Ireland"), 
+      FUN = paste, collapse = ";"))
+    # BRC / CEH
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "BRC|Biological Records Centre|.* CEH .*|.*Centre for Ecology & Hy.*|.*Centre for Ecology and Hy.*", 
+             replacement = "Centre for Ecology and Hydrology"), 
+      FUN = paste, collapse = ";"))
+    # UKBMS
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "UKBMS", 
+             replacement = "UK Butterfly Monitoring Scheme"), 
+      FUN = paste, collapse = ";"))
+    # Butterflies for the New Millenium
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*Butterflies.*new Milleni.*", 
+             replacement = "Butterflies for the New Millenium",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Bumblebee Conservation Trust
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*Bumblebee Conservation Trust.*|.*BeeWatch.*", 
+             replacement = "Bumblebee Conservation Trust",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # BWARS
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "BWARS|Bees.*Wasps.*Ants.*Record.*", 
+             replacement = "Bees, Wasps and Ants Recording Society",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    
+    # Scottish Natural Heritage
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "Scottish Natural Heritage.*", 
+             replacement = "Scottish Natural Heritage",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Project Seahorse
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "Project Seahorse.*", 
+             replacement = "Project Seahorse",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Naturalis - The Netherlands
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "Naturalis Biod.*", 
+             replacement = "Naturalis Biodiversity Centre, The Netherlands",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # National Marine Fisheries - Poland
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "National Marine Fisheries.*Poland", 
+             replacement = "National Marine Fisheries Institute, Poland",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # RSPB
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "RSPB.*", 
+             replacement = "Royal Society for the Protection of Birds",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # BirdWatch Ireland
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*BirdWatch Ireland.*", 
+             replacement = "BirdWatch Ireland",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Atlas Hymenoptera
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "Atlas Hymenoptera.*", 
+             replacement = "Atlas Hymenoptera",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # MARLIN
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*marlin.*", 
+             replacement = "MARLIN",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # UK Marine Recorder
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*Marine Recorder.*", 
+             replacement = "UK Marine Recorder",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # National Wildlife Management Centre
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*National Wildlife Management Centre.*", 
+             replacement = "National Wildlife Management Centre",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Helmholtz Centre
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "Hemholtz Centre.*", 
+             replacement = "Helmholtz Centre for Ocean Research",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Envirometrix Ltd
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "Envirometrix.*", 
+             replacement = "Envirometrix Ltd.",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Atkins Ireland
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "Atkins.*", 
+             replacement = "Atkins Ireland",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Amphibian and Reptile Conservation
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*Amphibian and Reptile Conservation.*|National.*amph.*repti.*record.*sch.*", 
+             replacement = "Amphibian and Reptile Conservation",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Health Protection Research Unit in Emerging and Zoonotic Infections
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*Health Prot.* Emerg.* Zoonotic Infections.*", 
+             replacement = "Health Protection Research Unit in Emerging and Zoonotic Infections",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Public Health England
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*Public Health England.*", 
+             replacement = "Public Health England",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Fungal Records Database of Britain and Ireland
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*Fungal Records Database of Britain and Ireland.*", 
+             replacement = "Fungal Records Database of Britain and Ireland",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    
+    # Imperial College London
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*Imperial College London.*", 
+             replacement = "Imperial College London",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # University of Konstanz
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*University of Konstanz.*", 
+             replacement = "University of Konstanz",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # University of British Columbia
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*University of British Columbia.*", 
+             replacement = "University of British Columbia",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # University of Sheffield
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*University of Sheffield.*", 
+             replacement = "University of Sheffield",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # University of Kansas
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*University of Kansas.*", 
+             replacement = "University of Kansas",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Heriot-Watt University
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*Heriot-Watt University.*", 
+             replacement = "Heriot-Watt University",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # National University of Ireland Galway
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "Plant systems biol.*University of Ireland", 
+             replacement = "National University of Ireland, Galway",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # University of Gloucestershire
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*University of Gloucester.*ire.*", 
+             replacement = "University of Gloucestershire",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Coventry University
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*Coventry University.*", 
+             replacement = "Coventry University",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Drop ", UK" after institution names
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ", UK", 
+             replacement = "",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Drop ", Norway"
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ", Norway", 
+             replacement = "",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Drop ", Belgium"
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ", Belgium", 
+             replacement = "",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Drop ", Italy"
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ", Italy", 
+             replacement = "",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Drop ", Germany"
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ", Germany", 
+             replacement = "",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Drop ", USA"
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ", USA", 
+             replacement = "",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Drop ", South Africa"
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ", South Africa", 
+             replacement = "",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Drop ", Naples"
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ", Naples", 
+             replacement = "",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    
+    # Common mis-spellings
+    dfs[[i]][, j] <- gsub("Center", "Centre", x = dfs[[i]][, j], 
+                          ignore.case = T)
+    dfs[[i]][, j] <- gsub("Program&|Programmeme", "Programme", x = dfs[[i]][, j], 
+                          ignore.case = T)
+    dfs[[i]][, j] <- gsub("Intitute", "Institute", x = dfs[[i]][, j], 
+                          ignore.case = T)
+    dfs[[i]][, j] <- gsub("Nationnal", "National", x = dfs[[i]][, j], 
+                          ignore.case = T)
+    dfs[[i]][, j] <- gsub("Bublebee", "Bumblebee", x = dfs[[i]][, j], 
+                          ignore.case = T)
+    dfs[[i]][, j] <- gsub("Britsol", "Bristol", x = dfs[[i]][, j], 
+                          ignore.case = T)
+    dfs[[i]][, j] <- gsub(".*many.*", "many", x = dfs[[i]][, j], 
+                          ignore.case = T)
+    
+    # trim leading and trailing whitespace
+    dfs[[i]][, j] <- unlist(sapply(sapply(strsplit(dfs[[i]][, j], split = ";"), 
+                                          FUN = str_trim, 
+                                          side = "both"), 
+                                   FUN = paste, collapse = ";"))
+  } # end loop through institution columns
+  
 }
 
 list2env(dfs, envir = environment()) # unpack the data from the list
-## end clean column names and data values -------------------------------------
 
-## subset to qualifying articles for which coding is done ---------------------
+## check to make sure all institution strings are correct
+# inst <- c(wg$institution.of.first.author, wg$institution.of.last.author,
+#           wg$proximate.data.source, 
+#           er$institution.of.first.author, er$institution.of.last.author, 
+#           er$proximate.data.source)
+# inst <- unlist(strsplit(inst, split = ";"))
+# inst <- unique(inst)[order(unique(inst))]
+# inst
+
+### end clean column names and data values -------------------------------------
+
+
+### subset to qualifying articles for which coding is done ---------------------
 # wg data
 if (any(wg$coding.DONE != T, na.rm = T)) {
   warning("Some articles in wg do not have coding.DONE marked as TRUE.  Subsetting to only the articles marked as coding.DONE == TRUE.")

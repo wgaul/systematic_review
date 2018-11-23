@@ -10,6 +10,7 @@ bibliography: PhD_references.bib
 ---
 
 **TODO:**
+**Add table w/kripp values to the start of each analysis results section!!**
 
 - Methods
     - *Study eligibiligy* [DONE]
@@ -94,18 +95,7 @@ This document states every question I plan to ask and shows methods, figures, ta
 We did a systematic review of original research published since 2014 that used biological records from Ireland and the UK.  We generated a list of relevant articles from Web of Science, Scopus, ProQuest, GoogleScholar, and the Global Biodiversity Information Facility (GBIF) website.  One researcher evaluated each article for inclusion eligibility and coded information on 46 variables describing characteristics of each article.  A second reader coded all variables for a subset of 20% of the articles.  Agreement between the two readers was evaluated using Krippendorff's alpha (Krippendorff 2004).  Variables that did not meet minimum standards for reader agreement were not used in subsequent analyses.  
 
 ## Study eligibility
-Studies were eligible for inclusion if they:
-
-1) presented original research
-2) were written in the English language
-3) used opportunistic biological data collected with non-standardized or semi-standardized protocols
-4) included (but were not necessarily limited to) data from Ireland or the UK
-5) were available in full-text versions through the UCD library online platform, Google, GoogleScholar, or ResearchGate.  
-6) performed at least one analysis of the data (data papers and biotic atlases were not eligible)
-7) used a sample size greater than 20
-8) were not restricted to fossil records
-
-Grey literature was included and therefore peer review was not required.  Studies using semi-standardized data collection schemes (e.g. UK Butterfly Monitoring Scheme) were included as long as data collection included some opportunistic elements (e.g. locations chosen opportunistically by volunteers). Studies for which all data was collected by the study authors were excluded.  
+Studies were deemed eligible if they presented original research (no reviews or idea papers) published in the English language, used opportunistic biological data collected with non-standardized or semi-standardized designs, included (but were not necessarily limited to) data from Ireland or the UK, and the full text of the study was available through the University College Dublin library online platform, Google Scholar, Google search results, or ResearchGate.  Grey literature was included and therefore peer review was not required.  Studies using semi-standardized data collection schemes (e.g. UK Butterfly Monitoring Scheme) were included as long as data collection included some opportunistic elements (e.g. locations chosen opportunistically by volunteers).  Publications of data (e.g. atlases or data papers) were not considered eligible unless they included analysis of the data.  Only studies using a sample size of greater than 20 were included; this sample size was chosen arbitrarily, mainly to exclude studies in which re-examination of museum specimens resulted in a taxonomic identification revision for one or a few specimens, thereby changing the known range of a species to include or exclude Ireland and the UK.  Studies using museum data were considered eligible when the museum data used was similar in format to biological records data (e.g. “what, where, when” data); studies that used museum specimens only for taxonomic, genetic or morphology studies were excluded.  Studies using only fossil records were not included.  Studies using data from phenology networks were included; for the purposes of this review such data are considered biological records data with associated additional visit-specific data (e.g. the flowering status of plants).  Studies for which all data was collected by the study authors were not considered biological records data for the purposes of this review and were excluded.  The minimum required information in the data was a taxonomic name, a location, and date (“what, where, when”); additional information was permissible.  
 
 ## Article coding
 
@@ -145,27 +135,26 @@ er <- er[, c(which(colnames(er) == "title"),
 
 ## reorder my results  --------------------------------------------------------
 # subset my coded results to titles and columns coded by ellie
-raw_wg <- wg # store a copy of wg's codings before removing single-coded vars.
-wg <- wg[which(wg$title %in% er$title), which(colnames(wg) %in% colnames(er))]
+wg_dbl_cd <- wg[which(wg$title %in% er$title), which(colnames(wg) %in% colnames(er))]
 # order rows
-wg <- wg[order(wg$title), ] 
+wg_dbl_cd <- wg_dbl_cd[order(wg_dbl_cd$title), ] 
 # order cols
-wg <- wg[, order(colnames(wg))] 
-wg <- wg[, c(which(colnames(wg) == "title"), 
-             which(colnames(wg) != "title"))] # put title column first
+wg_dbl_cd <- wg_dbl_cd[, order(colnames(wg_dbl_cd))] 
+wg_dbl_cd <- wg_dbl_cd[, c(which(colnames(wg_dbl_cd) == "title"), 
+             which(colnames(wg_dbl_cd) != "title"))] # put title column first
 ## end reorder my results  ----------------------------------------------------
 
 ## make sure all titles are present
-if(any(wg$title %nin% er$title) | 
-   any(er$title %nin% wg$title)) {
-  warning("er and wg don't have the same titles. One or both of those data frames will be subsetted.")
-  wg <- wg[which(wg$title %in% er$title), ]
-  er <- er[which(er$title %in% wg$title), ]
+if(any(wg_dbl_cd$title %nin% er$title) | 
+   any(er$title %nin% wg_dbl_cd$title)) {
+  warning("er and wg_dbl_cd don't have the same titles. One or both of those data frames will be subsetted.")
+  wg_dbl_cd <- wg_dbl_cd[which(wg_dbl_cd$title %in% er$title), ]
+  er <- er[which(er$title %in% wg_dbl_cd$title), ]
 }
 
 ## make sure df rows and cols are in the same order
-if(!identical(colnames(er), colnames(wg))) {
-  stop("Columns in er and wg must be identical and in the same order. They must be in the same order for creating the variable data frames that will be used to calculate Krippendorf's alpha. ")
+if(!identical(colnames(er), colnames(wg_dbl_cd))) {
+  stop("Columns in er and wg_dbl_cd must be identical and in the same order. They must be in the same order for creating the variable data frames that will be used to calculate Krippendorf's alpha. ")
 }
 ```
 
@@ -173,12 +162,12 @@ if(!identical(colnames(er), colnames(wg))) {
 # each row is codings from one person
 # each column is a study
 dbl_coded_list <- list()
-if(colnames(er)[1] != "title" | colnames(wg)[1] != "title") {
+if(colnames(er)[1] != "title" | colnames(wg_dbl_cd)[1] != "title") {
   stop("The first column of er and wg must be the study title")}
 
 for(i in 2:ncol(er)) {
   dbl_coded_list[[i-1]] <- data.frame(matrix(
-    data = c(er[, i], wg[, i]), 
+    data = c(er[, i], wg_dbl_cd[, i]), 
     nrow = 2, ncol = nrow(er), byrow = T))
 }
 names(dbl_coded_list) <- colnames(er)[2:ncol(er)]
@@ -193,14 +182,12 @@ do_kripp.alpha <- function(x, method) {
 }
 
 kripp_all_dbl_coded <- lapply(dbl_coded_list, FUN = do_kripp.alpha, 
-                                 method = "nominal")
+                              method = "nominal")
 ```
-
-
 
 --------------------------
 
-## Temporal Extent
+## Temporal Extent Analysis
 
 $H_a$: The mean temporal extent of studies using only what, where, when data is longer than the mean temporal extent of studies using richer data types. 
 
@@ -513,17 +500,19 @@ indiv_mods_time <- list(m_no_whwhwh, m_no_effort, m_no_abund, m_no_nonDet,
                         m_no_lifeStage, m_no_voucher)
 ```
 
-**TODO: Here 19 Nov 2018**
 
-## Study Question
+## Analysis of Study Questions
 
-### What is the most popular study question paradigm?
+### What is the most popular study question paradigm for studies using biological records?
 
 $H_a$: Some broad study question paradigms are more common than others in studies using biological records.
 
 $H_0$: The number of studies pursuing each of the broad study question paradigms is the same.
- 
-We counted the number of studies that asked questions within each of the three broad study question areas (individual species questions, community questions, and other questions).  We estimated 95% confidence intervals around the number of studies asking each type of study question using bias-corrected accelerated bootstrap confidence intervals @Efron1993. **Should I do an explicit test of difference or adjust these CIs to account for multiple tests?**
+
+*Proposed Test*: Bootstrap confidence intervals of number of studies within each study question paradigm.
+
+We categorized study questions into three broad question types: individual species questions, community questions, and other questions (which included methodological questions and others).  
+We counted the number of studies that asked questions within each of three broad study question categories.  Some studies ask multiple questions, and those questions may be of different types, so it is possible for a study to appear in the count for multiple categories.  We estimated 95% confidence intervals around the number of studies asking each type of study question using bias-corrected accelerated bootstrap confidence intervals @Efron1993. 
 
 ```{r make_other_paradigm_category}
 # make an "other paradigm" column for all studies that are not community or 
@@ -550,27 +539,95 @@ boot_paradigm <- function(x) {
   to_return
 }
 
-paradigm_list <- lapply(list(community = factor(wg$community.question), 
-                             individual_sp = factor(wg$individual.species.question), 
-                             other = factor(wg$other_paradigm)), 
+paradigm_list <- lapply(list(community = wg$community.question, 
+                             individual_sp = wg$individual.species.question, 
+                             other = wg$other_paradigm), 
                         FUN = boot_paradigm)
 ```
 
 
+### Specific Study Focus (TODO)
+
+### What data types are used for each study question paradigm? (TODO)
 
 ---------------------
 
-## Authors and Data Providing Institutions (TODO)
+## Authors and Data Providing Institutions
 
 **Who choses to use biological records data?**
 
-$H_a$: The first author is more likely to use data held by their own institution than by other institutions.
+$H_a$: The primary authors of a study are more likely to use data held by their own institution than by other institutions.
 
-$H_0$: The number of studies with a lead author from the institution that provided the data is the same as expected by chance.
+$H_0$: The number of studies with a lead author from the institution that provided the data is the same as expected if each lead author chose a co-lead author and data providing institution at random from the population of lead authors and data providing institutions that appear on a study in this review.
 
-*Proposed Test*: Permutation test of lead author institutions.  
+*Another sub-question - Does data with more structure tend to be analyzed in-house more frequently than data w/less structure?  See @Pearce-Higgins2018*
+**TODO Here 22 Nov**
+$H_a$: The proportion of studies for which a lead author is associated with the data providing institution is higher for studies using organized monitoring scheme data than for studies using data that is not from an organized monitoring scheme.  
 
-----------------------
+$H_0$: The proportion of studies for which a lead author is associated with the data provider is not different for studies using data from an organized monitoring scheme and studies not using data from an organized monitoring scheme. 
+
+*Proposed Test*: Permutation test to generate a null hypothesis representing no relationship between the first author and last authors or between either author and the institution that provided the data.  
+
+```{r author_inst}
+# create a variable that indicates whether either the 1st or last author is from
+# the data providing organization
+wg$lead_author_from_data_inst <- mapply(FUN = function(a, b, c) {
+  any(c(unlist(a), unlist(b)) %in% unlist(c))}, 
+  strsplit(wg$institution.of.first.author, split = ";"), 
+  strsplit(wg$institution.of.last.author, split = ";"), 
+  strsplit(wg$proximate.data.source, split = ";"))
+```
+
+```{r permute_author_inst}
+# permute to break all associations between first author, last author, and
+# data providing institution
+perm_inst <- function(index, df) {
+  # permute data source column
+  df$proximate.data.source <- sample(df$proximate.data.source, replace = F)
+  df$institution.of.first.author <- sample(df$institution.of.first.author, 
+                                           replace = F)
+  # find whether a lead author is from the data source institution
+  matches <- mapply(FUN = function(a, b, c) {
+    any(c(unlist(a), unlist(b)) %in% unlist(c))}, 
+    strsplit(df$institution.of.first.author, split = ";"), 
+    strsplit(df$institution.of.last.author, split = ";"), 
+    strsplit(df$proximate.data.source, split = ";"))
+  # count how many authors are from the data source institution
+  sum(matches)
+}
+
+# set true data value
+n_author_from_inst_real <- sum(wg$lead_author_from_data_inst)
+# get null distribution
+perm_auth <- sapply(c(1:9999), FUN = perm_inst, df = wg)
+# append true value as a permutation in the null distribution
+perm_auth <- c(perm_auth, n_author_from_inst_real)
+
+# calculate empirical p-value from permutations
+p_auth_perm <- min(length(which(perm_auth >= n_author_from_inst_real)), 
+                   length(which(perm_auth <= n_author_from_inst_real))) / 
+                     length(perm_auth)
+
+# hist(perm_n_author_from_inst, 
+#      xlim = c(min(c(perm_n_author_from_inst, n_author_from_inst_real)), 
+#               max(c(perm_n_author_from_inst, n_author_from_inst_real))))
+# abline(v = n_author_from_inst_real)
+```
+
+```{r boot_author_institution}
+# get bootstrap CIs for proportion of studies with a lead author from the data
+# providing institution and for the proportion of studies with any author from
+# the data providing institution
+lead_auth_inst_boot <- boot(wg$lead_author_from_data_inst, 
+                            statistic = function(x, ind) {
+                              sum(x[ind]) / length(x)}, 
+                            R = 999)
+any_auth_inst_boot <- boot(wg$author.associated.with.proximate.data.provider, 
+                           statistic = function(x, ind) {sum(x[ind]) / length(x)}, 
+                           R = 999)
+```
+
+**TODO: Here 21 Nov.  **
 
 ____________________________________________________________________________
 
@@ -626,39 +683,6 @@ if(diag_present) {
 }
 ```
 
-```{r plot_kripp_by_nTRUE}
-## As of 8 Nov this is broken because I have columns that aren't just T/F
-# this is exploratory to see if krippendorff's alpha is varying wildly b/c
-# of insufficient variation
-# alpha_df <- data.frame(
-#   variable = names(kripp_all_dbl_coded),  
-#   alpha = sapply(kripp_all_dbl_coded, FUN = function(x) {x$value}),
-#   n_wg_T = sapply(names(kripp_all_dbl_coded), 
-#                   FUN = function(x, df = wg) {
-#                     df <- data.frame(df)
-#                     col_vec <- df[, which(colnames(df) == x)]
-#                     if(is.logical(col_vec)) {
-#                       sum(col_vec, na.rm = T)
-#                     } else NA
-#                   }), 
-#   stringsAsFactors = FALSE,
-#   row.names = 1:length(names(kripp_all_dbl_coded))
-# )
-# 
-# if(diag) {
-#   print(
-#     ggplot(alpha_df, aes(x = n_wg_T, y = alpha)) + 
-#       geom_point() + 
-#       geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
-#       geom_hline(aes(yintercept = 0.8), lty = "dotted") + 
-#       ggtitle("Krippendorff's alpha by the number\nof TRUEs in Willson's coding") + 
-#       xlab("Number of TRUE values in Willson's coding") + 
-#       theme_bw()
-#   )
-# }
-```
-
-
 We could use my codings (either original or corrected) for analysis, and view the second reader's role as highlighting cases of sloppy errors or careless oversight on my part.  This doesn't address the reproducability question of whether my categories are clear enough that an independent researcher trying to do the same study would come up with the same conclusions.  In order to answer that, we would need a second reader with adequate ability to code each category.  Lacking such a person, we'll have to use the second reader as an error catcher rather than an independent second opinion.
 
 Page 240 of the Krippendorf (2004) book has recommendations about sample size needed based on how many cases there are of the least common class.  `r tabs("kripp_samp_size_cap", display = "cite")` shows which variables have enough of the minority class that Krippendorff's alpha can be calculated with significance level of 0.1 and minimum acceptable Krippendorff's alpha of 0.667.
@@ -690,35 +714,37 @@ prob_of_values <- lapply(
 prob_of_values <- data.frame(variable = names(prob_of_values), 
                              prob_small_class = unlist(prob_of_values), 
                              row.names = NULL)
-prob_of_values$kripp_all <- NA
+prob_of_values$kripp_alpha <- NA
 for(i in 1:nrow(prob_of_values)) {
   # add krippendorff's alpha for codings
-  prob_of_values$kripp_all[i] <- kripp_all_dbl_coded[[which(
+  prob_of_values$kripp_alpha[i] <- kripp_all_dbl_coded[[which(
     names(kripp_all_dbl_coded) == prob_of_values$variable[i])]]$value
 }
+prob_of_values <- prob_of_values[order(prob_of_values$kripp_alpha, 
+                                       decreasing = T), ]
 
 # On p 240 of Krippendorff book, it says that if acceptable alpha is 0.667 and 
 # desired significance level is 0.1, then sample size needed is as follows:
 prob_of_values$n_25_adequate <- prob_of_values$prob_small_class > 0.25
 prob_of_values$n_30_adequate <- prob_of_values$prob_small_class > 0.2
 prob_of_values$n_40_adequate <- prob_of_values$prob_small_class >= 0.143
+# TODO add column for sample size of 50
 
-if(diag_present) {
-  kable(prob_of_values[order(
-  prob_of_values$kripp_all, decreasing = T), -2], digits = 2)
+if(diag_present == TRUE) {
+  kable(prob_of_values[, -2], digits = 2)
   
   # list only those for which sample size is adequate
-  samp_adequate <- prob_of_values[which(prob_of_values$n_30_adequate == T), ]
+  samp_adequate <- prob_of_values[which(prob_of_values$n_40_adequate == T), ]
   kable(samp_adequate[order(
-  samp_adequate$kripp_all, decreasing = T), -2], digits = 2)
+  samp_adequate$kripp_alpha, decreasing = T), -2], digits = 2)
   rm(samp_adequate)
 }
 ```
 
 ```{r plot_kripp_for_adequate_sample_size}
 # plot krippendorf's alpha values for only variables that have adequate sample size
-ggplot(data = prob_of_values[which(prob_of_values$n_30_adequate == T), ], 
-       aes(y = kripp_all)) +
+ggplot(data = prob_of_values[which(prob_of_values$n_40_adequate == T), ], 
+       aes(y = kripp_alpha)) +
   geom_boxplot() + 
   geom_point(aes(x = 0)) + 
   geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
@@ -732,12 +758,23 @@ ggplot(data = prob_of_values[which(prob_of_values$n_30_adequate == T), ],
 
 
 
-#### Notes about agreement 
-(*italics* means I've corrected it, **bold** means I need to deal with it.)
-
-
-
 ## Temporal extent of studies
+Coder agreement for variables in this analysis:
+```{r vars_temp_extent}
+if(diag_present) {
+  vs <- c("start.year", "end.year", "data.type...what.where.when.only",
+          "data.structure...sampling.effort.known", "data.type...abundance", 
+          "data.structure...non.detection",
+          "data.structure...organized.data.collection.scheme", 
+          "data.type...visit.specific.covariates", 
+          "data.structure...multiple.datasets.integrated.for.analysis", 
+          "data.type...life.stage", 
+          "data.type...voucher.of.some.kind.necessary.for.analysis")
+  kable(prob_of_values[which(prob_of_values$variable %in% vs), 
+                       c("variable", "kripp_alpha", "n_40_adequate")], digits = 2)
+  rm(vs)
+}
+```
 
 ```{r print_time_anova}
 m_time_full_anova
@@ -819,13 +856,24 @@ paradigm_plot_cap <- figs("paradigm_plot_cap",
                           "The number of studies published between 2014 and 2018 addressing different broad types of questions using biological records data.  The 'other' category includes methodology studies and other studies that did not focus specifically on questions about individual species or communities.  Vertical lines show 95% bootstrap confidence intervals.")
 ```
 
-## Study Question Paradigm
+## Analysis of Study Questions
 
 ### What is the most popular study question paradigm?
 
 $H_a$: Some broad study question paradigms are more common than others in studies using biological records.
 
 $H_0$: The number of studies pursuing each of the broad study question paradigms is the same.
+
+Coder agreement for variables in this analysis:
+```{r vars_paradigm}
+# TODO Here 23 Nov
+if(diag_present == T) {
+  vs <- c("community.question", "individual.species.question")
+  kable(prob_of_values[which(prob_of_values$variable %in% vs), 
+                       c("variable", "kripp_alpha", "n_40_adequate")], digits = 2)
+  rm(vs)
+}
+```
 
 The number of studies asking questions about individual species (`r paradigm_list$individual_sp$ci_obj$t0` studies, 95% bootstrap CI [`r paradigm_list$individual_sp$ci_obj$bca[4]`, `r paradigm_list$individual_sp$ci_obj$bca[5]`]) was significantly higher than the number of studies asking questions about communities (`r paradigm_list$community$ci_obj$t0` studies, 95% bootstrap CI [`r paradigm_list$community$ci_obj$bca[4]`, `r paradigm_list$community$ci_obj$bca[5]`]) or asking other types of questions (`r paradigm_list$other$ci_obj$t0` studies, 95% bootstrap CI [`r paradigm_list$other$ci_obj$bca[4]`, `r paradigm_list$other$ci_obj$bca[5]`]) (`r tabs("paradigm_table_caption", display = "cite")`, `r figs("paradigm_plot_cap", display = "cite")`). 
 
@@ -844,11 +892,12 @@ for(i in 1:length(paradigm_list)) {
   paradigm_count_df[i, "u_95ci"] <- paradigm_list[[i]]$ci_obj$bca[5]
 }
 
-kable(paradigm_count_df, col.names = c("broad type of study question", 
+kable(paradigm_count_df, col.names = c("broad type\nof study question", 
                                        "number of studies", 
-                                       "lower 95% bootstrap CI", 
-                                       "upper 95% bootstrap CI"))
+                                       "lower 95%\nbootstrap CI", 
+                                       "upper 95%\nbootstrap CI"))
 ```
+
 
 ```{r plot_paradigm_counts, fig.cap=paradigm_plot_cap}
 # plot number of studies in each paradigm, with 95% CIs
@@ -876,7 +925,9 @@ print(ggplot(data = paradigm_count_df,
         theme_bw())
 ```
 
-## Specific Study Focus
+**Dina - Do I need to do some sort of explicit test to see if the number of studies in each category is different, or is it enough to just say that the 95% bootstrap CIs don't overlap?  A Poisson regression w/counts as outcome and question types as predictors doesn't make sense here, as I don't have replicate observations of counts, right (I only have a single set of studies, with a count of number of studies using each focus)**
+
+### Specific Study Focus
 
 ```{r specific_question_by_paradigm_bar_plot}
 qt_df <- select(wg, title, 
@@ -1030,6 +1081,19 @@ ggplot(dt_pd_df,
 ## Analysis approach & data type
 [**TODO**]
 
+-------------------------------
+
+## Authors and Data Providing Institutions (TODO)
+
+**Who choses to use biological records data?**
+
+$H_a$: The primary author is more likely to use data held by their own institution than by other institutions.
+
+$H_0$: The number of studies with a lead author from the institution that provided the data is the same as expected if each lead author chose a co-lead author and data providing institution at random from the population of lead authors and data providing institutions that appear on a study in this review.
+
+Lead authors (the first and/or last authors on a study) were significantly more likely to use biological records data provided by their own institution (empirical permutation *p*-value = `r p_auth_perm`).  Over a quarter of the studies `r lead_auth_inst_boot$t0`, 95% bootstrap CI [`r boot.ci(lead_auth_inst_boot)$bca[4]`, `r boot.ci(lead_auth_inst_boot)$bca[5]`]) used data provided by the institution of one of the lead authors, and two-thirds of the studies (proportion = `r any_auth_inst_boot$t0`, 95% bootstrap CI [`r boot.ci(any_auth_inst_boot)$bca[4]`, `r boot.ci(any_auth_inst_boot)$bca[5]`]) had at least one author associated with the data providing institution.
+
+
 _____________________________________________________________________
 # Discussion
 
@@ -1044,32 +1108,24 @@ A final solution that is perhaps worth pursuing is only coding and analyzing var
 
 There are two goals of having two readers.  First, to estimate how replicatable the analysis is.  If another researcher could code the articles in the same way I do, then it provides confidence that the analysis is revealing some sort of true characteristics of the literature.  Second, to improve the quality of this specific analysis by identifying and correcting sloppy errors on my part.  This is not necessarily replicatable, though, as I am doing the correcting, so the categories basically still show "Willson's inner vision of the literature" rather than some more widely true characteristics. 
 
-## Variables to abandon
+## Who uses biological records?
+While the number of studies that used data provided by the instituion of one of the lead authors was higher than expected by chance, the majority of studies did not have a lead author associated with the data providing institution.  If the lead authors are primarily the people who concieve of and design a study, then these results suggest that authors frequently use data that they are not directly involved in curating, perhaps because they do not already have the data necessary to answer their research question.  This suggests that data providing institutions perform an important data sharing role, and the majority of research that uses biological records data could not have been done solely using the data resources of the lead authors.  
 
-* bio recs as predictor (keep, but wg only - horizon scanning)
-* bio recs as response (keep, but wg only - horizon scanning)
-* bio recs in facilitative role?  (This is more interesting, but hard to code.  wg will code this as a "horizon scanning" type variable to keep track of examples of interesting things, but only clear cases will be discussed in article.  No need for double checking this because it won't be analyzed in any specific way.)
+Most studies in this review (`r any_auth_inst_boot$t0`) did have at least one author associated with the data providing institution.  Co-authorship may be a prefered way for data providers to recieve credit for their role in the research pipeline, especially when the data form a "non-trivial" contribution to the study (@Roche2014, @Whitlock2011).  This could reflect [**do I have some reference about the messy nature of bio recs?**].
 
+While standards for citing datasets are developing [**need citations**], there still seems to be some uncertainty about when and how to cite data resources [**I have a citation for this, right?**] which may motivate data providers to seek recognition through co-authorship.  
 
-_________________________________________________________________________
+## Assorted bits to add
+[[@Follett2015] found that methodology was focus of 17% of studies in a systematic review of cit. sci. use in publications. ]
 
-# Old versions below here
+[[@Follett2015] found that "the public preferred to publish their outcomes in" non peer reviewed places.  This is part of why I include grey literature. ] 
 
+[[@Pearce-Higgins2018] Some data collection / providing schemes have a business model of getting funding to do research.  This might be particularly important for designed monitoring schemes, because the study authors can influence data collection methods.  ]
 
---------------------------------------------------------------------
+[[@Pearce-Higgins2018] warn of risks of free and open data being used without data providers knowledge and input.  Risks include inappropriate analysis or interpretation.  "Although not commonly regarded as a major issue in other disciplines where PDA is the norm, the complexities of ecological data can make archiving for independent use particularly challenging (Kenall et al. 2014, Mills et al. 2015)" [@Pearce-Higgins2018]. ]
 
-## Results format by data type
-$H_01$: Different types of biological records data are not analyzed with different broad analysis approaches.
+[In a review of ecological and environmental citizen science projects, Pocock et al. [-@Pocock2017] distinguished between 'mass participation' projects that tended to have lower data quality, less detailed data, but cover larger geographic areas, and 'systematic monitoring' projects that tended to collect more complex and possible higher-quality data (e.g. counts instead of presence/absence observations) but covered smaller geographic areas.]
 
-$H_a1$: Different types of biological records data are analyzed with different broad analysis approaches.
-
-$H_02$: wh,wh,wh-only data is not analyzed with a different broad analysis approach than other data types.
-
-$H_a2$: wh,wh,wh-only data is analyzed with inference and/or prediction less often than richer data are.  
-
-$H_03$: The ?rate? at which wh,wh,wh-only data is analyzed with prediction is not greater than for other data types.
-
-$H_a3$: The ?rate? at which wh,wh,wh-only data is analyzed with prediction is greater than for richer data types.
 
 
 
