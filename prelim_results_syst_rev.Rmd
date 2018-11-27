@@ -64,8 +64,8 @@ library(Hmisc)
 library(boot)
 library(irr)
 library(captioner)
-library(knitr)
 library(pander)
+library(knitr)
 library(ggridges)
 library(bestglm)
 library(car)
@@ -560,13 +560,13 @@ $H_a$: The primary authors of a study are more likely to use data held by their 
 
 $H_0$: The number of studies with a lead author from the institution that provided the data is the same as expected if each lead author chose a co-lead author and data providing institution at random from the population of lead authors and data providing institutions that appear on a study in this review.
 
+*Proposed Test*: Permutation test to generate a null hypothesis representing no relationship between the first author and last authors or between either author and the institution that provided the data.  
+
 *Another sub-question - Does data with more structure tend to be analyzed in-house more frequently than data w/less structure?  See @Pearce-Higgins2018*
-**TODO Here 22 Nov**
+**Not sure I should include this - I don't know if I can actually interpret it well.**
 $H_a$: The proportion of studies for which a lead author is associated with the data providing institution is higher for studies using organized monitoring scheme data than for studies using data that is not from an organized monitoring scheme.  
 
 $H_0$: The proportion of studies for which a lead author is associated with the data provider is not different for studies using data from an organized monitoring scheme and studies not using data from an organized monitoring scheme. 
-
-*Proposed Test*: Permutation test to generate a null hypothesis representing no relationship between the first author and last authors or between either author and the institution that provided the data.  
 
 ```{r author_inst}
 # create a variable that indicates whether either the 1st or last author is from
@@ -627,19 +627,14 @@ any_auth_inst_boot <- boot(wg$author.associated.with.proximate.data.provider,
                            R = 999)
 ```
 
-**TODO: Here 21 Nov.  **
 
 ____________________________________________________________________________
 
 # Results
 
-```{r caption_kripp_summary}
+```{r kripp_sum_cap}
 kripp_sum_cap <- figs(name = "kripp_sum_cap", 
-                      paste0("Reader agreement for ", 
-                             length(which(colnames(wg) != "title")), 
-                             " categories measured using Krippendorff's alpha. The ??? group shows agreement for all articles (n = ", 
-                             nrow(wg), 
-                             ").  Dotted lines show values of alpha of 0.667 and 0.8, which are recommended minimum and preferred values at which variables can be relied upon for analysis."))
+                      paste0("Reader agreement for variables, measured using Krippendorff's alpha. Dotted lines show Krippendorff's alpha values of 0.667 and 0.8, which are recommended minimum and preferred values at which variables can be relied upon for analysis."))
 ```
 
 ## Search results 
@@ -652,15 +647,14 @@ This preliminary analysis uses the `r nrow(wg)` articles coded so far.
 
 ## Reader agreement
 
-Krippendorff's alpha values for the variables that have been double coded indicate substantial disagreement between the two readers, and show few variables for which codings are reliable enough to be used in analysis (`r figs("kripp_sum_cap", display = "cite")`).  However, the number of articles that have been evaluated by two readers is probably too small for reliable estimation of Krippendorff's alpha given the proportions of the TRUE and FALSE classes for most variables (`r tabs("kripp_samp_size_cap", display = "cite")`).
+For variables for which an adequate number of studies have been double coded to allow estimation of Krippendorf's alpha, most varibales show that coding is reliable enough to be used in analysis, at least for drawing tentative conclusions (`r figs("kripp_sum_cap", display = "cite")`).  
 
-The poor agreement between the two readers for any given category could be due to: 1) poor catgegory definitions or poor instructions about how to evaluate the category; 2) true ambiguity in how a study should be coded; 3) insufficient knowledge or skill of the reader(s); 4) accidental error, perhaps due in part to skimming articles rather than reading them in their entirety.  
+However, the number of articles that have been evaluated by two readers is too small for reliable estimation of Krippendorff's alpha for some variables for which the smallest class is particularly uncommon (`r tabs("kripp_samp_size_cap", display = "cite")`).
 
-Possible solutions are: 1) refine definitions and instructions, when possible specifying specific words or phrases that can be searched for in the article; 2) removing from analysis variables for which many articles are difficult to definitively categorize; 3) requiring a higher level of skill or knowledge of the readers, or treating the less-skilled readers' categorizations as a trigger for a "tie breaker" 3rd review to reveal obvious errors by the first reader, but not as reliable codings in their own right; 4) require readers to read the entire article rather than skimming it, or using disagreements as a trigger for a 3rd "tie breaker" review.
+Poor agreement between the two readers for any given category could be due to: 1) poor catgegory definitions or poor instructions about how to evaluate the category; 2) true ambiguity in how a study should be coded; 3) insufficient knowledge or skill of the reader(s); 4) accidental error, perhaps due in part to skimming articles rather than reading them in their entirety.  
 
 
-
-```{r krippendorfs_alpha_summary, fig.cap = kripp_sum_cap}
+```{r krippendorfs_alpha_summary, fig.cap = kripp_sum_cap, include = F}
 kripp_summary_long <- data.frame(
   variable = names(kripp_all_dbl_coded), 
   krip_alpha = sapply(kripp_all_dbl_coded, 
@@ -725,23 +719,23 @@ prob_of_values <- prob_of_values[order(prob_of_values$kripp_alpha,
 
 # On p 240 of Krippendorff book, it says that if acceptable alpha is 0.667 and 
 # desired significance level is 0.1, then sample size needed is as follows:
-prob_of_values$n_25_adequate <- prob_of_values$prob_small_class > 0.25
-prob_of_values$n_30_adequate <- prob_of_values$prob_small_class > 0.2
+#prob_of_values$n_25_adequate <- prob_of_values$prob_small_class > 0.25
+#prob_of_values$n_30_adequate <- prob_of_values$prob_small_class > 0.2
 prob_of_values$n_40_adequate <- prob_of_values$prob_small_class >= 0.143
 # TODO add column for sample size of 50
 
 if(diag_present == TRUE) {
-  kable(prob_of_values[, -2], digits = 2)
+  print(kable(prob_of_values[, -2], digits = 2))
   
   # list only those for which sample size is adequate
   samp_adequate <- prob_of_values[which(prob_of_values$n_40_adequate == T), ]
-  kable(samp_adequate[order(
-  samp_adequate$kripp_alpha, decreasing = T), -2], digits = 2)
+  print(kable(samp_adequate[order(
+    samp_adequate$kripp_alpha, decreasing = T), -2], digits = 2))
   rm(samp_adequate)
 }
 ```
 
-```{r plot_kripp_for_adequate_sample_size}
+```{r plot_kripp_for_adequate_sample_size, fig.cap=kripp_sum_cap}
 # plot krippendorf's alpha values for only variables that have adequate sample size
 ggplot(data = prob_of_values[which(prob_of_values$n_40_adequate == T), ], 
        aes(y = kripp_alpha)) +
@@ -770,8 +764,9 @@ if(diag_present) {
           "data.structure...multiple.datasets.integrated.for.analysis", 
           "data.type...life.stage", 
           "data.type...voucher.of.some.kind.necessary.for.analysis")
-  kable(prob_of_values[which(prob_of_values$variable %in% vs), 
-                       c("variable", "kripp_alpha", "n_40_adequate")], digits = 2)
+  print(kable(data.frame(prob_of_values[which(prob_of_values$variable %in% vs), 
+                       c("variable", "kripp_alpha", "n_40_adequate")]), 
+              digits = 2))
   rm(vs)
 }
 ```
@@ -788,9 +783,9 @@ if(diag) {
 }
 ```
 
-The overall model using supplementary data types to predict the natural log of temporal extent of study (in years) was (not) significant ($F_{`r format(round(m_time_full_anova$Df[2], digits = 2), scientific = F)`, `r format(round(m_time_full_anova$Res.Df[2], digits = 2), scientific = F)`}$ = `r format(round(m_time_full_anova$F[2], digits = 2), scientific = F)`, p = `r format(round(m_time_full_anova[6][[1]][2], digits = 2), scientific = F)`, Adjusted $R^2%$ = `r format(round(time_summary$adj.r.squared, digits = 2), scientific = F)`).  
+The overall model using supplementary data types to predict the natural log of temporal extent of study (in years) was  significant ($F_{`r format(round(m_time_full_anova$Df[2], digits = 2), scientific = F)`, `r format(round(m_time_full_anova$Res.Df[2], digits = 2), scientific = F)`}$ = `r format(round(m_time_full_anova$F[2], digits = 2), scientific = F)`, p = `r format(round(m_time_full_anova[6][[1]][2], digits = 2), scientific = F)`, Adjusted $R^2%$ = `r format(round(time_summary$adj.r.squared, digits = 2), scientific = F)`).  
 
-If the overall model is significant, I will individually test whether each variable has a significant effect after accounting for the other variables.  I will interpret the effect direction and effect size of all variables in the context of the full model even if the variables are not significant on their own.  Example of how results will be written:
+I will individually test whether each variable has a significant effect after accounting for the other variables.  I will interpret the effect direction and effect size of all variables in the context of the full model even if the variables are not significant on their own.  Example of how results will be written:
  
 The expected temporal extent covered by a study that uses only "what, where, when" data is `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[2])), digits = 1)` years when the data have no other data types.  When the data are "what, where, when" only but multiple datasets were integrated for analysis, the expected temporal extent covered by a study is `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[2] + time_lm_full$coefficients[8])), digits = 1)` years. 
 
@@ -866,18 +861,19 @@ $H_0$: The number of studies pursuing each of the broad study question paradigms
 
 Coder agreement for variables in this analysis:
 ```{r vars_paradigm}
-# TODO Here 23 Nov
-if(diag_present == T) {
+if(diag_present) {
   vs <- c("community.question", "individual.species.question")
-  kable(prob_of_values[which(prob_of_values$variable %in% vs), 
-                       c("variable", "kripp_alpha", "n_40_adequate")], digits = 2)
+  print(kable(prob_of_values[which(prob_of_values$variable %in% vs), 
+                       c("variable", "kripp_alpha", "n_40_adequate")], digits = 2))
   rm(vs)
 }
 ```
 
 The number of studies asking questions about individual species (`r paradigm_list$individual_sp$ci_obj$t0` studies, 95% bootstrap CI [`r paradigm_list$individual_sp$ci_obj$bca[4]`, `r paradigm_list$individual_sp$ci_obj$bca[5]`]) was significantly higher than the number of studies asking questions about communities (`r paradigm_list$community$ci_obj$t0` studies, 95% bootstrap CI [`r paradigm_list$community$ci_obj$bca[4]`, `r paradigm_list$community$ci_obj$bca[5]`]) or asking other types of questions (`r paradigm_list$other$ci_obj$t0` studies, 95% bootstrap CI [`r paradigm_list$other$ci_obj$bca[4]`, `r paradigm_list$other$ci_obj$bca[5]`]) (`r tabs("paradigm_table_caption", display = "cite")`, `r figs("paradigm_plot_cap", display = "cite")`). 
 
+
 `r tabs("paradigm_table_caption", display = "full")`
+
 
 ```{r print_study_question_paradigm_table}
 paradigm_count_df <- data.frame(matrix(nrow = length(paradigm_list), 
@@ -892,10 +888,10 @@ for(i in 1:length(paradigm_list)) {
   paradigm_count_df[i, "u_95ci"] <- paradigm_list[[i]]$ci_obj$bca[5]
 }
 
-kable(paradigm_count_df, col.names = c("broad type\nof study question", 
+print(kable(paradigm_count_df, col.names = c("broad type\nof study question", 
                                        "number of studies", 
                                        "lower 95%\nbootstrap CI", 
-                                       "upper 95%\nbootstrap CI"))
+                                       "upper 95%\nbootstrap CI")))
 ```
 
 
@@ -929,20 +925,52 @@ print(ggplot(data = paradigm_count_df,
 
 ### Specific Study Focus
 
-```{r specific_question_by_paradigm_bar_plot}
+```{r vars_study_question}
+if(diag_present) {
+  vs <- c("community.question", "individual.species.question", 
+          "methodology.development.or.analysis", 
+          "response.variable...species.richness", "response.variable...diversity", 
+          "response.variable...distribution", "response.variable...abundance", 
+          "response.variable...phenology", "trends.over.time") 
+  print(kable(prob_of_values[which(prob_of_values$variable %in% vs), 
+                             c("variable", "kripp_alpha", "n_40_adequate")], 
+              digits = 2))
+  
+  rm(vs)
+}
+```
+
+```{r specific_question_paradigm_cap}
+specific_question_paradigm_cap <- figs(name = "specific_questions_paradigm_cap", 
+                                       "The focus of analyses within studies that address individual species questions, community questions, or both individual species and community questions.")
+```
+
+```{r specific_question_by_paradigm_bar_plot, fig.cap=specific_question_paradigm_cap}
+# make a new variable indicating whether a study has both community and 
+# individual species questions
+wg$community_question_only <- wg$community.question == T & 
+  wg$individual.species.question == F
+wg$individual_species_question_only <- wg$individual.species.question == T &
+  wg$community.question == F
+wg$both_ind_and_community_questions <- wg$individual.species.question == T & 
+  wg$community.question == T
+
+# count studies in each category for graph
 qt_df <- select(wg, title, 
-                community.question, individual.species.question, 
+                community_question_only, individual_species_question_only, 
+                both_ind_and_community_questions, 
                 response.variable...species.richness, 
                 response.variable...diversity, 
                 response.variable...distribution, 
                 response.variable...abundance, response.variable...phenology,
                 trends.over.time, methodology.development.or.analysis) 
-names(qt_df)[4:10] <- c("species.richness", "diversity", 
+names(qt_df)[5:11] <- c("species.richness", "diversity", 
                         "distribution", "abundance", "phenology", 
                         "temporal.trends", "methodology")
 
 qt_df <- gather(qt_df, key = "paradigm", value = "parad_val", 
-                community.question, individual.species.question,  
+                community_question_only, individual_species_question_only,  
+                both_ind_and_community_questions, 
                 factor_key = T) %>%
   filter(parad_val == TRUE) %>%
   gather(key = "focus", value = "foc_val", 
@@ -951,39 +979,94 @@ qt_df <- gather(qt_df, key = "paradigm", value = "parad_val",
          factor_key = T) %>%
   filter(foc_val == TRUE) %>%
   group_by(paradigm, focus) %>%
-  summarise(count = n()) %>% 
+  summarise(count = n()) %>%
+  ungroup() %>%
+  complete(paradigm, focus, fill = list(count = 0)) #%>% 
   # filter odd combinations of paradigm and focus
-  filter(!(paradigm == "community.question" & 
-             focus %in% c("distribution", "abundance", "phenology"))) %>%
-  filter(!(paradigm == "individual.species.question" & 
-             focus %in% c("species.richness", "diversity"))) 
+  # filter(!(paradigm == "community.question" & 
+  #            focus %in% c("distribution", "abundance", "phenology"))) %>%
+  # filter(!(paradigm == "individual.species.question" & 
+  #            focus %in% c("species.richness", "diversity"))) 
 
+## TODO 27 Nov: make this graph have all bars and 3 groups - community only, ind. only, and both
 ggplot(data = qt_df, 
-       aes(x = factor(paradigm, 
-                      levels = c("community.question", 
-                                 "individual.species.question"), 
-                      labels = c("community", "individual species")), 
-           y = count, 
-           fill = factor(focus, 
+       aes(x = factor(focus, 
                       levels = c("species.richness", "diversity", 
                                  "distribution", "phenology", "abundance", 
                                  "temporal.trends", "methodology"), 
                       labels = c("species richness", "diversity", 
                                  "distribution", "phenology", "abundance", 
-                                 "temporal trends", "methodology")))) + 
-  geom_bar(position = "dodge", stat = "identity") + 
-  scale_fill_brewer(type = "qual", palette = 2) + 
+                                 "temporal trends", "methodology")), 
+           y = count, 
+           fill = factor(focus, 
+                         levels = c("species.richness", "diversity", 
+                                    "distribution", "phenology", "abundance", 
+                                    "temporal.trends", "methodology"), 
+                         labels = c("species richness", "diversity", 
+                                    "distribution", "phenology", "abundance", 
+                                    "temporal trends", "methodology")))) + 
+  geom_bar(position = position_dodge(preserve = "single"), stat = "identity") + 
+  facet_wrap( ~ factor(paradigm, levels = c("community_question_only", 
+                                            "individual_species_question_only",
+                                            "both_ind_and_community_questions"),
+                       labels = c(
+                         "community questions", "individual species questions",
+                         "both individual species\nand community questions")), 
+              strip.position = "bottom") +
+  scale_fill_brewer(type = "qual", palette = 2, name = "Focus of Analyses") +
   #scale_fill_grey(end = 0.7) + 
-  xlab("Study Focus") + 
+  xlab("Broad Study Paradigm") + 
   ylab("Number of Studies") + 
   theme_bw() + 
-  theme(legend.title = element_blank())
+  theme(axis.text.x = element_blank(), 
+        strip.background = element_blank(), strip.placement = "outside")
+# theme(axis.text.x = element_text(angle = 35, vjust = 1, hjust = 1))
+
+## version with not all bars included
+# ggplot(data = qt_df, 
+#        aes(x = factor(paradigm, 
+#                       levels = c("community.question", 
+#                                  "individual.species.question"), 
+#                       labels = c("community", "individual species")), 
+#            y = count, 
+#            fill = factor(focus, 
+#                       levels = c("species.richness", "diversity", 
+#                                  "distribution", "phenology", "abundance", 
+#                                  "temporal.trends", "methodology"), 
+#                       labels = c("species richness", "diversity", 
+#                                  "distribution", "phenology", "abundance", 
+#                                  "temporal trends", "methodology")))) + 
+#   geom_bar(position = "dodge", stat = "identity") + 
+#   scale_fill_brewer(type = "qual", palette = 2) + 
+#   #scale_fill_grey(end = 0.7) + 
+#   xlab("Study Focus") + 
+#   ylab("Number of Studies") + 
+#   theme_bw() + 
+#   theme(legend.title = element_blank())
 ```
 
+**TODO:** stats? interaction will not be very interesting b/c some focuses just don't make sense in community- or individual species-only studies.  But could test whether there are differences for the subset of focuses that do make sense for all - abundance, temporal trends, and methodology.
 
-[ Descriptive stats for studies focusing on alien species, testing ecological theory, and testing methods of data correction. ]
+[ Descriptive stats for studies focusing on alien species?]
 
 ### What data types are used for each study question paradigm?
+
+```{r vars_data_type_study_question}
+if(diag_present) {
+  vs <- c("community.question", "individual.species.questions", 
+        "data.type...what.where.when.only", 
+        "data.structure...organized.data.collection.scheme", 
+        "data.structure...sampling.effort.known", 
+        "data.structure...non.detection", "data.type...abundance", 
+        "data.structure...multiple.datasets.integrated.for.analysis", 
+        "data.type...life.stage", 
+        "data.type...voucher.of.some.kind.necessary.for.analysis") 
+  print(kable(prob_of_values[which(prob_of_values$variable %in% vs), 
+                       c("variable", "kripp_alpha", "n_40_adequate")], 
+              digits = 2))
+rm(vs)
+}
+```
 
 ```{r make_study_question_paradigm_by_dataType_tibble, eval = F, include = F}
 ## I don't think a table is a good way to present this.  Too hard to see.
@@ -1091,9 +1174,56 @@ $H_a$: The primary author is more likely to use data held by their own instituti
 
 $H_0$: The number of studies with a lead author from the institution that provided the data is the same as expected if each lead author chose a co-lead author and data providing institution at random from the population of lead authors and data providing institutions that appear on a study in this review.
 
+Coder agreement for variables in this analysis: 
+```{r vars_author_institution}
+if(diag_present) {
+  vs <- c("author.associated.with.proximate.data.provider", 
+          "institution.of.first.author", "institution.of.last.author", 
+          "proximate.data.source") 
+  print(kable(prob_of_values[which(prob_of_values$variable %in% vs), 
+                       c("variable", "kripp_alpha", "n_40_adequate")], 
+              digits = 2))
+
+rm(vs)
+}
+```
+
 Lead authors (the first and/or last authors on a study) were significantly more likely to use biological records data provided by their own institution (empirical permutation *p*-value = `r p_auth_perm`).  Over a quarter of the studies `r lead_auth_inst_boot$t0`, 95% bootstrap CI [`r boot.ci(lead_auth_inst_boot)$bca[4]`, `r boot.ci(lead_auth_inst_boot)$bca[5]`]) used data provided by the institution of one of the lead authors, and two-thirds of the studies (proportion = `r any_auth_inst_boot$t0`, 95% bootstrap CI [`r boot.ci(any_auth_inst_boot)$bca[4]`, `r boot.ci(any_auth_inst_boot)$bca[5]`]) had at least one author associated with the data providing institution.
 
+```{r auth_inst_cap}
+auth_inst_cap <- figs("auth_inst_cap", 
+                      "The proportion of studies that had a lead author or any author associated with the institution that provided the biological records data.  Points and lines show point estimates with 95% bootstrap confidence intervals.")
+```
 
+```{r author_institution_graph, fig.cap=auth_inst_cap}
+# make df to use for drawing plot
+auth_inst_df <- data.frame(matrix(nrow = 2, ncol = 4))
+colnames(auth_inst_df) <- c("author_relationship", "point_estimate", 
+                            "lower_bound", "upper_bound")
+auth_inst_df[1, ] <- c("lead author associated with data provider", 
+                       lead_auth_inst_boot$t0, 
+                       boot.ci(lead_auth_inst_boot)$bca[4], 
+                       boot.ci(lead_auth_inst_boot)$bca[5])
+auth_inst_df[2, ] <- c("any author associated with data provider", 
+                       any_auth_inst_boot$t0, 
+                       boot.ci(any_auth_inst_boot)$bca[4], 
+                       boot.ci(any_auth_inst_boot)$bca[5])
+auth_inst_df$point_estimate <- as.numeric(auth_inst_df$point_estimate)
+auth_inst_df$lower_bound <- as.numeric(auth_inst_df$lower_bound)
+auth_inst_df$upper_bound <- as.numeric(auth_inst_df$upper_bound)
+auth_inst_plot <- ggplot(data = auth_inst_df, aes(y = point_estimate, 
+                         x = author_relationship)) + 
+  geom_point() + 
+  geom_linerange(aes(x = author_relationship, ymin = lower_bound, 
+                     ymax = upper_bound)) +
+  xlab(element_blank()) + 
+  ylab("Proportion of studies") + 
+  ylim(0, 1) + 
+  theme_bw()
+
+auth_inst_plot
+rm(auth_inst_df, auth_inst_plot)
+```
 _____________________________________________________________________
 # Discussion
 
