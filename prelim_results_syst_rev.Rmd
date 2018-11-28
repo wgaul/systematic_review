@@ -72,7 +72,7 @@ library(car)
 library(GGally)
 library(tidyverse)
 
-diag <- T # produce exploratory & diagnostics plots & results
+diag <- F # produce exploratory & diagnostics plots & results
 diag_present <- T # produce diagnostics for report to Dina
 
 if(diag == F) { # turn off warnings when not running diagnostics
@@ -106,7 +106,7 @@ We coded thirteen variables describing aspects of the type and structure of the 
 
 For most analyses, we grouped the data types "physical specimen", "photo", "audio", and "video" into a "voucher specimen" group, but we coded them individually in order to identify emerging trends in how vouchers are collected.
 
-For statistical analyses, we kept data type variables in models based on *a-priori* expectations about the variables' influence on data analysis strategy and based on expectations about different levels of complexity and effort involved in collecting, recording, and storing the data.  The data type variables we kept in models were: what, where, when only; sampling effort reported; abundance; non-detection; organized monitoring scheme; visit-specific covariates; multiple datasets integrated for analysis; life stage information; and voucher specimen. 
+For statistical analyses, we kept data type variables in models based on *a-priori* expectations about the variables' influence on data analysis strategy and based on expectations about different levels of complexity and effort involved in collecting, recording, and storing the data.  The data type variables we kept in models were: what, where, when only; sampling effort known; abundance; non-detection; organized monitoring scheme; visit-specific covariates; multiple datasets integrated for analysis; life stage information; and voucher specimen. 
 
 ### Study Questions
 We described the main focus(es) of each study in terms of whether the study was asking questions about individual species, ecological communities, or about methodology.
@@ -282,7 +282,7 @@ temp_extent$data_type <- factor(as.character(temp_extent$data_type),
                                        "multiple.datasets.integrated.for.analysis", 
                                        "life.stage", 
                                        "voucher.of.some.kind.necessary.for.analysis"), 
-                            labels = c("only what where when", 
+                            labels = c("what where when", 
                                        "sampling effort known",
                                        "abundance",
                                        "non detection", 
@@ -522,6 +522,17 @@ wg$other_paradigm <- wg$community.question == F &
   wg$individual.species.question == F
 ```
 
+```{r make_both_paradigms_category}
+# make a new variable indicating whether a study has both community and 
+# individual species questions
+wg$community_question_only <- wg$community.question == T & 
+  wg$individual.species.question == F
+wg$individual_species_question_only <- wg$individual.species.question == T &
+  wg$community.question == F
+wg$both_ind_and_community_questions <- wg$individual.species.question == T & 
+  wg$community.question == T
+```
+
 ```{r paradigm_bootstrap}
 count_fun <- function(x, indices) {
   # ARGS: x - a vector of TRUE/FALSE values, for which the TRUES will be counted
@@ -539,16 +550,131 @@ boot_paradigm <- function(x) {
   to_return
 }
 
-paradigm_list <- lapply(list(community = wg$community.question, 
-                             individual_sp = wg$individual.species.question, 
-                             other = wg$other_paradigm), 
-                        FUN = boot_paradigm)
+paradigm_list <- lapply(
+  list(community_only = wg$community_question_only, 
+       individual_sp_only = wg$individual_species_question_only, 
+       both = wg$both_ind_and_community_questions, 
+       other = wg$other_paradigm), 
+  FUN = boot_paradigm)
 ```
 
 
 ### Specific Study Focus (TODO)
 
 ### What data types are used for each study question paradigm? (TODO)
+$H_a$: Different broad study question paradigms use different data types.
+
+$H_0$: The use of data types is the same for all study question paradigms.
+
+*Proposed Test*:
+Use Poisson regression to model the counts (number of studies) for each combination of data type and study question paradigm, and use a likelihood ratio test to compare a saturated model and a model with only main effects:
+
+Full (saturated) model:
+n studies ~ data type + paradigm + data type * paradigm
+
+Reduced model (no interaction; independence model):
+n studies ~ data type + paradigm
+
+The response is the cell counts. (Penn State 10.1.1)
+
+Using log-linear modelling, using glm() to fit the model is not appropriate, as that assumes I have two categorical variables (I do not) and uses dummy variables to code them.  In fact, I do not have a single categorical variable for data type, because multiple different data types can be true at the same time.  So, instead, I have nine separate categorical variables.  I think using the zero-sum constraint also is wrong.  
+
+*Jon - 28 Nov*
+I think treating this as two categorical variables might be fine.  Because I'm modelling the counts in cells, not the observations themselves.  So while sampling effort and abundance might both be true for an observation (a study), they are NOT both true for a cell.  So maybe I can use the counts of cells as the outcome in glm().  The question is just whether there is any dependence between the levels of each categorical variable.  So, does the count in the "sampling effort / community" cell go up in correlation with the count in the "abundance / community" cell.  So is it the case that the levels of each categorical variable need to be independent?  If that is what is needed, then I can check it with my correlation plot.
+
+```{r data_type_paradigm_df_prepare}
+# make data frame with counts of data type by study paradigm
+dt_pd_df <- select(wg, data.structure...organized.data.collection.scheme, 
+                   data.structure...sampling.effort.known,
+                   data.structure...non.detection,
+                   data.structure...multiple.datasets.integrated.for.analysis,
+                   data.type...what.where.when.only,
+                   data.type...abundance, 
+                   data.type...visit.specific.covariates, 
+                   data.type...life.stage, 
+                   data.type...voucher.of.some.kind.necessary.for.analysis,
+                   community_question_only, 
+                   individual_species_question_only, 
+                   both_ind_and_community_questions, 
+                   other_paradigm) %>%
+  gather(key = "data_type", value = "dt_val", 
+         data.structure...organized.data.collection.scheme:
+           data.type...voucher.of.some.kind.necessary.for.analysis) %>%
+  filter(dt_val == TRUE) %>%
+  gather(key = "paradigm", value = "pd_val", community_question_only, 
+         individual_species_question_only, both_ind_and_community_questions, 
+         other_paradigm) %>%
+  filter(pd_val == TRUE) %>%
+  count(paradigm, data_type) %>%
+  complete(paradigm, data_type, fill = list(n = 0))
+
+# spread for easy visualisation of 2-way table
+dt_pd_df_wide <- spread(dt_pd_df, key = data_type, value = n)
+```
+
+```{r data_type_paradigm_model}
+dt_pd_mod_full <- glm(n ~ paradigm + data_type + paradigm*data_type, 
+                      data = dt_pd_df, family = poisson())
+dt_pd_mod_ind <- glm(n ~ paradigm + data_type, 
+                     data = dt_pd_df, family = poisson())
+# Do likelihood ratio test for full model vs. independence model
+# TODO: Here 28 Nov
+dt_pd_interaction_test <- anova(dt_pd_mod_full, dt_pd_mod_ind, test = "Chisq") 
+```
+
+---------------------
+
+## Analysis approach & data type
+[**TODO: here 28 Nov.**]
+
+The question here is whether the data type affects the analysis approach.
+
+We use a Poisson regression to model the relationship between three different analysis approaches (inference, prediction, and description) and data type.  The data type categories we kept in models based on *a-priori* expectations of importance were (in order of expected importance): what, where, when only; sampling effort known; abundance; non-detection; organized monitoring scheme; visit-specific covariates; multiple datasets integrated for analysis; life stage information; and voucher specimen. 
+
+$H1_a$: Different types of data are analysed with different broad analysis approaches.
+
+$H1_0$: Different types of data are analysed with the same broad analysis approaches.
+
+*Proposed Test*: A likelihood ratio test to compare a saturated Poisson regression modeling cell counts with a model with only the main effects of data type and analysis approach (but no interaction).  
+
+$H2_a$: The data types "non-detection", "survey effort known", and "abundance" each increase the probability of studies using a model-based analysis (either inferential or predictive) rather than a descriptive analysis.
+
+$H2_0$: The data types "non-detection", "survey effort known", and "abundance" do not affect the probability of studies using a model-based analysis (either inferential or predictive) rather than a descriptive analysis.
+
+*Proposed Test*: ~~Logistic Regression with probability of statistical / model-based results as the outcome and data types as predictors. For first hypothesis, fit the full model and the model with only the intercept (what where when data only) and test for significance of all data types.  Then, do this individually removing each data type to get estimate of significance for each data type. (4 regressions total)  Full model:~~
+
+$logit(P_{model}) = \beta_0 + \beta_1 * non detection + \beta_2 * survey effort + \beta_3 * abundance$
+
+Actually, I now think I should do this using Poisson regression (see above). 
+
+```{r data_type_analysis_approach_model}
+# TODO: Here 28 Nov
+dt_an_df <- select(wg, data.structure...organized.data.collection.scheme, 
+                   data.structure...sampling.effort.known,
+                   data.structure...non.detection,
+                   data.structure...multiple.datasets.integrated.for.analysis,
+                   data.type...what.where.when.only,
+                   data.type...abundance, 
+                   data.type...visit.specific.covariates, 
+                   data.type...life.stage, 
+                   data.type...voucher.of.some.kind.necessary.for.analysis,
+                   results.type...inference, 
+                   results.type...prediction, 
+                   results.type...descriptive.only) %>%
+  gather(key = "data_type", value = "dt_val", 
+         data.structure...organized.data.collection.scheme:
+           data.type...voucher.of.some.kind.necessary.for.analysis) %>%
+  filter(dt_val == TRUE) %>%
+  gather(key = "analysis_approach", value = "an_val", results.type...inference,
+         results.type...prediction, results.type...descriptive.only) %>%
+  filter(an_val == TRUE) %>%
+  count(analysis_approach, data_type) %>%
+  complete(analysis_approach, data_type, fill = list(n = 0))
+
+# spread for easy visualisation of 2-way table
+dt_an_df_wide <- spread(dt_an_df, key = data_type, value = n)
+```
+
 
 ---------------------
 
@@ -888,10 +1014,10 @@ for(i in 1:length(paradigm_list)) {
   paradigm_count_df[i, "u_95ci"] <- paradigm_list[[i]]$ci_obj$bca[5]
 }
 
-print(kable(paradigm_count_df, col.names = c("broad type\nof study question", 
+print(kable(paradigm_count_df, col.names = c("broad type of study question", 
                                        "number of studies", 
-                                       "lower 95%\nbootstrap CI", 
-                                       "upper 95%\nbootstrap CI")))
+                                       "lower 95% bootstrap CI", 
+                                       "upper 95% bootstrap CI")))
 ```
 
 
@@ -899,29 +1025,36 @@ print(kable(paradigm_count_df, col.names = c("broad type\nof study question",
 # plot number of studies in each paradigm, with 95% CIs
 print(ggplot(data = paradigm_count_df, 
              aes(x = factor(paradigm, 
-                            levels = c("individual_sp", 
-                                       "community", 
+                            levels = c("individual_sp_only", 
+                                       "community_only", 
+                                       "both", 
                                        "other"), 
-                            labels = c("individual species questions", 
-                                       "community questions", 
-                                       "other types of questions")), 
+                            labels = c(
+                              "individual species\nquestions only", 
+                              "community questions only", 
+                              "both individual species\nand community questions",
+                              "other types\nof questions")), 
                  y = n_studies)) + 
         geom_point() + 
         geom_linerange(aes(x = factor(paradigm, 
-                            levels = c("individual_sp", 
-                                       "community", 
+                            levels = c("individual_sp_only", 
+                                       "community_only",
+                                       "both", 
                                        "other"), 
-                            labels = c("individual species questions", 
-                                       "community questions", 
-                                       "other types of questions")), 
-                      ymin = l_95ci, 
-                      ymax = u_95ci)) + 
-        xlab(element_blank()) + 
+                            labels = c(
+                              "individual species\nquestions only", 
+                              "community questions only", 
+                              "both individual species\nand community questions",
+                              "other types\nof questions")), 
+                           ymin = l_95ci, 
+                           ymax = u_95ci)) + 
+        xlab("Study Question Paradigm") + 
         ylab("Number of Studies") + 
-        theme_bw())
+        theme_bw() + 
+        theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)))
 ```
 
-**Dina - Do I need to do some sort of explicit test to see if the number of studies in each category is different, or is it enough to just say that the 95% bootstrap CIs don't overlap?  A Poisson regression w/counts as outcome and question types as predictors doesn't make sense here, as I don't have replicate observations of counts, right (I only have a single set of studies, with a count of number of studies using each focus)**
+**Dina - Do I need to do some sort of explicit test to see if the number of studies in each category is different, or is it enough to just say that the 95% bootstrap CI for the number of studies addressing only individual species questions does not overlap with the other categories?  A Poisson regression w/counts as outcome and question types as predictors doesn't make sense here, as I don't have replicate observations of counts, right (I only have a single set of studies, with a count of number of studies using each focus)**
 
 ### Specific Study Focus
 
@@ -946,31 +1079,22 @@ specific_question_paradigm_cap <- figs(name = "specific_questions_paradigm_cap",
 ```
 
 ```{r specific_question_by_paradigm_bar_plot, fig.cap=specific_question_paradigm_cap}
-# make a new variable indicating whether a study has both community and 
-# individual species questions
-wg$community_question_only <- wg$community.question == T & 
-  wg$individual.species.question == F
-wg$individual_species_question_only <- wg$individual.species.question == T &
-  wg$community.question == F
-wg$both_ind_and_community_questions <- wg$individual.species.question == T & 
-  wg$community.question == T
-
 # count studies in each category for graph
 qt_df <- select(wg, title, 
                 community_question_only, individual_species_question_only, 
-                both_ind_and_community_questions, 
+                both_ind_and_community_questions, other_paradigm,
                 response.variable...species.richness, 
                 response.variable...diversity, 
                 response.variable...distribution, 
                 response.variable...abundance, response.variable...phenology,
                 trends.over.time, methodology.development.or.analysis) 
-names(qt_df)[5:11] <- c("species.richness", "diversity", 
-                        "distribution", "abundance", "phenology", 
-                        "temporal.trends", "methodology")
+colnames(qt_df)[6:12] <- c("species.richness", "diversity", 
+                           "distribution", "abundance", "phenology", 
+                           "temporal.trends", "methodology")
 
 qt_df <- gather(qt_df, key = "paradigm", value = "parad_val", 
                 community_question_only, individual_species_question_only,  
-                both_ind_and_community_questions, 
+                both_ind_and_community_questions, other_paradigm,
                 factor_key = T) %>%
   filter(parad_val == TRUE) %>%
   gather(key = "focus", value = "foc_val", 
@@ -1008,10 +1132,12 @@ ggplot(data = qt_df,
   geom_bar(position = position_dodge(preserve = "single"), stat = "identity") + 
   facet_wrap( ~ factor(paradigm, levels = c("community_question_only", 
                                             "individual_species_question_only",
-                                            "both_ind_and_community_questions"),
+                                            "both_ind_and_community_questions", 
+                                            "other_paradigm"),
                        labels = c(
                          "community questions", "individual species questions",
-                         "both individual species\nand community questions")), 
+                         "both individual species\nand community questions", 
+                         "other")), 
               strip.position = "bottom") +
   scale_fill_brewer(type = "qual", palette = 2, name = "Focus of Analyses") +
   #scale_fill_grey(end = 0.7) + 
@@ -1050,14 +1176,15 @@ ggplot(data = qt_df,
 [ Descriptive stats for studies focusing on alien species?]
 
 ### What data types are used for each study question paradigm?
-
+Agreement for variables in this analysis:
 ```{r vars_data_type_study_question}
 if(diag_present) {
-  vs <- c("community.question", "individual.species.questions", 
+  vs <- c("community.question", "individual.species.question", 
         "data.type...what.where.when.only", 
         "data.structure...organized.data.collection.scheme", 
         "data.structure...sampling.effort.known", 
         "data.structure...non.detection", "data.type...abundance", 
+        "data.type...visit.specific.covariates", 
         "data.structure...multiple.datasets.integrated.for.analysis", 
         "data.type...life.stage", 
         "data.type...voucher.of.some.kind.necessary.for.analysis") 
@@ -1068,70 +1195,35 @@ rm(vs)
 }
 ```
 
-```{r make_study_question_paradigm_by_dataType_tibble, eval = F, include = F}
-## I don't think a table is a good way to present this.  Too hard to see.
-## But if I include this again later, should add all data type variables.
-paradigm_data_df <- select(wg, title, individual.species.question, 
-                      community.question, data.type...what.where.when.only, 
-                      data.structure...sampling.effort.known, 
-                      data.structure...non.detection, 
-                      data.type...abundance) %>%
-  gather(key = "paradigm", value = "parad_used", individual.species.question:
-           community.question) %>%
-  filter(parad_used == TRUE) %>%
-  gather(key = "data_type", value = "dat_used", 
-         data.type...what.where.when.only:data.type...abundance) %>%
-  filter(dat_used == TRUE)
-
-paradigm_data_df$data_type <- gsub("data.type...what.where.when.only", 
-                                   "what, where, when only", 
-                                   paradigm_data_df$data_type)
-paradigm_data_df$data_type <- gsub("data.type...sampling.effort.known", 
-                                   "sampling effort", 
-                                   paradigm_data_df$data_type)
-paradigm_data_df$data_type <- gsub("data.structure...non.detection", 
-                                   "detection / non-detection", 
-                                   paradigm_data_df$data_type)
-paradigm_data_df$data_type <- gsub("data.type...abundance", 
-                                   "abundance", 
-                                   paradigm_data_df$data_type)
-paradigm_data_df$paradigm <- gsub("community.question", 
-                                   "community", 
-                                   paradigm_data_df$paradigm)
-paradigm_data_df$paradigm <- gsub("individual.species.question", 
-                                   "individual species", 
-                                   paradigm_data_df$paradigm)
-
-kable(table(paradigm_data_df$data_type, paradigm_data_df$paradigm))
+```{r data_type_parad_cap}
+data_type_parad_cap <- figs(name = "data_type_parad_cap", 
+                            "Data types used in studies within each of the three broad study paradigms.")
 ```
-
 
 ```{r data_type_by_paradigm_barplot}
 ### plot data type by study question paradigm ----------------------
-dt_pd_df <- select(wg, data.type...what.where.when.only, 
-      data.structure...sampling.effort.known, 
-      data.type...abundance, 
-      data.structure...non.detection, 
-      data.structure...organized.data.collection.scheme, 
-      data.structure...multiple.datasets.integrated.for.analysis, 
-      data.type...life.stage, 
-      data.type...voucher.of.some.kind.necessary.for.analysis,
-      community.question, 
-      individual.species.question) %>%
-  gather(key = "data_type", value = "dt_val", data.type...what.where.when.only:
-           data.type...voucher.of.some.kind.necessary.for.analysis) %>%
-  filter(dt_val == TRUE) %>%
-  gather(key = "paradigm", value = "pd_val", community.question, 
-         individual.species.question) %>%
-  filter(pd_val == TRUE) %>%
-  count(paradigm, data_type) %>%
-  complete(paradigm, data_type, fill = list(n = 0))
-
+# make plot, order factor levels by most important a-priori
+# dt_pd_df was created in the Methods section
 ggplot(dt_pd_df, 
-       aes(x = factor(paradigm, 
-                      levels = c("community.question", 
-                                 "individual.species.question"), 
-                      labels = c("community", "individual species")), 
+       aes(x = factor(data_type, 
+                         levels = c("data.type...what.where.when.only", 
+                           "data.structure...sampling.effort.known", 
+                           "data.type...abundance", 
+                           "data.structure...non.detection", 
+                           "data.structure...organized.data.collection.scheme", 
+                           "data.structure...multiple.datasets.integrated.for.analysis",
+                           "data.type...life.stage", 
+                           "data.type...visit.specific.covariates",
+                           "data.type...voucher.of.some.kind.necessary.for.analysis"), 
+                         labels = c("what where when only", 
+                                    "sampling effort", 
+                                    "abundance", 
+                                    "non detection", 
+                                    "organized scheme", 
+                                    "multiple datasets", 
+                                    "life stage", 
+                                    "visit-specific covariates", 
+                                    "voucher available")), 
            y = n, 
            fill = factor(data_type, 
                          levels = c("data.type...what.where.when.only", 
@@ -1141,6 +1233,7 @@ ggplot(dt_pd_df,
                            "data.structure...organized.data.collection.scheme", 
                            "data.structure...multiple.datasets.integrated.for.analysis",
                            "data.type...life.stage", 
+                           "data.type...visit.specific.covariates",
                            "data.type...voucher.of.some.kind.necessary.for.analysis"), 
                          labels = c("what where when only", 
                                     "sampling effort", 
@@ -1149,20 +1242,90 @@ ggplot(dt_pd_df,
                                     "organized scheme", 
                                     "multiple datasets", 
                                     "life stage", 
+                                    "visit-specific covariates", 
                                     "voucher available")))) + 
   geom_bar(position = position_dodge(preserve = "single"), stat = "identity") + 
+    facet_wrap( ~ factor(paradigm, levels = c("community_question_only", 
+                                            "individual_species_question_only",
+                                            "both_ind_and_community_questions", 
+                                            "other_paradigm"),
+                       labels = c(
+                         "community questions", "individual species\nquestions",
+                         "both individual species\nand community questions", 
+                         "other")), 
+              strip.position = "bottom") +
   ggtitle("Data use based on study question paradigm") + 
   scale_fill_discrete(name = "Data Type") + 
   xlab("Study question paradigm") + 
   ylab("Number of studies") + 
   scale_y_continuous(breaks = seq(0, max(dt_pd_df$n), 5)) + 
-  theme_bw() 
+  theme_bw() + 
+  theme(axis.text.x = element_blank(), 
+        strip.background = element_blank(), strip.placement = "outside")
 ```
 
-**Jon - Is there any useful statistical work to be done here? TODO: Yes, fit full model w/interaction and w/out interactin to see if distribution of bars is different in community v. individual sp studies.**  I think the story is that data use is roughly similar between question paradigms, except maybe that voucher data seems to be used more often in individual species studies.  Also integrating multiple datasets for analyses is common in both question paradigms, and so it is worth making an effort to ensure that published datasets are in standardized, compatible formats.  
+A Chi-squared likelihood ratio test comparing the saturated model to a reduced model with only main effects for data type and study paradigm (but no interaction term) did not support reject the null hypothesis that the reduced model is as good as the full model (p = `r round(dt_pd_interaction_test$"Pr(>Chi)"[2], 2)`).  So, there is no evidence that the use of data types differs between the different main study question paradigms. 
+
+```{r print_data_type_paradigm_contingency_table}
+
+if(diag_present) {
+  colnames(dt_pd_df_wide) <- gsub(
+    "data\\.structure\\.\\.\\.|data\\.type\\.\\.\\.", "", 
+    colnames(dt_pd_df_wide))
+  colnames(dt_pd_df_wide) <- gsub("\\.", " ", colnames(dt_pd_df_wide))
+  dt_pd_df_wide$paradigm <- gsub("_", " ", dt_pd_df_wide$paradigm)
+  print("Table of counts for data type by study question paradigm\n")
+  print(kable(t(dt_pd_df_wide)))
+}
+```
+
+```{r print_data_type_paradigm_interaction_test}
+# testing null hypothesis that the reduced model is as good as the full model
+# cannot reject that null. Therefore there is no evidence that the interaction
+# term is significant.  So we can say that the use of data types does not
+# depend on the study question paradigm.  
+dt_pd_interaction_test
+```
+
 
 ## Analysis approach & data type
 [**TODO**]
+Agreement for variables in this analysis:
+```{r vars_data_type_analysis_approach}
+if(diag_present) {
+  vs <- c("results.type...inference", "results.type...prediction", 
+          "results.type...descriptive.only", 
+        "data.type...what.where.when.only", 
+        "data.structure...organized.data.collection.scheme", 
+        "data.structure...sampling.effort.known", 
+        "data.structure...non.detection", "data.type...abundance", 
+        "data.type...visit.specific.covariates", 
+        "data.structure...multiple.datasets.integrated.for.analysis", 
+        "data.type...life.stage", 
+        "data.type...voucher.of.some.kind.necessary.for.analysis") 
+  print(kable(prob_of_values[which(prob_of_values$variable %in% vs), 
+                       c("variable", "kripp_alpha", "n_40_adequate")], 
+              digits = 2))
+rm(vs)
+}
+```
+
+
+```{r print_data_type_analysis_approach_contingency_table}
+if(diag_present) {
+    colnames(dt_an_df_wide) <- gsub(
+    "data\\.structure\\.\\.\\.|data\\.type\\.\\.\\.", "", 
+    colnames(dt_an_df_wide))
+  colnames(dt_an_df_wide) <- gsub("\\.", " ", colnames(dt_an_df_wide))
+  dt_an_df_wide$analysis_approach <- gsub("results\\.type\\.\\.\\.", "", 
+                                          dt_an_df_wide$analysis_approach)
+  dt_an_df_wide$analysis_approach <- gsub("\\.", " ", 
+                                          dt_an_df_wide$analysis_approach)
+  
+  print("Table of counts for data type by study question paradigm\n")
+  print(kable(t(dt_an_df_wide)))
+}
+```
 
 -------------------------------
 
@@ -1244,6 +1407,11 @@ While the number of studies that used data provided by the instituion of one of 
 Most studies in this review (`r any_auth_inst_boot$t0`) did have at least one author associated with the data providing institution.  Co-authorship may be a prefered way for data providers to recieve credit for their role in the research pipeline, especially when the data form a "non-trivial" contribution to the study (@Roche2014, @Whitlock2011).  This could reflect [**do I have some reference about the messy nature of bio recs?**].
 
 While standards for citing datasets are developing [**need citations**], there still seems to be some uncertainty about when and how to cite data resources [**I have a citation for this, right?**] which may motivate data providers to seek recognition through co-authorship.  
+
+
+### What data types are used for each study question paradigm?
+I think the story is that data use is roughly similar between question paradigms.  Integrating multiple datasets for analyses is common in both question paradigms, and so it is worth making an effort to ensure that published datasets are in standardized, compatible formats.  
+
 
 ## Assorted bits to add
 [[@Follett2015] found that methodology was focus of 17% of studies in a systematic review of cit. sci. use in publications. ]
