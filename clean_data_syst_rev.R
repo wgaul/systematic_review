@@ -349,6 +349,14 @@ for(i in 1:length(dfs)) {
              replacement = "National University of Ireland, Galway",
              ignore.case = T),
       FUN = paste, collapse = ";"))
+    # The Flora of Cornwall
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = ".*Flora of Cornwall.*", 
+             replacement = "The Flora of Cornwall (Davey 1909)",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
     # University of Gloucestershire
     dfs[[i]][, j] <- unlist(sapply(
       sapply(strsplit(dfs[[i]][, j], split = ";"), 
@@ -433,7 +441,7 @@ for(i in 1:length(dfs)) {
     # Common mis-spellings
     dfs[[i]][, j] <- gsub("Center", "Centre", x = dfs[[i]][, j], 
                           ignore.case = T)
-    dfs[[i]][, j] <- gsub("Program&|Programmeme", "Programme", x = dfs[[i]][, j], 
+    dfs[[i]][, j] <- gsub("Program$|Programmeme", "Programme", x = dfs[[i]][, j], 
                           ignore.case = T)
     dfs[[i]][, j] <- gsub("Intitute", "Institute", x = dfs[[i]][, j], 
                           ignore.case = T)
@@ -451,6 +459,11 @@ for(i in 1:length(dfs)) {
                                           FUN = str_trim, 
                                           side = "both"), 
                                    FUN = paste, collapse = ";"))
+    # order institutions within each cell alphabetically
+    dfs[[i]][, j] <- unlist(sapply(sapply(strsplit(dfs[[i]][, j], split = ";"), 
+                                          FUN = function(x) {x[order(x)]}), 
+                                   FUN = paste, collapse = ";"))
+    
   } # end loop through institution columns
   
 }
