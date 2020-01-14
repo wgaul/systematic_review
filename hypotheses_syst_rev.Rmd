@@ -115,7 +115,7 @@ $H_0$: Data type does not affect the mean spatial extent of studies.
 
 *Proposed Test*: Linear regression with area (km$^2$) as the outcome and data types as predictors.
 
-## Study Question Paradigm
+## Data Type and Study Question Paradigm
 
 **What data types are used for each study question paradigm?**
 

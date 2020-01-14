@@ -11,12 +11,12 @@
 ## 
 ## author: Willson Gaul wgaul@hotmail.com
 ## created: 27 Aug 2018
-## last modified: 19 Nov 2018
+## last modified: 14 Jan 2020
 ###########################################
 
 library(tidyverse)
 
-# setwd("~/Documents/Data_Analysis/UCD/systematic_review/")
+source("combine_search_results.R")
 
 # read in data
 elig <- read_csv("~/Documents/UCD/PhD_Project/systematic_review/master_eligibility_results.csv")
@@ -509,7 +509,9 @@ er <- er[, -which(colnames(er) %in% c(
   "link", "inclusion.order", "doi", "other.notes", 
   "aspects.not.yet.coded", 
   "eligible.for.meta.analysis", 
-  "er.needs.to.read"))]
+  "er.needs.to.read", "qualifies", "authors", 
+  "publication", "year", 
+  "keywords", "coding.DONE"))]
 
 
 ## add indicator column for studies that used no data types except whwhwh
@@ -529,5 +531,38 @@ if(any(wg_not_desc == T & wg$results.type...descriptive.only == T, na.rm = T)) {
   stop("Descriptive data only and either inference or prediction are both coded TRUE in wg.  This should not be possible.  This may be due to assigning one of the values manually as part of error correction.  wgisit that assignment and change the corresponding mutually exclusive value also.")
 }
 
-rm(wg_not_desc)
+### Temporal extent -----------------------------------------------------------
+# calculate number of years covered by study
+wg$temp_extent <- as.numeric(wg$end.year) - as.numeric(wg$start.year)
+# individually assign values to studies with temporal extent < 1 year
+if(diag) paste0("The following article has a temporal extent of zero: ", 
+                wg$title[which(wg$temp_extent == 0)])
+wg$temp_extent[grepl("An assessment of bumblebee .* land use and floral.*", 
+                     wg$title)] <- 0.33
+wg$temp_extent[which(grepl("The Success of the Horse.*Revealed with.*", 
+                           wg$title))] <- 105/365 # 105/365 days
+wg$temp_extent[which(grepl("Patterns and causes of covariation in bird and butterfly.*", 
+                           wg$title))] <- 5/12 # April through august 5/12 months
+wg$temp_extent[grepl("Taxonomic bias in biodiversity data and.*", 
+                     wg$title)] <- 2015 - 1900 # at least this long
+wg$temp_extent[grepl("Focal Plant Observations.*Pollinator.*", 
+                     wg$title)] <- 3/12 # June through August
+wg$temp_extent[grepl("Regional vegetation change and implications.*Cornwall.*", 
+                     wg$title)] <- 2013 - 1900 # at least this long
+wg$temp_extent[grepl("Monitoring abundance and phenology.*novel mixture.*", 
+                     wg$title)] <- 21/52 # weeks
+wg$temp_extent[grepl("Large-scale citizen.*farms to bats.*", 
+                     wg$title)] <- 5/12 # May to September
+wg$temp_extent[grepl("Quality control in.*OPAL Water.*", 
+                     wg$title)] <- 8/12 # April to November
+wg$temp_extent[grepl("The effect of artificial lighting.*missed.*", 
+                     wg$title)] <- 9/365 # 9 days from 4 to 12 January
+wg$temp_extent[grepl("Evidence for habitat.*distribution trends of UK and.*", 
+                     wg$title)] <- 2012 - 1900 # at least this long
+wg$temp_extent[grepl("Change and causes of.*flora of Ireland.*", 
+                     wg$title)] <- 1999 - 1970 # at least this long
+wg$temp_extent[grepl("Change and causes of.*flora of Ireland.*", 
+                     wg$title)] <- 1999 - 1970 # at least this long
+### end calculate temporal extent ---------------------------------------------
 
+rm(wg_not_desc, dfs)

@@ -1,13 +1,14 @@
 ---
 title: "Biological Records Systematic Review - Preliminary Methods and Results"
+date: 14 Jan 2020
 csl: ecology.csl
 output:
-  html_document:
-    number_sections: true
-    df_print: kable
   word_document:
     toc: true
     toc_depth: 4
+  html_document:
+    number_sections: true
+    df_print: kable
   html_notebook: default
   fig_caption: yes
   pdf_document: default
@@ -80,7 +81,6 @@ knitr::opts_chunk$set(echo=F, message=F, warning=T, cache=F)
 ```
 
 ```{r, load_data, cache = F, results='hide', warning = F}
-setwd("~/Documents/Data_Analysis/UCD/systematic_review/")
 library(wgutil)
 library(Hmisc)
 library(boot)
@@ -114,6 +114,9 @@ tabs <- captioner(prefix = "Table")
 
 
 # Methods
+
+**See Hao et al as a template for how to write syst. rev. methods.**
+
 We did a systematic review of original research published since 2014 that used biological records from Ireland and/or the United Kingdom (UK).  We generated a list of relevant articles from Web of Science, Scopus, ProQuest, GoogleScholar via Publish or Perish software (@Harzing2007), and the Global Biodiversity Information Facility (GBIF) website using the search terms shown in Appendix 2.  One researcher evaluated each article for inclusion eligibility and coded information on 46 variables describing characteristics of each article.  A second reader coded all variables for a subset of 20% of the articles.  Agreement between the two readers was evaluated using Krippendorff's alpha (Krippendorff 2004).  Variables that did not meet minimum standards for reader agreement were not used in subsequent analyses.  Analyses were conducted in R version 3.5 (@RCoreTeam2015).
 
 ## Study eligibility
@@ -139,15 +142,11 @@ We classified the broad analysis approach used by each study into one of three c
 We considered studies estimating parameters and reporting some measure of uncertainty (e.g. *p*-values, confidence intervals, posterior probability distributions) to be using inference.  We considered studies that built models and made predictions to be using an analysis strategy of prediction, even if no uncertainty or inference was reported with the predictions.  Finally, we considered the analysis approach to be descriptive only if results were descriptive with no prediction or inference.  Descriptive results could be narrative, graphical, or quantitative as long as no inference or uncertainty was reported (e.g. point estimates of descriptive statistics without any confidence interval or *p*-values).  Studies could use both inference and prediction as analysis strategies and so those categories were not mutually exclusive, but studies were only categorized as using a descriptive analysis approach if all results were descriptive only and the study used no inference or prediction.  
 
 ### Coding reliability
-We used Krippendorff's *alpha* [@Krippendorff2004] to evaluate the agreement between two readers for each of `r ncol(er)-6` variables that were coded by two people.  [**Dina, any thoughts about Krippendorff's alpha or other measures of agreement?**]. We calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package [@irr2012].  Krippendorff's alpha measures agreement between multiple coders while accounting for aggrement by chance.  Rule-of-thumb guidelines suggest that Krippendorff's alpha values below 0.67 indicate poor agreement such that the data cannot be trusted for analysis; values between 0.67 and 0.8 suggest that the data are moderately reliable and may be suitable for only tentative interpretation, and values above 0.8 indicate that the data are reliable.  We removed variables with Krippendorff's alpha values below 0.67 from analyses; all other variables were kept, but we make note of variables for which Krippendorff's alpha values indicate only moderate reliability of the data. 
+We used Krippendorff's *alpha* [@Krippendorff2004] to evaluate the agreement between two readers for each of `r ncol(er)-6` variables that were coded by two people.  We calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package [@irr2012].  Krippendorff's alpha measures agreement between multiple coders while accounting for agrement by chance.  Rule-of-thumb guidelines suggest that Krippendorff's alpha values below 0.67 indicate poor agreement such that the data cannot be trusted for analysis; values between 0.67 and 0.8 suggest that the data are moderately reliable and may be suitable for only tentative interpretation, and values above 0.8 indicate that the data are reliable.  We removed variables with Krippendorff's alpha values below 0.67 from analyses; all other variables were kept, but we make note of variables for which Krippendorff's alpha values indicate only moderate reliability of the data. 
 
 
 ```{r inter_coder_agreement_subset_dfs, warning=TRUE}
 ## ellie's results ----------------------------------------------------
-# remove columns that aren't coded variables 
-er <- er[, which(colnames(er) %nin% c("link", "qualifies", "authors", 
-                                      "publication", "doi", "year", 
-                                      "keywords", "coding.DONE"))]
 er <- er[order(er$title), ] # order rows
 er <- er[, order(colnames(er))] # order columns
 # put title column first
@@ -203,6 +202,7 @@ do_kripp.alpha <- function(x, method) {
   kripp.alpha(as.matrix(x), method = method)
 }
 
+warning("WG says: the kripp.alpha function makes a 'dv' object that is 'data values' but when values are character or logical (as in my case) this producees NAs during coercion.  However, that 'dv' object is only used if the method is set to interval', so in my case the NAs that the warning is about are never used because I am using the nominal method.  So the warnings are nothing to worry about as long as method is 'nominal'.")
 kripp_all_dbl_coded <- lapply(dbl_coded_list, FUN = do_kripp.alpha, 
                               method = "nominal")
 ```
@@ -227,16 +227,6 @@ $H_0$: The mean temporal extent of studies using what, where, when-only data is 
 
 *Proposed Test*: Linear regression with natural-log transformed time (in years) as the outcome and data types as predictors.
  
-```{r calc_temp_extent}
-# calculate number of years covered by study
-wg$temp_extent <- as.numeric(wg$end.year) - as.numeric(wg$start.year)
-# individually assign values to studies with temporal extent < 1 year
-if(diag) paste0("The following article has a temporal extent of zero: ", 
-                wg$title[which(wg$temp_extent == 0)])
-wg$temp_extent[which(
-  grepl("An assessment of bumblebee .* land use and floral.*", 
-        wg$title))] <- 0.33
-```
 
 ```{r prepare_temporal_extent_df}
 temp_extent <- select(
@@ -444,7 +434,7 @@ wg$both_ind_and_community_questions <- wg$individual.species.question == T &
 
 ```{r paradigm_bootstrap}
 count_fun <- function(x, indices) {
-  # ARGS: x - a vector of TRUE/FALSE values, for which the TRUES will be counted
+  # ARGS: x - a vector of TRUE/FALSE values, for which the TRUEs will be counted
   #       indices - a vector of indices as required by boot
   x_b <- x[indices]
   sum(as.numeric(x_b), na.rm = TRUE)
@@ -563,7 +553,7 @@ $H_0$: The use of data types is the same for all study question paradigms.
 
 The response is the cell counts in the contingency table in section 2.5 (Table 5 I think).  I think an assumption of the Poisson regression is that the cell counts are independent, meaning that the count in one cell doesn’t go up or down with the count in another cell. So I need to asses if there is any dependence between the levels of each categorical variable. For example, does the count in the “sampling effort x community” cell go up in correlation with the count in the “abundance x community” cell? Could I use some kind of permutation approach to test for independence of cell counts? **Dina, how should I check to make sure cell counts are independent?** I could perhaps do this using a permutation procedure to look for non-random patterns in the data types.  For each pair of data type variables, I could a table in which each study is a row and there is a column for each of the two data type variables being assessed, and a 1 or a 0 for whether the study had the data type.  I could then take the row sums and look at the distribution of row sums of 0 (studies using neither of the two data types being tested), 1 (studies using only 1 of the two data types), and 2 (studies using both of the two data types).  I could then randomly permute one of the two columns, breaking any associations between the two data types, and take row sums again, getting a distribution of row sums under the null hypothesis.   
 
-**Dina, how how should I check other model assumptions for the Poisson regression?**
+**Dina, how should I check other model assumptions for the Poisson regression?**
 
 
 ```{r data_type_paradigm_df_prepare}
@@ -712,11 +702,6 @@ permuted_counts <- c(permuted_counts, real_count)
 p_auth_perm <- min(length(which(permuted_counts >= real_count)), 
                    length(which(permuted_counts <= real_count))) / 
                      length(permuted_counts)
-
-# hist(perm_n_author_from_inst, 
-#      xlim = c(min(c(perm_n_author_from_inst, real_count)), 
-#               max(c(perm_n_author_from_inst, real_count))))
-# abline(v = real_count)
 ```
 
 ```{r boot_author_institution}
@@ -821,7 +806,7 @@ if(diag_present) {
 ```{r temp_range_data_table}
 if(diag_present) {
   ## data are not balanced
-  print("Data are not balanced.")
+  print("Temporal extent data are not balanced.")
   kable(table(temp_extent$data_type))
 }
 ```
@@ -944,7 +929,6 @@ Print number of events:
 ```{r print_n_events, echo=TRUE}
 if(diag_present) {
   # check number of events/ non-events to make sure we have enough data
-
   table(wg$methodology.development.or.analysis)
 }
 ```
@@ -1010,6 +994,8 @@ if(diag_present) {
 
 **I will wait for Dina's suggestions about how to assess assumptions and model fit for the Poisson regressions.**
 
+**TODO 3 Jan 2019: Try steps here: https://newonlinecourses.science.psu.edu/stat504/node/169/**
+
 ```{r data_type_parad_table_cap}
 data_type_parad_table_cap <- tabs(name = "data_type_parad_table_cap", 
                                   "Table of counts for data type by study question paradigm.")
@@ -1044,11 +1030,10 @@ kripp_sum_cap <- figs(name = "kripp_sum_cap",
 ```
 
 ## Search results 
-The search returned `r nrow(elig)` potentially relevant studies, of which we have evaluated `r sum(!is.na(elig$qualifies))` for eligibility, and judged `r length(which(elig$qualifies == TRUE))` to be eligible for inclusion in this review.  [???] percent of potentially relevant studies were returned by more than one search method, while [???] percent of potentially relevant studies were returned by only one search method.  
+
+The search returned `r nrow(elig)` potentially relevant studies, of which we judged `r length(which(wg$qualifies == TRUE))` to be eligible for inclusion in this review.  The number of percent of potentially relevant studies returned by more than one search method was `r length(n_duplicate_titles)` (`r round((length(n_duplicate_titles)/nrow(elig))*100, digits = 1)`%).  Of the studies that we deemed eligible for inclusion in this review, `r length(which(wg$title %in% names(n_duplicate_titles)))` (`r round((length(which(wg$title %in% names(n_duplicate_titles)))/nrow(wg))*100, digits = 1)`) were returned by more than one search method.  
 
 One reader has coded `r nrow(wg)` articles and a second reader has coded `r nrow(er)` of those. 
-
-This preliminary analysis uses the `r nrow(wg)` articles coded so far.  
 
 ## Coding reliability
 
@@ -1120,13 +1105,21 @@ prob_of_values <- prob_of_values[order(prob_of_values$kripp_alpha,
 # desired significance level is 0.1, then sample size needed is as follows:
 #prob_of_values$n_25_adequate <- prob_of_values$prob_small_class > 0.25
 #prob_of_values$n_30_adequate <- prob_of_values$prob_small_class > 0.2
-prob_of_values$n_40_adequate <- prob_of_values$prob_small_class >= 0.143
-# TODO add column for sample size of 50
+prob_of_values$n_40_adequate <- prob_of_values$prob_small_class >= 0.14
+# prob_of_values$n_50_adequate <- prob_of_values$prob_small_class >= 0.105 
+
+## using 50 double-codings would only get us an additional 2 variables, and I
+## don't think those are variables important enough to be worth the effort.
+
+# Put vars with adequate sample size at top
+prob_of_values <- prob_of_values[order(prob_of_values$n_40_adequate, 
+                                       prob_of_values$kripp_alpha, 
+                                       decreasing = TRUE),]
 
 if(diag_present == TRUE) {
-  kable(data.frame(prob_of_values[, -2]), 
-              col.names = c("variable", "Krippendorff's alpha", 
-                            "sample size adequate"), 
+  kable(data.frame(prob_of_values), 
+              col.names = c("variable", "prob of small class", 
+                            "Krippendorff's alpha", "sample size 40 adequate"), 
               digits = 2)
 }
 if(diag) {
@@ -1135,8 +1128,9 @@ if(diag) {
   print(kable(samp_adequate[order(
     samp_adequate$kripp_alpha, decreasing = T), -2], 
     digits = 2))
+  rm(samp_adequate)
 }
-rm(samp_adequate)
+
 ```
 
 ```{r plot_kripp_for_adequate_sample_size, fig.cap=kripp_sum_cap}
@@ -1193,7 +1187,7 @@ if(diag) {
 }
 ```
 
-The overall model using data type to predict the natural log of temporal extent of study (in years) was  significant ($F_{`r format(round(m_time_full_anova$Df[2], digits = 2), scientific = F)`, `r format(round(m_time_full_anova$Res.Df[2], digits = 2), scientific = F)`}$ = `r format(round(m_time_full_anova$F[2], digits = 2), scientific = F)`, *p* = `r format(round(m_time_full_anova[6][[1]][2], digits = 3), scientific = F)`, Adjusted $R^2%$ = `r format(round(time_summary$adj.r.squared, digits = 2), scientific = F)`, `r figs("temp_extent_cap", display = "cite")`).  In the final manuscript I will individually test whether each variable has a significant effect after accounting for the other variables.  I will interpret the direction and effect size for all variables in the context of the full model.  
+The overall model using data type to predict the natural log of temporal extent of study (in years) was  significant ($F_{`r format(round(m_time_full_anova$Df[2], digits = 2), scientific = F)`, `r format(round(m_time_full_anova$Res.Df[2], digits = 2), scientific = F)`}$ = `r format(round(m_time_full_anova$F[2], digits = 2), scientific = F)`, *p* = `r format(round(m_time_full_anova[6][[1]][2], digits = 4), scientific = F)`, Adjusted $R^2%$ = `r format(round(time_summary$adj.r.squared, digits = 2), scientific = F)`, `r figs("temp_extent_cap", display = "cite")`).  In the final manuscript I will individually test whether each variable has a significant effect after accounting for the other variables.  I will interpret the direction and effect size for all variables in the context of the full model.  
 
 Example of how results will be written (specific results will change in the final version): The effect of “what, where, when” data on the temporal extent of studies was positive significant at the 0.05 level after accounting for other data type variables (p = `r summary(time_lm_full)$coefficients["data.type...what.where.when.onlyTRUE", "Pr(>|t|)"]`). The expected temporal extent covered by a study that uses only "what, where, when" data is `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[2])), digits = 1)` years when the data have no other data type characteristics.  When the data are "what, where, when" and multiple datasets were integrated for analysis, the expected temporal extent covered by a study is `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[2] + time_lm_full$coefficients[8])), digits = 1)` years. 
 
@@ -1210,11 +1204,11 @@ print(ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + #, color
         ylab("Temporal Extent of Study (years)") + 
         annotate("text", x = 3, y = 2600, 
                  label = "paste(\"Adjusted \", 
-                 italic(R) ^ 2, \" = 0.52\")", 
+                 italic(R) ^ 2, \" = 0.39\")", 
                 parse = TRUE) + 
   annotate("text", x = 3, y = 1200, 
            label = "paste(\"Overall model significance \", 
-                 italic(p), \" = 0.002\")", 
+                 italic(p), \" < 0.0001\")", 
            parse = TRUE) +
         theme_bw() + 
         scale_color_discrete(name = "Significantly Different from\nWhat, Where, When-only\nstudies (alpha = 0.1 level)") + 
@@ -1231,14 +1225,14 @@ ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + #, color = sig
   scale_y_log10() + 
   xlab("Data Type") + 
   ylab("Temporal Extent of Study (years)") + 
-  # annotate("text", x = 3, y = 140, 
-  #          label = "paste(\"Adjusted \", 
-  #                italic(R) ^ 2, \" = 0.27\")", 
-  #          parse = TRUE, 
-  #          size = t_size - 15) + 
-  annotate("text", x = 3, y = 1400, 
+  annotate("text", x = 3, y = 2000,
+           label = "paste(\"Adjusted \",
+                 italic(R) ^ 2, \" = 0.39\")",
+           parse = TRUE,
+           size = t_size - 15) +
+  annotate("text", x = 3, y = 5000, 
            label = "paste(\"Overall model significance \", 
-                 italic(p), \" = 0.012\")", 
+                 italic(p), \" < 0.0001\")", 
            parse = TRUE, 
            size = t_size - 14) +
   theme_bw() + 
@@ -1435,9 +1429,6 @@ print(ggplot(data = resp_count_df,
               strip.background = element_blank(), strip.placement = "outside"))
       # theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)))
 ```
-
-**[TODO: Descriptive stats for studies focusing on alien species?]**
-
 
 ## Development of methodology across different study questions
 Reader agreement for variables used in this analysis.
@@ -1769,7 +1760,7 @@ auth_inst_cap <- figs("auth_inst_cap",
 options("scipen" = 100, "digits" = 4)
 ```
 
-Lead authors (the first and/or last authors on a study) were significantly more likely to use biological records data provided by their own institution than by other data providing institutions found in this review (empirical permutation *p*-value = `r p_auth_perm`).  Over a quarter of the studies (proportion = `r round(lead_auth_inst_boot$t0, 2)`, 95% bootstrap CI [`r round(boot.ci(lead_auth_inst_boot)$bca[4], 2)`, `r round(boot.ci(lead_auth_inst_boot)$bca[5], 2)`]) used data provided by the institution of one of the lead authors, and two-thirds of the studies (proportion = `r round(any_auth_inst_boot$t0, 2)`, 95% bootstrap CI [`r round(boot.ci(any_auth_inst_boot)$bca[4], 2)`, `r round(boot.ci(any_auth_inst_boot)$bca[5], 2)`]) had at least one author associated with the data providing institution (`r figs("auth_inst_cap", display = "cite")`).
+Lead authors (the first and/or last authors on a study) were significantly more likely to use biological records data provided by their own institution than by other data providing institutions found in this review (empirical permutation *p*-value = `r p_auth_perm`).  Over a quarter of the studies (proportion = `r round(lead_auth_inst_boot$t0, 2)`, 95% bootstrap CI [`r try(round(boot.ci(lead_auth_inst_boot)$bca[4], 2))`, `r try(round(boot.ci(lead_auth_inst_boot)$bca[5], 2))`]) used data provided by the institution of one of the lead authors, and two-thirds of the studies (proportion = `r round(any_auth_inst_boot$t0, 2)`, 95% bootstrap CI [`r try(round(boot.ci(any_auth_inst_boot)$bca[4], 2))`, `r try(round(boot.ci(any_auth_inst_boot)$bca[5], 2))`]) had at least one author associated with the data providing institution (`r figs("auth_inst_cap", display = "cite")`).
 
 ```{r restore_scientific_notation}
 options("scipen" = 0, "digits" = 7)
@@ -1782,12 +1773,16 @@ colnames(auth_inst_df) <- c("author_relationship", "point_estimate",
                             "lower_bound", "upper_bound")
 auth_inst_df[1, ] <- c("lead author\nassociated with\ndata provider", 
                        lead_auth_inst_boot$t0, 
-                       boot.ci(lead_auth_inst_boot)$bca[4], 
-                       boot.ci(lead_auth_inst_boot)$bca[5])
+                       tryCatch(boot.ci(lead_auth_inst_boot)$bca[4], 
+                                error = function(x) NA), 
+                       tryCatch(boot.ci(lead_auth_inst_boot)$bca[5], 
+                                error = function(x) NA))
 auth_inst_df[2, ] <- c("any author\nassociated with\ndata provider", 
                        any_auth_inst_boot$t0, 
-                       boot.ci(any_auth_inst_boot)$bca[4], 
-                       boot.ci(any_auth_inst_boot)$bca[5])
+                       tryCatch(boot.ci(any_auth_inst_boot)$bca[4], 
+                                error = function(x) NA), 
+                       tryCatch(boot.ci(any_auth_inst_boot)$bca[5], 
+                                error = function(x) NA))
 auth_inst_df$point_estimate <- as.numeric(auth_inst_df$point_estimate)
 auth_inst_df$lower_bound <- as.numeric(auth_inst_df$lower_bound)
 auth_inst_df$upper_bound <- as.numeric(auth_inst_df$upper_bound)
@@ -1843,7 +1838,7 @@ I think the story is that data use is roughly similar between question paradigms
 
 [In a review of ecological and environmental citizen science projects, Pocock et al. [-@Pocock2017] distinguished between 'mass participation' projects that tended to have lower data quality, less detailed data, but cover larger geographic areas, and 'systematic monitoring' projects that tended to collect more complex and possible higher-quality data (e.g. counts instead of presence/absence observations) but covered smaller geographic areas.]
 
-
+["There was no evidence that citizen science studies investigate a different organismal scale (community vs. species) compared to the urban ecology literature" in a systematic review @Wei2016. ]
 
 ### old questions to drop or keep?
 **sub-question about analysis approach and data type**

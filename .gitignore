@@ -2,3 +2,4 @@
 *.nb.html
 *.RData
 old
+.Rproj.user
