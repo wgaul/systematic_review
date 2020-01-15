@@ -561,8 +561,8 @@ wg$temp_extent[grepl("Evidence for habitat.*distribution trends of UK and.*",
                      wg$title)] <- 2012 - 1900 # at least this long
 wg$temp_extent[grepl("Change and causes of.*flora of Ireland.*", 
                      wg$title)] <- 1999 - 1970 # at least this long
-wg$temp_extent[grepl("Change and causes of.*flora of Ireland.*", 
-                     wg$title)] <- 1999 - 1970 # at least this long
+wg$temp_extent[grepl("Garden and landscape-scale.*moths.*", 
+                     wg$title)] <- 36/52 # 36 weeks
 ### end calculate temporal extent ---------------------------------------------
 
 rm(wg_not_desc, dfs)

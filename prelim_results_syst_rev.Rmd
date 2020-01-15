@@ -142,7 +142,7 @@ We classified the broad analysis approach used by each study into one of three c
 We considered studies estimating parameters and reporting some measure of uncertainty (e.g. *p*-values, confidence intervals, posterior probability distributions) to be using inference.  We considered studies that built models and made predictions to be using an analysis strategy of prediction, even if no uncertainty or inference was reported with the predictions.  Finally, we considered the analysis approach to be descriptive only if results were descriptive with no prediction or inference.  Descriptive results could be narrative, graphical, or quantitative as long as no inference or uncertainty was reported (e.g. point estimates of descriptive statistics without any confidence interval or *p*-values).  Studies could use both inference and prediction as analysis strategies and so those categories were not mutually exclusive, but studies were only categorized as using a descriptive analysis approach if all results were descriptive only and the study used no inference or prediction.  
 
 ### Coding reliability
-We used Krippendorff's *alpha* [@Krippendorff2004] to evaluate the agreement between two readers for each of `r ncol(er)-6` variables that were coded by two people.  We calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package [@irr2012].  Krippendorff's alpha measures agreement between multiple coders while accounting for agrement by chance.  Rule-of-thumb guidelines suggest that Krippendorff's alpha values below 0.67 indicate poor agreement such that the data cannot be trusted for analysis; values between 0.67 and 0.8 suggest that the data are moderately reliable and may be suitable for only tentative interpretation, and values above 0.8 indicate that the data are reliable.  We removed variables with Krippendorff's alpha values below 0.67 from analyses; all other variables were kept, but we make note of variables for which Krippendorff's alpha values indicate only moderate reliability of the data. 
+We used Krippendorff's *alpha* [@Krippendorff2004] to evaluate the agreement between two readers for each of `r ncol(er)-6` variables that were coded by two people.  We calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package [@irr2012].  Krippendorff's alpha measures agreement between multiple coders while accounting for agrement by chance.  Rule-of-thumb guidelines suggest that Krippendorff's alpha values below 0.67 indicate poor agreement such that the data cannot be trusted for analysis; values between 0.67 and 0.8 suggest that the data are moderately reliable and may be suitable for only tentative interpretation, and values above 0.8 indicate that the data are reliable.  In order to estimate reliability using Krippendorff's alpha, there must be sufficient variation in the variable being coded.  The amount of data needed to estimate alpha for a categorical variable depends on the probability of the least common class for that variable. Krippendorff [@Krippendorff2004] provides guidelines about the number of coded cases needed to estimate the value of alpha given the probability of the least common class for a variable.  We examined Krippendorff's alpha values only for variables for which the least common class had a probability of 0.14 or higher, following guidelines in [@Krippendorff2004].  Of those variables, we removed from subsequent analyses all variables with Krippendorff's alpha values below 0.67 from analyses.  Variables for which we did not have enough data to estimate alpha were generally not used in statistical analyses, but we did discuss some of these variables narratively, with the qualification that we were unable to estimate how reliable our codings of those variables were.  
 
 
 ```{r inter_coder_agreement_subset_dfs, warning=TRUE}
@@ -215,15 +215,15 @@ correlation_cap <- figs(name = "correlation_cap",
                         "Correlation of the binary data type predictor variables.   **Dina, how should I assess correlation for binary variables?  Variance Inflaction Factor (VIF) or Pearson's correlation coefficient?**")
 ```
 
-We used linear regression with natural-log transformed time (in years) as the response variable.  We used nine binary predictor variables indicating whether the study used at least some data that had the following characteristics or information: 1) only what, where, when information; 2) known sampling effort; 3) abundance; 4) explicit non-detection information; 5) data came from an organized monitoring scheme; 6) visit-specific covariates; 7) multiple different biological records datasets integrated for analyses; 8) life stage information; and 9) voucher specimens.  Although some of the predictor variables may be correlated (`r figs("correlation_cap", display = "cite")`), we kept all variables in the regression model because we were interested in the effect of each additional type of information *after accounting for other information types*.  For example, we were interested in the additional effect of having abundance data after adjusting for whether the data came from an organized monitoring scheme.  However, we assessed collinearity of predictor variables using variance inflation factors in order to determine if collinearity is likely to cause additional uncertainty in the the coefficient estimates for the effect of each data type [@Fox1992]. **TODO: implmenet VIF for this**
+We used linear regression with natural-log transformed time (in years) as the response variable.  We used nine binary predictor variables indicating whether the study used at least some data that had the following characteristics or information: 1) known sampling effort; 2) explicit non-detection information; 3) data came from an organized monitoring scheme; 4) visit-specific covariates; and 5) multiple different biological records datasets integrated for analyses.  Although some of the predictor variables may be correlated (`r figs("correlation_cap", display = "cite")`), we kept all variables in the regression model because we were interested in the effect of each additional type of information *after accounting for other information types*.  For example, we were interested in the additional effect of having abundance data after adjusting for whether the data came from an organized monitoring scheme.  However, we assessed collinearity of predictor variables using variance inflation factors in order to determine if collinearity is likely to cause additional uncertainty in the the coefficient estimates for the effect of each data type [@Fox1992]. **TODO: implmenet VIF for this**
 
 Because the variables are not mutually exclusive, each category is treated as an individual binary variable, rather than treating each variable as a factor level of a categorical "data type" variable.  
 
 We assessed the significance data types for predicting temporal extent by using a likelihood ratio test to compare a model containing main effects (but no interactions) for all data types to an intercept only model.  We then assessed the significance of each individual data type by comparing the model with all main effects to a reduced model in which the variable being tested had been removed.  Finally, we interpreted the direction of the effect of each variable from the coefficient estimate from the full model (i.e. while accounting for other variables).
 
-$H_a$: The mean temporal extent of studies using only "what, where, when" data is longer than the mean temporal extent of studies using richer data types. 
+$H_a$: ~~The mean temporal extent of studies using only "what, where, when" data is longer than the mean temporal extent of studies using richer data types.~~  The use of more complex data types will reduce the mean temporal extent of studies.  
 
-$H_0$: The mean temporal extent of studies using what, where, when-only data is the same as the mean temporal extent of studies using richer data types. 
+$H_0$: ~~The mean temporal extent of studies using what, where, when-only data is the same as the mean temporal extent of studies using richer data types.~~  Studies using more complex data types do not have shorter mean temporal extents than studies that do not use those data types.  
 
 *Proposed Test*: Linear regression with natural-log transformed time (in years) as the outcome and data types as predictors.
  
@@ -231,17 +231,18 @@ $H_0$: The mean temporal extent of studies using what, where, when-only data is 
 ```{r prepare_temporal_extent_df}
 temp_extent <- select(
   wg, c(title, temp_extent, 
-        data.type...what.where.when.only, 
+        # data.type...what.where.when.only, # alpha too low
         data.structure...sampling.effort.known, 
-        data.type...abundance,
+        # data.type...abundance, # alpha too low
         data.structure...non.detection,
         data.structure...organized.data.collection.scheme, 
         data.type...visit.specific.covariates, 
-        data.structure...multiple.datasets.integrated.for.analysis,
-        data.type...life.stage, 
-        data.type...voucher.of.some.kind.necessary.for.analysis)) %>%
+        data.structure...multiple.datasets.integrated.for.analysis
+        # data.type...life.stage, # can't estimate alpha
+        # data.type...voucher.of.some.kind.necessary.for.analysis # can't estimate alpha
+        )) %>%
   gather(key = "data_type", value = "dt_value", 
-         data.type...what.where.when.only:data.type...voucher.of.some.kind.necessary.for.analysis, 
+         data.structure...sampling.effort.known:data.structure...multiple.datasets.integrated.for.analysis, 
          factor_key = T) %>%
   filter(dt_value == T) %>%
   group_by(data_type)
@@ -251,24 +252,16 @@ temp_extent$data_type <- gsub("data.type...", "", temp_extent$data_type)
 temp_extent$data_type <- gsub("data.structure...", "", temp_extent$data_type)
 
 temp_extent$data_type <- factor(as.character(temp_extent$data_type), 
-                            levels = c("what.where.when.only", 
-                                       "sampling.effort.known",
-                                       "abundance",
+                            levels = c("sampling.effort.known",
                                        "non.detection", 
                                        "organized.data.collection.scheme", 
                                        "visit.specific.covariates", 
-                                       "multiple.datasets.integrated.for.analysis", 
-                                       "life.stage", 
-                                       "voucher.of.some.kind.necessary.for.analysis"), 
-                            labels = c("what where when", 
-                                       "sampling effort known",
-                                       "abundance",
+                                       "multiple.datasets.integrated.for.analysis"), 
+                            labels = c("sampling effort known",
                                        "non detection", 
                                        "organized scheme", 
                                        "visit specific covariates", 
-                                       "multiple datasets", 
-                                       "life stage", 
-                                       "voucher used"))
+                                       "multiple datasets"))
 ```
 
 
@@ -279,24 +272,20 @@ temp_extent$data_type <- factor(as.character(temp_extent$data_type),
 wg$log_years <- log(wg$temp_extent)
 # variables added based on a-priori expectation of most to least important
 time_lm_full <- lm(log_years ~ 1 + 
-                     data.type...what.where.when.only + 
                      data.structure...sampling.effort.known + 
-                     data.type...abundance +
                      data.structure...non.detection + 
                      data.structure...organized.data.collection.scheme + 
                      data.type...visit.specific.covariates + 
-                     data.structure...multiple.datasets.integrated.for.analysis +
-                     data.type...life.stage + 
-                     data.type...voucher.of.some.kind.necessary.for.analysis,
-                   data = wg, 
-                   na.action = na.exclude) 
+                     data.structure...multiple.datasets.integrated.for.analysis,
+                   data = wg[!is.na(wg$log_years), ], 
+                   na.action = na.exclude, y = TRUE) 
 
 time_resids <- rstandard(time_lm_full) # calculate residuals
 ```
 
 ```{r time_data_type_full_model_sig_test}
 # Test significance of full model
-m0 <- lm(log_years ~ 1, data = wg) # fit null model 
+m0 <- lm(log_years ~ 1, data = wg[!is.na(wg$log_years), ], y = T) # fit null model 
 m_time_full_anova <- anova(m0, time_lm_full)
 ```
 
@@ -306,100 +295,39 @@ m_time_full_anova <- anova(m0, time_lm_full)
 # 
 # TODO: Does this need multiple comparison correction?
 
-m_no_whwhwh <- lm(log_years ~ 1 + 
-                     data.structure...sampling.effort.known + 
-                     data.type...abundance +
-                     data.structure...non.detection + 
-                     data.structure...organized.data.collection.scheme + 
-                     data.type...visit.specific.covariates + 
-                     data.structure...multiple.datasets.integrated.for.analysis +
-                     data.type...life.stage + 
-                     data.type...voucher.of.some.kind.necessary.for.analysis,
-                  data = wg)
 m_no_effort <- lm(log_years ~ 1 + 
-                     data.type...what.where.when.only + 
-                     data.type...abundance +
                      data.structure...non.detection + 
                      data.structure...organized.data.collection.scheme + 
                      data.type...visit.specific.covariates + 
-                     data.structure...multiple.datasets.integrated.for.analysis +
-                     data.type...life.stage + 
-                     data.type...voucher.of.some.kind.necessary.for.analysis,
-                  data = wg)
-m_no_abund <- lm(log_years ~ 1 + 
-                     data.type...what.where.when.only + 
-                     data.structure...sampling.effort.known + 
-                     data.structure...non.detection + 
-                     data.structure...organized.data.collection.scheme + 
-                     data.type...visit.specific.covariates + 
-                     data.structure...multiple.datasets.integrated.for.analysis +
-                     data.type...life.stage + 
-                     data.type...voucher.of.some.kind.necessary.for.analysis,
-                 data = wg)
+                     data.structure...multiple.datasets.integrated.for.analysis,
+                  data = wg[!is.na(wg$log_years), ])
 m_no_nonDet <- lm(log_years ~ 1 + 
-                     data.type...what.where.when.only + 
                      data.structure...sampling.effort.known + 
-                     data.type...abundance +
                      data.structure...organized.data.collection.scheme + 
                      data.type...visit.specific.covariates + 
-                     data.structure...multiple.datasets.integrated.for.analysis +
-                     data.type...life.stage + 
-                     data.type...voucher.of.some.kind.necessary.for.analysis,
-                  data = wg)
+                     data.structure...multiple.datasets.integrated.for.analysis,
+                  data = wg[!is.na(wg$log_years), ])
 m_no_scheme <- lm(log_years ~ 1 + 
-                     data.type...what.where.when.only + 
                      data.structure...sampling.effort.known + 
-                     data.type...abundance +
                      data.structure...non.detection + 
                      data.type...visit.specific.covariates + 
-                     data.structure...multiple.datasets.integrated.for.analysis +
-                     data.type...life.stage + 
-                     data.type...voucher.of.some.kind.necessary.for.analysis,
-                  data = wg)
+                     data.structure...multiple.datasets.integrated.for.analysis,
+                  data = wg[!is.na(wg$log_years), ])
 m_no_visitCovs <- lm(log_years ~ 1 + 
-                     data.type...what.where.when.only + 
                      data.structure...sampling.effort.known + 
-                     data.type...abundance +
                      data.structure...non.detection + 
                      data.structure...organized.data.collection.scheme + 
-                     data.structure...multiple.datasets.integrated.for.analysis +
-                     data.type...life.stage + 
-                     data.type...voucher.of.some.kind.necessary.for.analysis,
-                     data = wg)
+                     data.structure...multiple.datasets.integrated.for.analysis,
+                     data = wg[!is.na(wg$log_years), ])
 m_no_multData <- lm(log_years ~ 1 + 
-                     data.type...what.where.when.only + 
                      data.structure...sampling.effort.known + 
-                     data.type...abundance +
                      data.structure...non.detection + 
                      data.structure...organized.data.collection.scheme + 
-                     data.type...visit.specific.covariates + 
-                     data.type...life.stage + 
-                     data.type...voucher.of.some.kind.necessary.for.analysis,
-                    data = wg)
-m_no_lifeStage <- lm(log_years ~ 1 + 
-                     data.type...what.where.when.only + 
-                     data.structure...sampling.effort.known + 
-                     data.type...abundance +
-                     data.structure...non.detection + 
-                     data.structure...organized.data.collection.scheme + 
-                     data.type...visit.specific.covariates + 
-                     data.structure...multiple.datasets.integrated.for.analysis +
-                     data.type...voucher.of.some.kind.necessary.for.analysis,
-                     data = wg)
-m_no_voucher <- lm(log_years ~ 1 + 
-                     data.type...what.where.when.only + 
-                     data.structure...sampling.effort.known + 
-                     data.type...abundance +
-                     data.structure...non.detection + 
-                     data.structure...organized.data.collection.scheme + 
-                     data.type...visit.specific.covariates + 
-                     data.structure...multiple.datasets.integrated.for.analysis +
-                     data.type...life.stage,
-                   data = wg)
+                     data.type...visit.specific.covariates,
+                    data = wg[!is.na(wg$log_years), ])
 
-indiv_mods_time <- list(m_no_whwhwh, m_no_effort, m_no_abund, m_no_nonDet, 
-                        m_no_scheme, m_no_visitCovs, m_no_multData, 
-                        m_no_lifeStage, m_no_voucher)
+indiv_mods_time <- list(m_no_effort, m_no_nonDet, 
+                        m_no_scheme, m_no_visitCovs, m_no_multData)
 ```
 
 
@@ -459,7 +387,7 @@ paradigm_list <- lapply(
 
 ## Ecological focus
 
-Within the individual-species and community study question paradigms, we assessed which ecological or biological responses were investigated.  We used bias-corrected accelerated bootstrap confidence intervals [@Efron1993] to estimate 95% confidence intervals around the number of studies investigating each ecological response within each paradigm. We determined statistical significance of differences in the number of studies investigating each type of response by assessing whether the 95% bootstrap confidence intervals overlapped.  For studies asking individual species-based questions, we identified three response variables, species distributions, abundance, and phenology, plus an "other" category for response variables that did not fit within one of those three categories.  For studies asking community-based questions, we identified two response variables, species richness (*alpha*-diversity or the number of species present), and species turnover (*beta*-diversity or any measure that incorporated species identity and/or abundance in addition to the number of species), plus an "other" category for response variables that did not fit in either of those two categories.  
+Within the individual-species and community study question paradigms, we assessed which ecological or biological responses were investigated.  For studies asking individual species-based questions, we identified three response variables, species distributions, abundance, and phenology, plus an "other" category for response variables that did not fit within one of those three categories.  For studies asking community-based questions, we identified two response variables, species richness (*alpha*-diversity or the number of species present), and species turnover (*beta*-diversity or any measure that incorporated species identity and/or abundance in addition to the number of species), plus an "other" category for response variables that did not fit in either of those two categories.  We used bias-corrected accelerated bootstrap confidence intervals [@Efron1993] to estimate 95% confidence intervals around the number of studies investigating each ecological response within each paradigm. We determined statistical significance of differences in the number of studies investigating each type of response by assessing whether the 95% bootstrap confidence intervals overlapped.  
 
 $H_0$: There is no difference in the number of studies investigating each response.  
 
@@ -731,11 +659,7 @@ dt_df <- wg[, which(
       "data.structure...sampling.effort.known", 
       "data.structure...non.detection", 
       "data.structure...multiple.datasets.integrated.for.analysis", 
-      "data.type...what.where.when.only", 
-      "data.type...abundance", 
-      "data.type...visit.specific.covariates", 
-      "data.type...life.stage", 
-      "data.type...voucher.of.some.kind.necessary.for.analysis"))]
+      "data.type...visit.specific.covariates"))]
 for(i in 1:ncol(dt_df)) {
   dt_df[, i] <- as.factor(as.character(data.frame(dt_df)[, i]))
 }
@@ -749,11 +673,7 @@ if(diag_present) {
                                "sampling effort",
                                "non detection",
                                "multiple datasets", 
-                               "what where when only", 
-                               "abundance",
-                               "visit specific covariates", 
-                               "life stage", 
-                               "voucher used"), 
+                               "visit specific covariates"), 
               labeller = label_wrap_gen(width = 10)) + 
         ggtitle("Correlation of data type predictor variables") + 
         theme(axis.text.x = element_text(angle = 50, hjust = 1)))
@@ -825,7 +745,7 @@ if(diag) {
 
 ```{r temp_extent_lm_diags_print, fig.height=4, fig.width=4}
 if(diag_present) {
-  print("Diagnostics for main effects model log_years ~ all 9 data types (no interactions)")
+  print("Diagnostics for main effects model log_years ~ all 5 data types (no interactions)")
   plot(time_lm_full)
   # hist(time_resids, 
   #      main = "standardized residuals of full model for temporal extent", 
@@ -840,6 +760,17 @@ if(diag) time_summary
 # for a one-unit increase in x, the predicted value of y 
 # changes by (e^beta1 - 1)*100 percent
 ```
+
+```{r temp_extent_vif_HL}
+if(diag_present) {
+  temp_extent_vif <- vif(time_lm_full) # assess multicollinearity
+  temp_vif_df <- data.frame(temp_extent_vif)
+  temp_vif_df$variable <- rownames(temp_vif_df)
+  rownames(temp_vif_df) <- NULL
+  kable(temp_vif_df, col.names = c("VIF", "variable"), digits = 2)
+}
+```
+
 
 ## What is the most popular study question paradigm?
 
@@ -1039,7 +970,7 @@ One reader has coded `r nrow(wg)` articles and a second reader has coded `r nrow
 
 Most variables for which Krippendorff's *alpha* was estimated show that the coding is reliable enough to be used in analysis, at least for drawing tentative conclusions (`r figs("kripp_sum_cap", display = "cite")`).  Many of the variables have Krippendorff's *alpha* values above the minimum required level of 0.67 but below the prefered level of 0.8, which indicates that they should be interpreted with caution.  Fewer variables have Krippendorff's *alpha* values higher than the prefered level of 0.8.  The number of articles that have been evaluated by two readers is too small for reliable estimation of Krippendorff's alpha for some variables for which the smallest class is particularly uncommon (`r tabs("kripp_samp_size_cap", display = "cite")`).  `r tabs("kripp_samp_size_cap", display = "cite")` shows estimates of Krippendorff's *alpha* for each variable and indicates whether the sample size is large enough to estimate Krippendorff's *alpha* with a confidence level of 0.1 for a minimum Krippendorff's *alpha* value of 0.667 [@Krippendorff2004].  Some of the variables we coded are not reliable according to Krippendorff's *alpha*.  
 
-In the final manuscript I will not include unreliable variables in analysis, though it may be worthwhile to discuss why they were difficult to code reliably.  For this draft, I have printed a table showing the Krippendorff's *alpha* values for the variables used in each analysis at the beginning of each sub-section in the *Results*.  In this draft I have kept variables in analyses even if the preliminary estimate of Krippendorff's *alpha* is too low.  
+In the final manuscript I will not include unreliable variables in analysis, though it may be worthwhile to discuss why they were difficult to code reliably.  For this draft, I have printed a table showing the Krippendorff's *alpha* values for the variables used in each analysis at the beginning of each sub-section in the *Results*.  
 
 ```{r krippendorfs_alpha_summary, fig.cap = kripp_sum_cap, include = F}
 kripp_summary_long <- data.frame(
@@ -1067,7 +998,7 @@ if(diag) {
 
 ```{r kripp_samp_size_cap}
 kripp_samp_size_cap <- tabs(name = "kripp_samp_size_cap", 
-                            paste0("Recommended sample size for accurate estimation of Krippendorff's alpha given the proportion of the minority class in the results, and a desired confidence level of 0.1 for a minimum Krippendorff's alpha value of 0.667 (Krippendorff 2004).  So far there are ", nrow(wg), " double-coded studies."))
+                            paste0("Recommended sample size for accurate estimation of Krippendorff's alpha given the proportion of the minority class in the results, and a desired confidence level of 0.1 for a minimum Krippendorff's alpha value of 0.667 (Krippendorff 2004).  So far there are ", nrow(er), " double-coded studies."))
 ```
 
 `r if(diag_present) tabs("kripp_samp_size_cap", display = "full")`
