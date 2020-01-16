@@ -1,6 +1,6 @@
 ---
 title: "Biological Records Systematic Review - Preliminary Methods and Results"
-date: 14 Jan 2020
+date: 16 Jan 2020
 csl: ecology.csl
 output:
   word_document:
@@ -12,7 +12,6 @@ output:
   html_notebook: default
   fig_caption: yes
   pdf_document: default
-bibliography: PhD_references.bib
 ---
 
 <div style="line-height: 2em;">
@@ -212,22 +211,19 @@ kripp_all_dbl_coded <- lapply(dbl_coded_list, FUN = do_kripp.alpha,
 
 ```{r correlation_cap}
 correlation_cap <- figs(name = "correlation_cap", 
-                        "Correlation of the binary data type predictor variables.   **Dina, how should I assess correlation for binary variables?  Variance Inflaction Factor (VIF) or Pearson's correlation coefficient?**")
+                        "Correlation of the binary data type predictor variables.")
 ```
 
-We used linear regression with natural-log transformed time (in years) as the response variable.  We used nine binary predictor variables indicating whether the study used at least some data that had the following characteristics or information: 1) known sampling effort; 2) explicit non-detection information; 3) data came from an organized monitoring scheme; 4) visit-specific covariates; and 5) multiple different biological records datasets integrated for analyses.  Although some of the predictor variables may be correlated (`r figs("correlation_cap", display = "cite")`), we kept all variables in the regression model because we were interested in the effect of each additional type of information *after accounting for other information types*.  For example, we were interested in the additional effect of having abundance data after adjusting for whether the data came from an organized monitoring scheme.  However, we assessed collinearity of predictor variables using variance inflation factors in order to determine if collinearity is likely to cause additional uncertainty in the the coefficient estimates for the effect of each data type [@Fox1992]. **TODO: implmenet VIF for this**
+We used linear regression with natural-log transformed time (in years) as the response variable.  We used five binary predictor variables indicating whether the study used at least some data that had the following characteristics or information: known sampling effort; explicit non-detection data; data came from an organized monitoring scheme; visit-specific covariates; multiple different biological records datasets integrated for analyses.  Although some of the predictor variables may be correlated (`r figs("correlation_cap", display = "cite")`), we kept all variables in the regression model because we were interested in the effect of each additional type of information *after accounting for other information types*.  For example, we were interested in the additional effect of having non-detection data after adjusting for whether the data came from an organized monitoring scheme.  We assessed collinearity of predictor variables using variance inflation factors in order to determine if collinearity is likely to cause additional uncertainty in the the coefficient estimates for the effect of each data type (Fox 2016). 
 
 Because the variables are not mutually exclusive, each category is treated as an individual binary variable, rather than treating each variable as a factor level of a categorical "data type" variable.  
 
-We assessed the significance data types for predicting temporal extent by using a likelihood ratio test to compare a model containing main effects (but no interactions) for all data types to an intercept only model.  We then assessed the significance of each individual data type by comparing the model with all main effects to a reduced model in which the variable being tested had been removed.  Finally, we interpreted the direction of the effect of each variable from the coefficient estimate from the full model (i.e. while accounting for other variables).
+We assessed the significance data types for predicting temporal extent by using a likelihood ratio test to compare a model containing main effects (but no interactions) for all data types to an intercept only model.  We then assessed the significance of each individual data type by comparing the model with all main effects to a reduced model in which the variable being tested had been removed.
 
 $H_a$: ~~The mean temporal extent of studies using only "what, where, when" data is longer than the mean temporal extent of studies using richer data types.~~  The use of more complex data types will reduce the mean temporal extent of studies.  
 
 $H_0$: ~~The mean temporal extent of studies using what, where, when-only data is the same as the mean temporal extent of studies using richer data types.~~  Studies using more complex data types do not have shorter mean temporal extents than studies that do not use those data types.  
-
-*Proposed Test*: Linear regression with natural-log transformed time (in years) as the outcome and data types as predictors.
  
-
 ```{r prepare_temporal_extent_df}
 temp_extent <- select(
   wg, c(title, temp_extent, 
@@ -272,7 +268,7 @@ temp_extent$data_type <- factor(as.character(temp_extent$data_type),
 wg$log_years <- log(wg$temp_extent)
 # variables added based on a-priori expectation of most to least important
 time_lm_full <- lm(log_years ~ 1 + 
-                     data.structure...sampling.effort.known + 
+                     data.structure...sampling.effort.known +
                      data.structure...non.detection + 
                      data.structure...organized.data.collection.scheme + 
                      data.type...visit.specific.covariates + 
@@ -281,6 +277,13 @@ time_lm_full <- lm(log_years ~ 1 +
                    na.action = na.exclude, y = TRUE) 
 
 time_resids <- rstandard(time_lm_full) # calculate residuals
+
+time_summary <- summary(time_lm_full)
+temp_extent_confint <- confint(time_lm_full)
+
+## to interpret outcome on original scale:
+# for a one-unit increase in x, the predicted value of y 
+# changes by (e^beta1 - 1)*100 percent
 ```
 
 ```{r time_data_type_full_model_sig_test}
@@ -326,41 +329,51 @@ m_no_multData <- lm(log_years ~ 1 +
                      data.type...visit.specific.covariates,
                     data = wg[!is.na(wg$log_years), ])
 
-indiv_mods_time <- list(m_no_effort, m_no_nonDet, 
-                        m_no_scheme, m_no_visitCovs, m_no_multData)
+indiv_mods_time <- list("m_no_effort" = m_no_effort, "m_no_nonDet" = m_no_nonDet, 
+                        "m_no_scheme" = m_no_scheme, 
+                        "m_no_visitCovs" = m_no_visitCovs, 
+                        "m_no_multData" = m_no_multData)
+```
+
+```{r temp_extent_predictions}
+temp_extent_preds <- data.frame(
+  "data.structure...sampling.effort.known" = c(T,F,F,F,F), 
+  "data.structure...non.detection" = c(F, T, F, F, F), 
+  "data.structure...organized.data.collection.scheme" = c(F, F, T, F, F), 
+  "data.type...visit.specific.covariates" = c(F,F,F,T,F), 
+  "data.structure...multiple.datasets.integrated.for.analysis" = c(F,F,F,F,T))
+temp_extent_preds$pred_log_years <- predict(time_lm_full, 
+                                            newdata = temp_extent_preds)
+temp_extent_preds$pred_log_y_lowerCI <- predict(time_lm_full, 
+                                            newdata = temp_extent_preds, 
+                                            interval = "confidence", 
+                                            level = 0.95)[, "lwr"]
+temp_extent_preds$pred_log_y_upperCI <- predict(time_lm_full, 
+                                            newdata = temp_extent_preds, 
+                                            interval = "confidence", 
+                                            level = 0.95)[, "upr"]
+temp_extent_preds$pred_years <- exp(temp_extent_preds$pred_log_years)
+temp_extent_preds$pred_years_upperCI <- exp(temp_extent_preds$pred_log_y_upperCI)
+temp_extent_preds$pred_years_lowerCI <- exp(temp_extent_preds$pred_log_y_lowerCI)
 ```
 
 
 ## What is the most popular study question paradigm for studies using biological records?
 
-We categorized study questions into three broad question paradigms: individual species questions, community questions, and other questions.  We counted the number of studies that asked only individual species questions, only community questions, both individual species and community questions, and "other" questions that were about neither individual species or communities.  We used bias-corrected accelerated bootstrap confidence intervals [@Efron1993] to estimate 95% confidence intervals around the number of studies asking each type of study question.  We determined statistical significance of differences in the number of studies asking each type of question by assessing whether the 95% bootstrap confidence intervals overlapped.
+We categorized study questions into two broad question paradigms: individual species questions and community questions [Appendix 2].  We estimated the proportion of studies that focused on each of the two broad study question paradigms, and used bias-corrected accelerated bootstrap confidence intervals [@Efron1993] to estimate 95% confidence intervals around the point estimates of the proportions.  
 
-$H_a$: Some broad study question paradigms are more common than others in studies using biological records.
+$H_a$: ~~Some broad study question paradigms are more common than others in studies using biological records.~~
 
-$H_0$: The number of studies pursuing each of the broad study question paradigms is the same.
-
-*Proposed Test*: Bootstrap confidence intervals of number of studies within each study question paradigm.
-
-```{r make_other_paradigm_category}
-# make an "other paradigm" column for all studies that are not community or 
-# individual species studies (this will be a catch-all category for methodology
-# studies and whatever else)
-wg$other_paradigm <- wg$community.question == F & 
-  wg$individual.species.question == F
-```
-
-```{r make_both_paradigms_category}
-# make a new variable indicating whether a study has both community and 
-# individual species questions
-wg$community_question_only <- wg$community.question == T & 
-  wg$individual.species.question == F
-wg$individual_species_question_only <- wg$individual.species.question == T &
-  wg$community.question == F
-wg$both_ind_and_community_questions <- wg$individual.species.question == T & 
-  wg$community.question == T
-```
+$H_0$: ~~The number of studies pursuing each of the broad study question paradigms is the same.~~
 
 ```{r paradigm_bootstrap}
+proportion_fun <- function(x, indices) {
+  # ARGS: x - a vector of TRUE/FALSE values, for which the TRUEs will be counted
+  #       indices - a vector of indices as required by boot
+  x_b <- x[indices]
+  sum(as.numeric(x_b), na.rm = TRUE)/length(x_b)
+}
+
 count_fun <- function(x, indices) {
   # ARGS: x - a vector of TRUE/FALSE values, for which the TRUEs will be counted
   #       indices - a vector of indices as required by boot
@@ -368,75 +381,58 @@ count_fun <- function(x, indices) {
   sum(as.numeric(x_b), na.rm = TRUE)
 }
 
-get_boot_CI <- function(x) {
-  b_o <- boot(x, count_fun, R = 10000, stype = "i")
-  ci_o <- boot.ci(b_o, conf = 0.95, type = "bca")
+get_boot_CI <- function(x, fun_to_use) {
+  b_o <- boot(x, fun_to_use, R = 10000, stype = "i")
+  ci_o <- tryCatch(boot.ci(b_o, conf = 0.95, type = "bca"), 
+                   error = function(x) NA)
   to_return <- list(obs = x, 
                     boot_obj = b_o, 
                     ci_obj = ci_o)
   to_return
 }
 
-paradigm_list <- lapply(
-  list(community_only = wg$community_question_only, 
-       individual_sp_only = wg$individual_species_question_only, 
-       both = wg$both_ind_and_community_questions, 
-       other = wg$other_paradigm), 
-  FUN = get_boot_CI)
+proportion_individual <- get_boot_CI(wg$individual.species.question,
+                                     fun_to_use = proportion_fun)
 ```
 
 ## Ecological focus
 
-Within the individual-species and community study question paradigms, we assessed which ecological or biological responses were investigated.  For studies asking individual species-based questions, we identified three response variables, species distributions, abundance, and phenology, plus an "other" category for response variables that did not fit within one of those three categories.  For studies asking community-based questions, we identified two response variables, species richness (*alpha*-diversity or the number of species present), and species turnover (*beta*-diversity or any measure that incorporated species identity and/or abundance in addition to the number of species), plus an "other" category for response variables that did not fit in either of those two categories.  We used bias-corrected accelerated bootstrap confidence intervals [@Efron1993] to estimate 95% confidence intervals around the number of studies investigating each ecological response within each paradigm. We determined statistical significance of differences in the number of studies investigating each type of response by assessing whether the 95% bootstrap confidence intervals overlapped.  
+We assessed which ecological or biological phenomena were used as the response variable in analyses using biological records.  We coded each study based on whether it used the following response variables (a study could use more than one of these response variables if it contained more than one analysis using biological records): species distribution; species abundance; phenology, species richness (*alpha*-diversity or the number of species present); species turnover (*beta*-diversity or any measure that incorporated species identity and/or abundance in addition to the number of species).  After coding, we created an "other" response variable category which was coded as "TRUE" for studies that did not use any of the five biological or ecological response variables that we searched for during coding.  We used bias-corrected accelerated bootstrap confidence intervals [@Efron1993] to estimate 95% confidence intervals around the number of studies investigating each response variable. We determined statistical significance of differences in the number of studies investigating each type of response by assessing whether the 95% bootstrap confidence intervals overlapped.  
 
 $H_0$: There is no difference in the number of studies investigating each response.  
 
 $H_a$: Some responses are more commonly investigated than others. 
-
-*Proposed test*: Bootstrap CIs around number of studies using each response variable. 
 
 ```{r make_other_response_variable_columns}
 # make columns indicating which studies analyze something that does not fit
 # within the response variable categories I am using.  I do this by finding
 # studies that do not have any of my response variables marked TRUE, which means
 # they must have been doing something else.
-resp_var_df <- select(wg, title, individual.species.question,
-                      community.question, response.variable...species.richness,
+resp_var_df <- select(wg, title, 
+                      response.variable...species.richness,
                       response.variable...diversity, 
                       response.variable...distribution, 
                       response.variable...abundance,
                       response.variable...phenology) 
 # make column indicating individual species studies that don't use one of the 
-# 3 main response variables
-resp_var_df$individual_other_resp <- 
-  resp_var_df$individual.species.question == T & 
+# 5 main response variables
+resp_var_df$other_resp <- 
   resp_var_df$response.variable...distribution == F & 
   resp_var_df$response.variable...abundance == F & 
-  resp_var_df$response.variable...phenology == F
-# make column indicating community studies that don't use one of the 2 main
-# response variables
-resp_var_df$community_other_resp <- resp_var_df$community.question == T & 
+  resp_var_df$response.variable...phenology == F  & 
   resp_var_df$response.variable...species.richness == F & 
   resp_var_df$response.variable...diversity == F
 ```
 
 ```{r boot_response_variable}
 resp_var_list <- lapply(
-  list(comm_sp_rich = resp_var_df$response.variable...species.richness[which(
-    resp_var_df$community.question == T)], 
-    comm_diversity = resp_var_df$response.variable...diversity[which(
-      resp_var_df$community.question == T)], 
-    comm_other = resp_var_df$community_other_resp[which(
-      resp_var_df$community.question == T)],
-    ind_dist = resp_var_df$response.variable...distribution[which(
-      resp_var_df$individual.species.question == T)],
-    ind_abund = resp_var_df$response.variable...abundance[which(
-      resp_var_df$individual.species.question == T)], 
-    ind_phen = resp_var_df$response.variable...phenology[which(
-      resp_var_df$individual.species.question == T)], 
-    ind_other = resp_var_df$individual_other_resp[which(
-      resp_var_df$individual.species.question == T)]),
-  FUN = get_boot_CI)
+  list(sp_rich = resp_var_df$response.variable...species.richness, 
+       diversity = resp_var_df$response.variable...diversity, 
+       dist = resp_var_df$response.variable...distribution,
+       abund = resp_var_df$response.variable...abundance, 
+       phen = resp_var_df$response.variable...phenology, 
+       other = resp_var_df$other_resp),
+  FUN = get_boot_CI, fun_to_use = count_fun)
 ```
 
 ## Development of methodology across different study questions
@@ -646,135 +642,6 @@ any_auth_inst_boot <- boot(wg$author.associated.with.proximate.data.provider,
 ```
 
 # Model Assumptions
-
-## Temporal extent of studies
-
-The following plots are for assessing assumptions for a linear regression of the form `log(number of years) ~ data type`.  Natural-log transformation of the number of years that studies cover improved normality (`r figs(name = "temp_norm_box_cap", display = "cite")`, `r figs(name = "temp_norm_ridge_cap", display = "cite")`).  
-
-```{r time_assess_correlation_predictors, fig.height=8, fig.width = 8, fig.cap=correlation_cap}
-### assess correlation between data type predictors ----------------------
-dt_df <- wg[, which(
-  colnames(wg) %in% 
-    c("data.structure...organized.data.collection.scheme", 
-      "data.structure...sampling.effort.known", 
-      "data.structure...non.detection", 
-      "data.structure...multiple.datasets.integrated.for.analysis", 
-      "data.type...visit.specific.covariates"))]
-for(i in 1:ncol(dt_df)) {
-  dt_df[, i] <- as.factor(as.character(data.frame(dt_df)[, i]))
-}
-
-if(diag_present) {
-  print(ggpairs(dt_df, columns = 1:ncol(dt_df), 
-              upper = list(discrete = "blank"),
-              lower = list(discrete = "ratio"), 
-              diag = list(discrete = "barDiag"), 
-              columnLabels = c("organized scheme", 
-                               "sampling effort",
-                               "non detection",
-                               "multiple datasets", 
-                               "visit specific covariates"), 
-              labeller = label_wrap_gen(width = 10)) + 
-        ggtitle("Correlation of data type predictor variables") + 
-        theme(axis.text.x = element_text(angle = 50, hjust = 1)))
-}
-
-```
-
-```{r temp_norm_box_cap} 
-temp_norm_box_cap <- figs(name = "temp_norm_box_cap", 
-                          "Boxplot of temporal extent of studies in log-transformed years for different data types.  Log transformation makes normality much better than it is with raw data.")
-```
-
-```{r temp_norm_ridge_cap} 
-temp_norm_ridge_cap <- figs(name = "temp_norm_ridge_cap", 
-                          "Histograms and densities of temporal extent of studies in log-transformed years for different data types.  Log transformation makes normality much better than it is with raw data.")
-```
-
-```{r temp_range_distribution_plot_print, fig.cap=temp_norm_box_cap} 
-if(diag_present) {
-  ## normality -------------------------------------
-  # distribution of all data
-  # hist(wg$temp_extent)
-  # hist(wg$temp_extent[which(wg$temp_extent <= quantile(wg$temp_extent, 
-  #                                                        0.90, na.rm = T))])
-  
-  # data very non-normal but log transformation kinda fixes this
-  # (reciprocal and sqrt transformations did not help)
-  print(ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + 
-          geom_boxplot(varwidth = T) +
-          scale_y_log10() + 
-          theme_bw() + 
-          ggtitle("log transformation of year\nmakes normality better") + 
-          ylab("Temporal extent (years)") + 
-          theme(axis.text.x = element_text(angle = 40, vjust = 0.9, 
-                                           hjust = 1)))
-}
-```
-
-```{r temp_range_distribution_ridge_plot_print, fig.cap=temp_norm_ridge_cap}
-if(diag_present) {
-  print(ggplot(data = temp_extent, aes(x = temp_extent, y = data_type)) + 
-          scale_x_log10() + 
-          geom_density_ridges(stat = "binline", alpha = 0.4) +
-          geom_density_ridges(alpha = 0.4) + 
-          xlab("Temporal extent (years)") + 
-          theme_bw())
-}
-```
-
-```{r temp_range_data_table}
-if(diag_present) {
-  ## data are not balanced
-  print("Temporal extent data are not balanced.")
-  kable(table(temp_extent$data_type))
-}
-```
-
-```{r temp_range_distribution_years_by_data_type}
-# distribution of log(years) by data type  
-if(diag) {
-  for(i in unique(temp_extent$data_type)) { 
-    #hist(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)])
-    qqnorm(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)], 
-           main = i)
-    qqline(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)])
-  }
-}
-```
-
-```{r temp_extent_lm_diags_print, fig.height=4, fig.width=4}
-if(diag_present) {
-  print("Diagnostics for main effects model log_years ~ all 5 data types (no interactions)")
-  plot(time_lm_full)
-  # hist(time_resids, 
-  #      main = "standardized residuals of full model for temporal extent", 
-  #      xlab = "standardized residuals")
-  boxplot(time_resids, ylab = "standardized residuals", 
-          main = "Residuals for lm model predicting log(temporal extent) ~ data type")
-}
-time_summary <- summary(time_lm_full)
-if(diag) time_summary
-
-## to interpret outcome on original scale:
-# for a one-unit increase in x, the predicted value of y 
-# changes by (e^beta1 - 1)*100 percent
-```
-
-```{r temp_extent_vif_HL}
-if(diag_present) {
-  temp_extent_vif <- vif(time_lm_full) # assess multicollinearity
-  temp_vif_df <- data.frame(temp_extent_vif)
-  temp_vif_df$variable <- rownames(temp_vif_df)
-  rownames(temp_vif_df) <- NULL
-  kable(temp_vif_df, col.names = c("VIF", "variable"), digits = 2)
-}
-```
-
-
-## What is the most popular study question paradigm?
-
-No diagnostics needed for bootstrap estimation of confidence intervals, right?
 
 ## Ecological focus
 
@@ -1087,25 +954,6 @@ temp_extent_cap <- figs(name = "temp_extent_cap",
                         "The temporal extent covered by studies using different types biological records data.  This plot shows the observed temporal extent of studies (not the fitted values from the regression model).  Note the log-transformed y-axis.")
 ```
 
-Coder agreement for variables in this analysis:
-
-```{r vars_temp_extent}
-if(diag_present) {
-  vs <- c("start.year", "end.year", "data.type...what.where.when.only",
-          "data.structure...sampling.effort.known", "data.type...abundance", 
-          "data.structure...non.detection",
-          "data.structure...organized.data.collection.scheme", 
-          "data.type...visit.specific.covariates", 
-          "data.structure...multiple.datasets.integrated.for.analysis", 
-          "data.type...life.stage", 
-          "data.type...voucher.of.some.kind.necessary.for.analysis")
-  kable(data.frame(prob_of_values[which(prob_of_values$variable %in% vs), 
-                       c("variable", "kripp_alpha", "n_40_adequate")]), 
-              digits = 2)
-}
-if(diag_present) rm(vs)
-```
-
 ```{r print_time_anova, include = F}
 kable(m_time_full_anova)
 ```
@@ -1113,36 +961,29 @@ kable(m_time_full_anova)
 ```{r print_time_individual_predictor_significance}
 if(diag) {
   for(i in 1:length(indiv_mods_time)) { 
+    print(names(indiv_mods_time)[i])
     print(anova(indiv_mods_time[[i]], time_lm_full))
   }
 }
 ```
 
-The overall model using data type to predict the natural log of temporal extent of study (in years) was  significant ($F_{`r format(round(m_time_full_anova$Df[2], digits = 2), scientific = F)`, `r format(round(m_time_full_anova$Res.Df[2], digits = 2), scientific = F)`}$ = `r format(round(m_time_full_anova$F[2], digits = 2), scientific = F)`, *p* = `r format(round(m_time_full_anova[6][[1]][2], digits = 4), scientific = F)`, Adjusted $R^2%$ = `r format(round(time_summary$adj.r.squared, digits = 2), scientific = F)`, `r figs("temp_extent_cap", display = "cite")`).  In the final manuscript I will individually test whether each variable has a significant effect after accounting for the other variables.  I will interpret the direction and effect size for all variables in the context of the full model.  
-
-Example of how results will be written (specific results will change in the final version): The effect of “what, where, when” data on the temporal extent of studies was positive significant at the 0.05 level after accounting for other data type variables (p = `r summary(time_lm_full)$coefficients["data.type...what.where.when.onlyTRUE", "Pr(>|t|)"]`). The expected temporal extent covered by a study that uses only "what, where, when" data is `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[2])), digits = 1)` years when the data have no other data type characteristics.  When the data are "what, where, when" and multiple datasets were integrated for analysis, the expected temporal extent covered by a study is `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[2] + time_lm_full$coefficients[8])), digits = 1)` years. 
-
-Using data that includes sampling effort information had a negative effect on the temporal extent of studies after accounting for other data types (*p* = `r format(round(time_summary$coefficients[2, 4], digits = 3), scientific = F)`).  The effects of including data with non-detection or abundance information were not significant after accounting for the effects of the other data types.  The direction of the effects of using data with sampling effort information and detection/non-detection information were both negative, as expected.  However, the direction of the effect of using abundance data was unexpectedly positive.  This may be because abundance is correlated with detection/non-detection and sampling effort, and so the effect of abundance data is positive after correcting for those other data types.  When I fit a model with only the intercept and the abundance data type, the direction of the effect of abundance data was negative as expected.    
+The overall model using data type to predict the natural log of temporal extent of study (in years) was  significant ($F_{`r format(round(m_time_full_anova[2, "Df"], digits = 2), scientific = F)`, `r format(round(m_time_full_anova[2, "Res.Df"], digits = 2), scientific = F)`}$ = `r format(round(m_time_full_anova[, "F"][2], digits = 2), scientific = F)`, *p* `r if(m_time_full_anova[6][[1]][2] >= 0.0001) {format(round(m_time_full_anova[6][[1]][2], digits = 4), scientific = T)} else print("< 0.0001")`, Adjusted $R^2%$ = `r format(round(time_summary$adj.r.squared, digits = 2), scientific = F)`, `r figs("temp_extent_cap", display = "cite")`).  Studies that used multiple different biological records datasets covered significantly longer temporal extents than studies that did not use multiple different datasets after accounting for other data types ($F_{1,195}$ = 39.4, *p* < 0.0001).  The expected temporal extent covered by a study that used multiple biological records datasets was `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[6])), digits = 1)` years (95% CI: [`r round(temp_extent_preds$pred_years_lowerCI[5], digits = 1)`, `r round(temp_extent_preds$pred_years_upperCI[5], digits = 1)`]) when the data did not have any of the other data types we recorded.  Studies that used visit specific covariates were covered significantly shorter temporal extents than studies that did not, after accounting for other data types ($F_{1,195}$ = 25.8, *p* < 0.0001).  The expected temporal extent covered by a study that used visit specific covariates was `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[5])), digits = 1)` years (95% CI: [`r round(temp_extent_preds$pred_years_lowerCI[4], digits = 1)`, `r round(temp_extent_preds$pred_years_upperCI[4], digits = 1)`]) when the data did not have any of the other data types we recorded. We did not detect a significant effect of sampling effort data ($F_{1,195}$ = 0.2, *p* = 0.65), non-detection data ($F_{1,195}$ = 2.4, *p* = 0.13), or the data coming from an organized monitoring scheme ($F_{1,195}$ = 3.6, *p* = 0.06) on the temporal extent of studies.  However, pairs plots and variance inflation factors show that the "sampling effort" and "non-detection" data types are strongly correlated with each other, and both are correlated less strongly with the "organized monitoring scheme" data type (Fig. S?, Tab. S1).  This suggests that we may have been unable to dis-entangle the effects of each of these correlated variables with our current sample size (Fox 2016, p. 341-2).
 
 ```{r time_extent_results_plot, fig.cap=temp_extent_cap}
-## TODO: need to hand-annotate R2 and p-value in plot
-temp_extent$sig_different_from_WhWhWh <- temp_extent$data_type %in% 
-                                       c("[names of sig. diff. vars. here")
-print(ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + #, color = sig_different_from_WhWhWh
+print(ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + 
         geom_boxplot(varwidth = T) +
         scale_y_log10() + 
         xlab("Data Type") + 
         ylab("Temporal Extent of Study (years)") + 
         annotate("text", x = 3, y = 2600, 
                  label = "paste(\"Adjusted \", 
-                 italic(R) ^ 2, \" = 0.39\")", 
+                 italic(R) ^ 2, \" = 0.36\")", 
                 parse = TRUE) + 
   annotate("text", x = 3, y = 1200, 
            label = "paste(\"Overall model significance \", 
                  italic(p), \" < 0.0001\")", 
            parse = TRUE) +
         theme_bw() + 
-        scale_color_discrete(name = "Significantly Different from\nWhat, Where, When-only\nstudies (alpha = 0.1 level)") + 
         theme(axis.text.x = element_text(angle = 35, vjust = 0.9, hjust = 1)) 
 )
 ```
@@ -1174,103 +1015,10 @@ ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + #, color = sig
 
 
 ## What is the most popular study question paradigm?
-```{r paradigm_table_caption}
-paradigm_table_caption <- tabs("paradigm_table_caption", 
-                               paste0("The number of studies published between 2014 and 2018 addressing different broad types of questions using biological records data from Ireland or the UK.  The 'other' category includes studies that did not focus specifically on questions about individual species or communities."))
-```
 
-```{r paradigm_plot_cap}
-paradigm_plot_cap <- figs("paradigm_plot_cap", 
-                          "The number of studies published between 2014 and 2018 addressing different broad types of questions using biological records data from Ireland or the UK.  The 'other' category includes studies that did not focus specifically on questions about individual species or communities.  Points show the observed number of studies and vertical lines show 95% bootstrap confidence intervals.")
-```
-
-Coder agreement for variables in this analysis:
-```{r vars_paradigm}
-if(diag_present) {
-  vs <- c("community.question", "individual.species.question")
-  kable(prob_of_values[which(prob_of_values$variable %in% vs), 
-                       c("variable", "kripp_alpha", "n_40_adequate")], 
-        digits = 2)
-}
-if(diag_present) rm(vs)
-```
-
-The number of studies asking questions only about individual species (`r paradigm_list$individual_sp$ci_obj$t0` studies, 95% bootstrap CI [`r paradigm_list$individual_sp$ci_obj$bca[4]`, `r paradigm_list$individual_sp$ci_obj$bca[5]`]) was significantly higher than the number of studies asking questions only about communities (`r paradigm_list$community$ci_obj$t0` studies, 95% bootstrap CI [`r paradigm_list$community$ci_obj$bca[4]`, `r paradigm_list$community$ci_obj$bca[5]`]), about both individual species and communities (`r paradigm_list$both$ci_obj$t0` studies, 95% bootstrap CI [`r paradigm_list$both$ci_obj$bca[4]`, `r paradigm_list$both$ci_obj$bca[5]`]), or asking other types of questions (`r paradigm_list$other$ci_obj$t0` studies, 95% bootstrap CI [`r paradigm_list$other$ci_obj$bca[4]`, `r paradigm_list$other$ci_obj$bca[5]`]) (`r tabs("paradigm_table_caption", display = "cite")`, `r figs("paradigm_plot_cap", display = "cite")`). 
-
-
-`r tabs("paradigm_table_caption", display = "full")`
-
-
-```{r print_study_question_paradigm_table}
-paradigm_count_df <- data.frame(matrix(nrow = length(paradigm_list), 
-                                        ncol = 4))
-colnames(paradigm_count_df) <- c("paradigm", "n_studies", "l_95ci", "u_95ci")
-
-# fill paradigm counts data frame using the list of paradigm bootstrap results
-for(i in 1:length(paradigm_list)) {
-  paradigm_count_df[i, "paradigm"] <- names(paradigm_list)[i]
-  paradigm_count_df[i, "n_studies"] <- paradigm_list[[i]]$ci_obj$t0
-  paradigm_count_df[i, "l_95ci"] <- paradigm_list[[i]]$ci_obj$bca[4]
-  paradigm_count_df[i, "u_95ci"] <- paradigm_list[[i]]$ci_obj$bca[5]
-}
-
-kable(paradigm_count_df, col.names = c("study question paradigm", 
-                                       "number of studies", 
-                                       "lower 95% bootstrap CI", 
-                                       "upper 95% bootstrap CI"))
-```
-
-
-```{r plot_paradigm_counts, fig.cap=paradigm_plot_cap}
-# plot number of studies in each paradigm, with 95% CIs
-print(ggplot(data = paradigm_count_df, 
-             aes(x = factor(paradigm, 
-                            levels = c("individual_sp_only", 
-                                       "community_only", 
-                                       "both", 
-                                       "other"), 
-                            labels = c(
-                              "individual species\nquestions only", 
-                              "community questions only", 
-                              "both individual species\nand community questions",
-                              "other types\nof questions")), 
-                 y = n_studies)) + 
-        geom_point() + 
-        geom_linerange(aes(x = factor(paradigm, 
-                            levels = c("individual_sp_only", 
-                                       "community_only",
-                                       "both", 
-                                       "other"), 
-                            labels = c(
-                              "individual species\nquestions only", 
-                              "community questions only", 
-                              "both individual species\nand community questions",
-                              "other types\nof questions")), 
-                           ymin = l_95ci, 
-                           ymax = u_95ci)) + 
-        xlab("Study Question Paradigm") + 
-        ylab("Number of Studies") + 
-        theme_bw() + 
-        theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)))
-```
-
-**Dina - Do I need to do some sort of explicit test to see if the number of studies in each category is different, or is it enough to just say that the 95% bootstrap CI for the number of studies addressing only individual species questions does not overlap with the other categories?  I think I could do a Poisson regression with counts as the response and question types as predictors, fit a model with predictors and also an intercept only model, and then do a likelihood ratio test.  But bootstrapping seems simpler because I don't have to assess model fit or whether the data follow a Poisson distribution.**
-
+The proportion of studies asking questions about individual species was `r round(proportion_individual$boot_obj$t0, digits = 2)` (95% boostrap CI: [`r round(proportion_individual$ci_obj$bca[4], digits = 2)`, `r round(proportion_individual$ci_obj$bca[5], digits = 2)`]).  Coder agreement was low when determining whether studies were asking questions about communities (Krippendorff's alpha = 0.65, Tab. ??), which prevented us from interpreting that variable, and therefore prevented a comparison between the proportion of studies that were focused on individual species and the proportion of studies that focused on communities.  
 
 ## Ecological focus
-Reader agreement for variables used in this analysis.
-```{r vars_study_question}
-if(diag_present) {
-  vs <- c("community.question", "individual.species.question", 
-          "response.variable...species.richness", "response.variable...diversity", 
-          "response.variable...distribution", "response.variable...abundance", 
-          "response.variable...phenology") 
-  kable(prob_of_values[which(prob_of_values$variable %in% vs), 
-                             c("variable", "kripp_alpha", "n_40_adequate")], 
-              digits = 2)
-}
-if(diag_present) rm(vs)
-```
 
 ```{r resp_var_tab_cap}
 resp_var_tab_cap <- tabs(name = "resp_var_tab_cap", 
@@ -1279,10 +1027,10 @@ resp_var_tab_cap <- tabs(name = "resp_var_tab_cap",
 
 ```{r resp_var_plot_cap}
 resp_var_plot_cap <- figs(name = "resp_var_plot_cap", 
-                     "The number of studies analyzing different ecological responses within the two broad study question paradigms.  Points show number of studies, vertical lines show 95% bootstrap confidence intervals.")
+                     "The number of studies analyzing different ecological responses.  Points show number of studies, vertical lines show 95% bootstrap confidence intervals.")
 ```
 
-Of the studies asking community-based questions, the number of studies analyzing species richness (*alpha*-diversity) (`r resp_var_list$comm_sp_rich$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$comm_sp_rich$ci_obj$bca[4]`, `r resp_var_list$comm_sp_rich$ci_obj$bca[5]`]) was higher than the number of studies analyzing species turnover (*beta*-diversity) (`r resp_var_list$comm_diversity$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$comm_diversity$ci_obj$bca[4]`, `r resp_var_list$comm_diversity$ci_obj$bca[5]`]) or other response variables (`r resp_var_list$comm_other$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$comm_other$ci_obj$bca[4]`, `r resp_var_list$comm_other$ci_obj$bca[5]`]).  Of the studies asking individual species-based questions, the number of studies analyzing species distributions (`r resp_var_list$ind_dist$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$ind_dist$ci_obj$bca[4]`, `r resp_var_list$ind_dist$ci_obj$bca[5]`]) was not significantly higher than the number of studies analyzing phenology (`r resp_var_list$ind_phen$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$ind_phen$ci_obj$bca[4]`, `r resp_var_list$ind_phen$ci_obj$bca[5]`]) but was higher than the number of studies analyzing abundance (`r resp_var_list$ind_abund$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$ind_abund$ci_obj$bca[4]`, `r resp_var_list$ind_abund$ci_obj$bca[5]`]) and other responses (`r resp_var_list$ind_other$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$ind_other$ci_obj$bca[4]`, `r resp_var_list$ind_other$ci_obj$bca[5]`]).
+Of the studies asking community-based questions, the number of studies analyzing species richness (*alpha*-diversity) (`r resp_var_list$sp_rich$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$sp_rich$ci_obj$bca[4]`, `r resp_var_list$sp_rich$ci_obj$bca[5]`]) was higher than the number of studies analyzing species turnover (*beta*-diversity) (`r resp_var_list$diversity$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$diversity$ci_obj$bca[4]`, `r resp_var_list$diversity$ci_obj$bca[5]`]) or other response variables (`r resp_var_list$other$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$other$ci_obj$bca[4]`, `r resp_var_list$other$ci_obj$bca[5]`]).  Of the studies asking individual species-based questions, the number of studies analyzing species distributions (`r resp_var_list$dist$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$dist$ci_obj$bca[4]`, `r resp_var_list$dist$ci_obj$bca[5]`]) was not significantly higher than the number of studies analyzing phenology (`r resp_var_list$phen$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$phen$ci_obj$bca[4]`, `r resp_var_list$phen$ci_obj$bca[5]`]) but was higher than the number of studies analyzing abundance (`r resp_var_list$abund$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$abund$ci_obj$bca[4]`, `r resp_var_list$abund$ci_obj$bca[5]`]) and other responses (`r resp_var_list$other$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$other$ci_obj$bca[4]`, `r resp_var_list$other$ci_obj$bca[5]`]).
 
 `r tabs("resp_var_tab_cap", display = "full")`
 
@@ -1300,15 +1048,6 @@ for(i in 1:length(resp_var_list)) {
   resp_count_df[i, "u_95ci"] <- resp_var_list[[i]]$ci_obj$bca[5]
 }
 
-# add paradigm column
-resp_count_df$paradigm <- resp_count_df$response_variable
-resp_count_df$paradigm <- gsub(".*comm.*", "Community Questions", 
-                               resp_count_df$paradigm)
-resp_count_df$paradigm <- gsub(".*ind.*", "Individual Species Questions", 
-                               resp_count_df$paradigm)
-# re-order columns 
-resp_count_df <- resp_count_df[, c(5, 1:4)]
-
 # clean response variable strings
 resp_count_df$response_variable <- gsub(".*sp_rich.*", "species richness", 
                                         resp_count_df$response_variable)
@@ -1323,8 +1062,7 @@ resp_count_df$response_variable <- gsub(".*abund.*", "abundance",
 resp_count_df$response_variable <- gsub(".*phen.*", "phenology", 
                                         resp_count_df$response_variable)
 
-kable(resp_count_df, col.names = c("study question paradigm", 
-                                   "response variable", 
+kable(resp_count_df, col.names = c("response variable", 
                                    "number of studies", 
                                    "lower bound 95% bootstrap CI", 
                                    "upper bound 95% bootstrap CI"), 
@@ -1352,7 +1090,6 @@ print(ggplot(data = resp_count_df,
                                        "other")), 
                            ymin = l_95ci, 
                            ymax = u_95ci)) + 
-        facet_wrap( ~ paradigm, scales = "free_x", strip.position = "bottom") + 
         xlab("") + 
         ylab("Number of Studies") + 
         theme_bw() + 
@@ -1757,6 +1494,8 @@ While standards for citing datasets are developing [**need citations**], there s
 ### What data types are used for each study question paradigm?
 I think the story is that data use is roughly similar between question paradigms.  Integrating multiple datasets for analyses is common in both question paradigms, and so it is worth making an effort to ensure that published datasets are in standardized, compatible formats.  
 
+### Study question paradigms
+I may have done a poor job explaining the difference between studies about communities and studies that aggregate results about individual species.  My intention was to code whether the response variable was a property of an individual species or a property of a community (e.g. species richness).  However, the coding may have been complicated by studies that, for example, perform a regression to determine whether the range change of species is due to functional traits.  In such a study, it is perhaps not clear whether the response is a characteristic of individual species (e.g. range shift) or a response of the community (e.g. late flowering plants had greater range shifts).  
 
 ## Assorted bits to add
 [[@Follett2015] found that methodology was focus of 17% of studies in a systematic review of cit. sci. use in publications. ]
@@ -1789,10 +1528,131 @@ $H_a$: The proportion of studies for which a lead author is associated with the 
 $H_0$: The proportion of studies for which a lead author is associated with the data provider is not different for studies using data from an organized monitoring scheme and studies not using data from an organized monitoring scheme. 
 
 
-# Appendix 1
+# Appendix 1 
+## Model assumption checking
+
+### Temporal extent of studies
+
+The following plots are for assessing assumptions for a linear regression of the form `log(number of years) ~ data type`.  Natural-log transformation of the number of years that studies cover improved normality (`r figs(name = "temp_norm_box_cap", display = "cite")`, `r figs(name = "temp_norm_ridge_cap", display = "cite")`).  
+
+```{r time_assess_correlation_predictors, fig.height=8, fig.width = 8, fig.cap=correlation_cap}
+### assess correlation between data type predictors ----------------------
+dt_df <- wg[, which(
+  colnames(wg) %in% 
+    c("data.structure...organized.data.collection.scheme", 
+      "data.structure...sampling.effort.known", 
+      "data.structure...non.detection", 
+      "data.structure...multiple.datasets.integrated.for.analysis", 
+      "data.type...visit.specific.covariates"))]
+for(i in 1:ncol(dt_df)) {
+  dt_df[, i] <- as.factor(as.character(data.frame(dt_df)[, i]))
+}
+
+if(diag_present) {
+  print(ggpairs(dt_df, columns = 1:ncol(dt_df), 
+              upper = list(discrete = "blank"),
+              lower = list(discrete = "ratio"), 
+              diag = list(discrete = "barDiag"), 
+              columnLabels = c("organized scheme", 
+                               "sampling effort",
+                               "non detection",
+                               "multiple datasets", 
+                               "visit specific covariates"), 
+              labeller = label_wrap_gen(width = 10)) + 
+        ggtitle("Correlation of data type predictor variables") + 
+        theme(axis.text.x = element_text(angle = 50, hjust = 1)))
+}
+```
+
+```{r temp_norm_box_cap} 
+temp_norm_box_cap <- figs(name = "temp_norm_box_cap", 
+                          "Boxplot of temporal extent of studies in log-transformed years for different data types.  Log transformation makes normality much better than it is with raw data.")
+```
+
+```{r temp_norm_ridge_cap} 
+temp_norm_ridge_cap <- figs(name = "temp_norm_ridge_cap", 
+                          "Histograms and densities of temporal extent of studies in log-transformed years for different data types.  Log transformation makes normality much better than it is with raw data.")
+```
+
+```{r temp_range_distribution_plot_print, fig.cap=temp_norm_box_cap} 
+if(diag_present) {
+  ## normality -------------------------------------
+  # distribution of all data
+  # hist(wg$temp_extent)
+  # hist(wg$temp_extent[which(wg$temp_extent <= quantile(wg$temp_extent, 
+  #                                                        0.90, na.rm = T))])
+  
+  # data very non-normal but log transformation kinda fixes this
+  # (reciprocal and sqrt transformations did not help)
+  print(ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + 
+          geom_boxplot(varwidth = T) +
+          scale_y_log10() + 
+          theme_bw() + 
+          ggtitle("log transformation of year\nmakes normality better") + 
+          ylab("Temporal extent (years)") + 
+          theme(axis.text.x = element_text(angle = 40, vjust = 0.9, 
+                                           hjust = 1)))
+}
+```
+
+```{r temp_range_distribution_ridge_plot_print, fig.cap=temp_norm_ridge_cap}
+if(diag_present) {
+  print(ggplot(data = temp_extent, aes(x = temp_extent, y = data_type)) + 
+          scale_x_log10() + 
+          geom_density_ridges(stat = "binline", alpha = 0.4) +
+          geom_density_ridges(alpha = 0.4) + 
+          xlab("Temporal extent (years)") + 
+          theme_bw())
+}
+```
+
+
+```{r temp_range_distribution_years_by_data_type}
+# distribution of log(years) by data type (raw data, not residuals) 
+# Looking at model residuals is more useful.  However, this does show that the
+# log(years) distribution is more normal for some data types than others.
+if(diag) {
+  for(i in unique(temp_extent$data_type)) { 
+    #hist(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)])
+    qqnorm(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)], 
+           main = i)
+    qqline(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)])
+  }
+}
+```
+
+Diagnostics for main effects model log_years ~ all 5 data types (no interactions).
+```{r temp_extent_lm_diags_print, fig.height=4, fig.width=4}
+if(diag_present) {
+  print("Diagnostics for main effects model log_years ~ all 5 data types (no interactions)")
+  plot(time_lm_full, ask = FALSE)
+  # hist(time_resids, 
+  #      main = "standardized residuals of full model for temporal extent", 
+  #      xlab = "standardized residuals")
+  boxplot(time_resids, ylab = "standardized residuals", 
+          main = "Residuals for lm model predicting log(temporal extent) ~ data type")
+}
+```
+
+Table S1.  Variance inflation factors for predictor variables in a linear regression model of the log of number of years covered by a study as a function of the characteristics of the biological records data used in the study.  
+
+```{r temp_extent_vif}
+if(diag_present) {
+  temp_extent_vif <- vif(time_lm_full) # assess multicollinearity
+  temp_vif_df <- data.frame(temp_extent_vif)
+  temp_vif_df$variable <- rownames(temp_vif_df)
+  rownames(temp_vif_df) <- NULL
+  kable(temp_vif_df, col.names = c("VIF", "variable"), digits = 2)
+}
+```
+
+
+
+
+# Appendix 2 - Instructions for Coders
 [ Attach pdf of Instructions for Coders ]
 
-# Appendix 2
+# Appendix 3 - Search Terms
 The search terms used with each search engine to find studies for this review are listed below, along with the date of the search.
 
 Web of Science, searched 15 June 2018 with search terms: `TS=(("biological record*" OR "citizen science" OR atlas OR gbif OR "Global Biodiversity Information Facility" OR eBird OR "National Biodiversity Data Centre" OR "NBN" OR "National Biodiversity Network" OR "Centre for Environmental Data and Recording") AND ("Great Britain" OR Ireland OR Scotland OR Wales OR "Northern Ireland" OR "British Isles" OR UK OR "United Kingdom") NOT (cancer OR disease OR palliative OR "cross-sectional" OR "cross sectional" OR "New South Wales" OR Pyle OR marmoset))`
