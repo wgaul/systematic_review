@@ -3,12 +3,12 @@ title: "Biological Records Systematic Review - Preliminary Methods and Results"
 date: 16 Jan 2020
 csl: ecology.csl
 output:
-  word_document:
-    toc: true
-    toc_depth: 4
   html_document:
     number_sections: true
     df_print: kable
+  word_document:
+    toc: true
+    toc_depth: 4
   html_notebook: default
   fig_caption: yes
   pdf_document: default
@@ -90,6 +90,7 @@ library(pander)
 library(knitr)
 library(ggridges)
 library(bestglm)
+library(MASS)
 library(car)
 library(GGally)
 library(tidyverse)
@@ -397,7 +398,7 @@ proportion_individual <- get_boot_CI(wg$individual.species.question,
 
 ## Ecological focus
 
-We assessed which ecological or biological phenomena were used as the response variable in analyses using biological records.  We coded each study based on whether it used the following response variables (a study could use more than one of these response variables if it contained more than one analysis using biological records): species distribution; species abundance; phenology, species richness (*alpha*-diversity or the number of species present); species turnover (*beta*-diversity or any measure that incorporated species identity and/or abundance in addition to the number of species).  After coding, we created an "other" response variable category which was coded as "TRUE" for studies that did not use any of the five biological or ecological response variables that we searched for during coding.  We used bias-corrected accelerated bootstrap confidence intervals [@Efron1993] to estimate 95% confidence intervals around the number of studies investigating each response variable. We determined statistical significance of differences in the number of studies investigating each type of response by assessing whether the 95% bootstrap confidence intervals overlapped.  
+We assessed which ecological or biological phenomena were used as the response variable in analyses using biological records.  We coded each study based on whether it used the following response variables: species distribution; species abundance; phenology, species richness (*alpha*-diversity or the number of species present); species turnover (*beta*-diversity or any measure that incorporated species identity and/or abundance in addition to the number of species).  A study could use more than one of these response variables if it contained more than one analysis using biological records. After coding, we created an "other" response variable category which was coded as "TRUE" for studies that did not use any of the other biological or ecological response variables that we searched for during coding.  We used bias-corrected accelerated bootstrap confidence intervals with 10,000 bootstrap replicates [@Efron1993] to estimate 95% confidence intervals around the number of studies investigating each response variable. We determined statistical significance of differences in the number of studies investigating each type of response by assessing whether the 95% bootstrap confidence intervals overlapped.  
 
 $H_0$: There is no difference in the number of studies investigating each response.  
 
@@ -410,24 +411,29 @@ $H_a$: Some responses are more commonly investigated than others.
 # they must have been doing something else.
 resp_var_df <- select(wg, title, 
                       response.variable...species.richness,
-                      response.variable...diversity, 
                       response.variable...distribution, 
                       response.variable...abundance,
                       response.variable...phenology) 
 # make column indicating individual species studies that don't use one of the 
-# 5 main response variables
+# 4 main response variables
 resp_var_df$other_resp <- 
   resp_var_df$response.variable...distribution == F & 
   resp_var_df$response.variable...abundance == F & 
   resp_var_df$response.variable...phenology == F  & 
-  resp_var_df$response.variable...species.richness == F & 
-  resp_var_df$response.variable...diversity == F
+  resp_var_df$response.variable...species.richness == F
 ```
 
 ```{r boot_response_variable}
 resp_var_list <- lapply(
   list(sp_rich = resp_var_df$response.variable...species.richness, 
-       diversity = resp_var_df$response.variable...diversity, 
+       dist = resp_var_df$response.variable...distribution,
+       abund = resp_var_df$response.variable...abundance, 
+       phen = resp_var_df$response.variable...phenology, 
+       other = resp_var_df$other_resp),
+  FUN = get_boot_CI, fun_to_use = proportion_fun)
+
+resp_var_list_counts <- lapply(
+  list(sp_rich = resp_var_df$response.variable...species.richness, 
        dist = resp_var_df$response.variable...distribution,
        abund = resp_var_df$response.variable...abundance, 
        phen = resp_var_df$response.variable...phenology, 
@@ -437,22 +443,30 @@ resp_var_list <- lapply(
 
 ## Development of methodology across different study questions
 
-We asked whether methodological development is more active for some types of ecological questions than for others.  To test for differences in the proportion of methodology studies across the different ecological study focuses, we used logistic regression with six binary predictor variables indicating the specific biological or ecological focus(es) of the study and a binary response variable indicating whether the study addressed a methodological question (e.g. development of a new method or analysis of the performance of existing methods).  To evaluate whether assumptions were met for using logistic regression, we evaluated the number of samples per predictor variable, checked that all levels of predictor variables had more than 5 cases, checked for multicollinearity using the variance inflation factors [@Fox1992], performed a Hosmer-Lemeshow goodness of fit test, looked at the confusion matrix, and identified influential points using Pearson and deviance residuals and leverage.  
+We asked whether methodological development is more active for some types of ecological questions than for others.  To test for differences in the proportion of methodology studies across the different ecological study focuses, we used logistic regression with six binary predictor variables indicating the specific biological or ecological focus(es) of the study and a binary response variable indicating whether the study addressed a methodological question (e.g. development of a new method or analysis of the performance of existing methods).  To evaluate whether assumptions were met for using logistic regression, we evaluated the number of samples per predictor variable, checked that all levels of predictor variables had more than five cases, checked for multicollinearity using the variance inflation factors [@Fox1992], performed a Hosmer-Lemeshow goodness of fit test, and identified influential points using Pearson and deviance residuals and leverage.  
 
 $H_0$: There is no effect of the ecological focus of a study on the probability of the study addressing methodological questions.  
 
 $H_a$: The ecological focus of a study affects the probability of the study addressing methodological questions.  
 
 ```{r methodology_by_study_focus_mod}
+# make an "other" response variable / study focus column on wg data frame
+wg$other_focus <- wg$response.variable...abundance == F & 
+  wg$response.variable...distribution == F & 
+  wg$response.variable...phenology == F & 
+  wg$response.variable...species.richness == F & 
+  wg$trends.over.time == F
+
+# fit glm
 method_mod <- glm(factor(as.character(methodology.development.or.analysis), 
                          levels = c("FALSE", "TRUE"), 
                          labels = c("FALSE", "TRUE")) ~ 1 +
                     factor(response.variable...species.richness) + 
-                    factor(response.variable...diversity) + 
                     factor(response.variable...distribution) + 
                     factor(response.variable...abundance) + 
                     factor(response.variable...phenology) + 
-                    factor(trends.over.time), 
+                    factor(trends.over.time) + 
+                    factor(other_focus), 
                   data = wg, family = binomial())
 method_mod_null <- glm(factor(as.character(methodology.development.or.analysis), 
                          levels = c("FALSE", "TRUE"), 
@@ -460,20 +474,17 @@ method_mod_null <- glm(factor(as.character(methodology.development.or.analysis),
                   data = wg, family = binomial())
 ```
 
+```{r print_method_focus_model, include = F}
+method_chisq <- anova(method_mod_null, method_mod, test = "Chisq")
+```
 
 ## What data types are used for each study question paradigm? 
 
-We asked whether different types of biological records data are used to study different types of questions.  We fit Poisson regression models of the counts (number of studies) for each combination of data type and study question paradigm, fitting both a saturated model and an independence model with only main effects.  We used a Chi-squared likelihood ratio test to compare the saturated and independence models. 
+We asked whether different types of biological records data are used to study different types of questions.  We fit Poisson regression models of the counts (number of studies) for each combination of data type and ecological study focus, fitting both a saturated model and an independence model with only main effects.  We used a Chi-squared likelihood ratio test to compare the saturated and independence models. 
 
-Saturated model: `n studies ~ data type + paradigm + data type:paradigm`
+$H_a$: Analyses of different ecological study questions use different types of biological records data.
 
-Independence model: `n studies ~ data type + paradigm`
-
-$H_a$: Different study question paradigms use different types of biological records data.
-
-$H_0$: The use of data types is the same for all study question paradigms.
-
-*Proposed Test*: Poisson regression with Chi-squared likelihood ratio test of independence.
+$H_0$: Analyses of different ecological study questions do not use different types of biological records data.
 
 The response is the cell counts in the contingency table in section 2.5 (Table 5 I think).  I think an assumption of the Poisson regression is that the cell counts are independent, meaning that the count in one cell doesn’t go up or down with the count in another cell. So I need to asses if there is any dependence between the levels of each categorical variable. For example, does the count in the “sampling effort x community” cell go up in correlation with the count in the “abundance x community” cell? Could I use some kind of permutation approach to test for independence of cell counts? **Dina, how should I check to make sure cell counts are independent?** I could perhaps do this using a permutation procedure to look for non-random patterns in the data types.  For each pair of data type variables, I could a table in which each study is a row and there is a column for each of the two data type variables being assessed, and a 1 or a 0 for whether the study had the data type.  I could then take the row sums and look at the distribution of row sums of 0 (studies using neither of the two data types being tested), 1 (studies using only 1 of the two data types), and 2 (studies using both of the two data types).  I could then randomly permute one of the two columns, breaking any associations between the two data types, and take row sums again, getting a distribution of row sums under the null hypothesis.   
 
@@ -486,43 +497,67 @@ dt_pd_df <- select(wg, data.structure...organized.data.collection.scheme,
                    data.structure...sampling.effort.known,
                    data.structure...non.detection,
                    data.structure...multiple.datasets.integrated.for.analysis,
-                   data.type...what.where.when.only,
-                   data.type...abundance, 
                    data.type...visit.specific.covariates, 
-                   data.type...life.stage, 
-                   data.type...voucher.of.some.kind.necessary.for.analysis,
-                   community_question_only, 
-                   individual_species_question_only, 
-                   both_ind_and_community_questions, 
-                   other_paradigm) %>%
+                   response.variable...distribution,
+                   response.variable...phenology, 
+                   response.variable...abundance, 
+                   response.variable...species.richness, 
+                   trends.over.time, 
+                   other_focus) %>%
   gather(key = "data_type", value = "dt_val", 
          data.structure...organized.data.collection.scheme:
-           data.type...voucher.of.some.kind.necessary.for.analysis) %>%
+           data.type...visit.specific.covariates) %>%
   filter(dt_val == TRUE) %>%
-  gather(key = "paradigm", value = "pd_val", community_question_only, 
-         individual_species_question_only, both_ind_and_community_questions, 
-         other_paradigm) %>%
-  filter(pd_val == TRUE) %>%
-  count(paradigm, data_type) %>%
-  complete(paradigm, data_type, fill = list(n = 0))
+  gather(key = "study_focus", value = "focus_val", 
+         response.variable...distribution:other_focus) %>%
+  filter(focus_val == TRUE) %>%
+  count(study_focus, data_type) %>%
+  complete(study_focus, data_type, fill = list(n = 0))
+
+# clean character strings
+dt_pd_df$study_focus <- gsub("response.variable...", "", dt_pd_df$study_focus)
+dt_pd_df$data_type <- gsub("data.structure...", "", dt_pd_df$data_type)
+dt_pd_df$data_type <- gsub("data.type...", "", dt_pd_df$data_type)
 
 # spread for easy visualisation of 2-way table
-dt_pd_df_wide <- spread(dt_pd_df, key = paradigm, value = n)
+dt_pd_df_wide <- spread(dt_pd_df, key = study_focus, value = n)
 ```
 
 ```{r data_type_paradigm_model}
-dt_pd_mod_full <- glm(n ~ 1 + paradigm + data_type + paradigm:data_type, 
-                      data = dt_pd_df, family = poisson())
-dt_pd_mod_ind <- glm(n ~ 1 + paradigm + data_type, 
-                     data = dt_pd_df, family = poisson())
-# Do likelihood ratio test for full model vs. independence model
-dt_pd_interaction_test <- anova(dt_pd_mod_full, dt_pd_mod_ind, test = "Chisq") 
-```
+dt_pd_mod_full <- glm(n ~ 1 + study_focus + data_type + study_focus:data_type, 
+                      data = dt_pd_df, family = poisson(link = log))
+dt_pd_mod_ind <- glm(n ~ 1 + study_focus + data_type, 
+                     data = dt_pd_df, family = poisson(link = log))
 
+# Do likelihood ratio test for full model vs. independence model
+dt_pd_interaction_test <- anova(dt_pd_mod_ind, dt_pd_mod_full,  test = "Chisq")
+
+
+
+# look at predicted values compared to observed values
+dt_pd_df$predicted <- dt_pd_mod_ind$fitted.values
+
+# get residuals from independence model
+dt_pd_df$resids <- residuals(dt_pd_mod_ind)
+# show big residuals.  This is very interesting b/c it looks like the worst
+# places where the independence model doesn't fit have to do with when 
+# multiple data types are integrated for analysis.  So that might be the data
+# type for which the study questions are different.  Specifically, people study
+# abundance way less than expected with that data type, and they study 
+# distribution more than expected with that data type.
+
+# dt_pd_df[abs(dt_pd_df$resids) > 2, ] 
+
+# Looking at resids > 1 shows a similar story.  Studies of abundance use 
+# structured data types (non detection, sampling effort, etc) more than expected,
+# while studies of distributions use structured data types less than expected.
+
+# dt_pd_df[abs(dt_pd_df$resids) > 1, ] 
+```
 
 ## Analysis approach & data type
 
-To investigate whether the data type affects the analysis approach, we used a Poisson regression to model the relationship between three different analysis approaches (inference, prediction, and description) and data type.  The data type categories included in models based on *a-priori* expectations of importance were (in order of expected importance): what, where, when only; sampling effort known; abundance; non-detection; organized monitoring scheme; visit-specific covariates; multiple datasets integrated for analysis; life stage information; and voucher specimen. 
+To investigate whether the data type affects the analysis approach, we used a Poisson regression to model the relationship between three different analysis approaches (inference, prediction, and description) and data type.  The data type categories included in models based on *a-priori* expectations of importance were (in order of expected importance): sampling effort known; non-detection; organized monitoring scheme; visit-specific covariates; and multiple datasets integrated for analysis. 
 
 $H_a$: Different types of data are analysed with different broad analysis approaches.
 
@@ -535,17 +570,13 @@ dt_an_df <- select(wg, data.structure...organized.data.collection.scheme,
                    data.structure...sampling.effort.known,
                    data.structure...non.detection,
                    data.structure...multiple.datasets.integrated.for.analysis,
-                   data.type...what.where.when.only,
-                   data.type...abundance, 
                    data.type...visit.specific.covariates, 
-                   data.type...life.stage, 
-                   data.type...voucher.of.some.kind.necessary.for.analysis,
                    results.type...inference, 
                    results.type...prediction, 
                    results.type...descriptive.only) %>%
   gather(key = "data_type", value = "dt_val", 
          data.structure...organized.data.collection.scheme:
-           data.type...voucher.of.some.kind.necessary.for.analysis) %>%
+           data.type...visit.specific.covariates) %>%
   filter(dt_val == TRUE) %>%
   gather(key = "analysis_approach", value = "an_val", results.type...inference,
          results.type...prediction, results.type...descriptive.only) %>%
@@ -553,20 +584,31 @@ dt_an_df <- select(wg, data.structure...organized.data.collection.scheme,
   count(analysis_approach, data_type) %>%
   complete(analysis_approach, data_type, fill = list(n = 0))
 
+# clean character strings
+dt_an_df$data_type <- gsub("data.structure...", "", dt_an_df$data_type)
+dt_an_df$data_type <- gsub("data.type...", "", dt_an_df$data_type)
+dt_an_df$analysis_approach <- gsub("results.type...", "", dt_an_df$analysis_approach)
+
 # spread for easy visualisation of 2-way table
 dt_an_df_wide <- spread(dt_an_df, key = analysis_approach, value = n)
+dt_an_df_wide$data_type <- gsub("\\.", " ", dt_an_df_wide$data_type)
 ```
 
 ```{r data_type_analysis_approach_model}
 # fit saturated model
 dt_an_mod_full <- glm(n ~ 1 + analysis_approach + data_type + 
                         analysis_approach:data_type, data = dt_an_df, 
-                      family = poisson())
+                      family = poisson(link = log))
 # fit model assuming independence between analysis approach and data type
 dt_an_mod_ind <- glm(n ~ 1 + analysis_approach + data_type, 
-                     data = dt_an_df, family = poisson())
-dt_an_mod_independence_test <- anova(dt_an_mod_full, dt_an_mod_ind, test = "Chisq")
+                     data = dt_an_df, family = poisson(link = log))
+dt_an_mod_independence_test <- anova(dt_an_mod_ind, dt_an_mod_full, test = "Chisq")
+
+dt_an_df$predicted <- dt_an_mod_ind$fitted.values
+dt_an_df$resids <- residuals(dt_an_mod_ind)
 ```
+
+
 
 
 ## Authors and Data Providing Institutions
@@ -643,178 +685,80 @@ any_auth_inst_boot <- boot(wg$author.associated.with.proximate.data.provider,
 
 # Model Assumptions
 
-## Ecological focus
 
-No diagnostics needed for bootstrap confidence intervals, right?
-
-## Development of methodology across different study questions
-```{r method_assumptions}
-if(diag_present) {
-  method_mod_vif <- vif(method_mod) # assess multicollinearity
-  # H-L test H_0 is that model fits data well
-  method_mod_hlTest <- hoslem.test(method_mod$y, method_mod$fitted.values, 
-                                   g = 10) 
-  # make confusion matrix for full model with threshold 0.5
-  method_conf_matrix <- table(method_mod$y, method_mod$fitted.values > 0.5)
-  method_misclass_rate <- (method_conf_matrix["1", "FALSE"] + 
-                             tryCatch(method_conf_matrix["0", "TRUE"], 
-                                      error = function(x) 0))/length(method_mod$y)
-  # confusion matrix for null model
-  method_null_conf_matrix <- table(method_mod_null$y, 
-                                   method_mod_null$fitted.values > 0.5)
-  method_null_misclass_rate <- (method_null_conf_matrix["1", "FALSE"] + 
-                             tryCatch(
-                               method_null_conf_matrix["0", "TRUE"], 
-                               error = function(x) 0))/length(
-                                 method_mod_null$y)
-  method_diags <- LogisticDx::dx(method_mod, byCov = F)
-  
-  # determine which articles had large residuals or leverage
-  big_resids <- c(wg$title[abs(method_diags$Pr) > 2], 
-                  wg$title[abs(method_diags$dr) > 2], 
-                  wg$title[abs(method_diags$h) > 2])
-  big_resids <- unique(big_resids)
-  big_resids_df <- data.frame(
-    title = wg$title[which(wg$title %in% big_resids)],
-    pearson_resids = method_diags$Pr[which(wg$title %in% big_resids)], 
-    deviance_resids = method_diags$dr[which(wg$title %in% big_resids)], 
-    leverage = method_diags$h[which(wg$title %in% big_resids)], 
-    methodology.development.or.analysis = 
-      wg$methodology.development.or.analysis[which(wg$title %in% big_resids)])
-}
-```
-
-```{r cell_count_cap}
-cell_count_cap <- tabs(name = "cell_count_cap", 
-                       "Cell counts for predictor variables in methodology logistic regression.  Cell counts should be > 5.")
-```
-
-```{r method_vif_cap} 
-method_vif_cap <- tabs(name = "method_vif_cap", 
-                       "Variance inflation factors for variables used in the logistic regression estimating the proportion of studies with a methodological focus across different ecological study questions.")
-```
-
-```{r pearson_resids_cap}
-pearson_resids_cap <- figs(name = "pearson_resids_cap", 
-                           "Histogram of Pearson residuals for the logistic regression model of methodology studies across study questions.  Residuals with an absolute value larger than 2 are potentially problematic.")
-```
-
-```{r deviance_resids_cap}
-deviance_resids_cap <- figs(name = "deviance_resids_cap", 
-                           "Histogram of deviance residuals for the logistic regression model of methodology studies across study questions.  Residuals with an absolute value larger than 2 are potentially problematic.")
-```
-
-```{r leverage_cap}
-leverage_cap <- figs(name = "leverage_cap", 
-                           "Histogram of leverage for the logistic regression model of methodology studies across study questions.  Value larger than 2 are potentially problematic.")
-```
-
-```{r big_resids_cap}
-big_resids_cap <- tabs(name = "big_resids_cap", 
-                       "Studies with large Pearson or deviance residuals or leverage > 2.")
-```
-
-```{r confusion_matrix_cap}
-confusion_matrix_cap <- tabs(name = "confusion_matrix_cap", 
-                             "Confusion matrix for logistic regression model. (Right now the highest predicted probability from the model is 0.46, so the model does not predict any TRUE values).")
-```
-
-There were `r table(wg$methodology.development.or.analysis)[[2]]` methodological studies and `r table(wg$methodology.development.or.analysis)[[1]]` non-methodological studies, suggesting that we can fit `r min(table(wg$methodology.development.or.analysis))/10` predictors if we need at least 10 events or non-events per predictor. Obviously, if the number of methodological studies found by the review remains low, we will have to group some of the study question predictor variables.  We can do this based on which predictors have sparse cells (`r tabs("cell_count_cap", display = "cite")`).  (Note that if counts of diversity studies remain small we could lump "diversity" and "species richness" studies into a single category.)
-
-Variance inflation factors for all variables were well below 10 (`r tabs("method_vif_cap", display = "cite")`) indicating that correlation among the predictor variables is not likely to cause uncertainty in the coefficient estimates of the logistic regression model [@Fox1992] **Dina, am I interpreting this correctly?**.  A Hosmer-Lemeshow goodness of fit test failed to reject the null hypothesis that the model fits the data well (*p* = `r round(method_mod_hlTest$p.value, 2)`). There were `r length(big_resids)` observations with big Pearson or deviance residuals or with leverage larger than two (`r tabs("big_resids_cap", display = "cite")`).  The misclassification rates (when using a cutoff value of 0.5) for the model including main effects of all study questions and the null model (intercept only) were `r method_misclass_rate` and `r method_null_misclass_rate`, respectively. 
-
-Print number of events:
-```{r print_n_events, echo=TRUE}
-if(diag_present) {
-  # check number of events/ non-events to make sure we have enough data
-  table(wg$methodology.development.or.analysis)
-}
-```
-
-`r tabs("cell_count_cap", display = "full")`
-
-```{r cell_counts_table_print}
-if(diag_present){
-  # check for sparse cells in predictors (need > 5 observations in each cell)
-  kable(data.frame(select(wg, response.variable...phenology, trends.over.time, 
-                    response.variable...diversity, response.variable...abundance, 
-                    response.variable...species.richness, 
-                    response.variable...distribution) %>%
-               apply(MARGIN = 2, FUN = table)) %>%
-    rownames_to_column() %>%
-    gather(-1, key = "variable", value = "count") %>%
-    spread(rowname, count))
-}
-```
-
-`r if(diag_present) tabs("method_vif_cap", display = "full")`
-
-```{r print_method_vif}
-if(diag_present) {
-  vif_df <- data.frame(method_mod_vif)
-  vif_df$variable <- rownames(vif_df)
-  rownames(vif_df) <- NULL
-  kable(vif_df, col.names = c("VIF", "variable"), digits = 2)
-}
-```
-
-```{r print_pearson_resids_plot, fig.cap=pearson_resids_cap}
-if(diag_present) {
-  hist(method_diags$Pr, main = "Pearson residuals for methodology\nby study focus logistic regression")
-}
-```
-
-```{r deviance_resids_methodology_plot, fig.cap=deviance_resids_cap}
-if(diag_present) {
-  hist(method_diags$dr, main = "Deviance residuals for methodology\nby study focus logistic regression")
-}
-```
-
-```{r leverage_methodology_plot, fig.cap=leverage_cap}
-if(diag_present) {
-  hist(method_diags$h, main = "Leverage for methodology\nby study focus logistic regression")
-}
-```
-
-`r if(diag_present) tabs("big_resids_cap", display = "full")`
-```{r print_big_resids_table}
-if(diag_present) kable(big_resids_df, digits = 2)
-```
-
-`r if(diag_present) tabs("confusion_matrix_cap", display = "full")`
-```{r print_confusion_matrix_methodology}
-if(diag_present) {
-  kable(method_conf_matrix)
-}
-```
-
-## What data types are used for each study question paradigm?
-
-**I will wait for Dina's suggestions about how to assess assumptions and model fit for the Poisson regressions.**
-
-**TODO 3 Jan 2019: Try steps here: https://newonlinecourses.science.psu.edu/stat504/node/169/**
-
-```{r data_type_parad_table_cap}
-data_type_parad_table_cap <- tabs(name = "data_type_parad_table_cap", 
-                                  "Table of counts for data type by study question paradigm.")
-```
-
-`r tabs("data_type_parad_table_cap", display = "full")`
-
-```{r print_data_type_paradigm_contingency_table}
-if(diag_present) {
-  dt_pd_df_wide$data_type <- gsub(
-    "data\\.structure\\.\\.\\.|data\\.type\\.\\.\\.", "", 
-    dt_pd_df_wide$data_type)
-  dt_pd_df_wide$data_type <- gsub("\\.", " ", dt_pd_df_wide$data_type)
-  colnames(dt_pd_df_wide) <- gsub("_", " ", colnames(dt_pd_df_wide))
-  kable(data.frame(dt_pd_df_wide))
-}
-```
 
 ## Analysis approach & data type
 
-**I will wait for Dina's suggestions about how to assess assumptions and model fit for the Poisson regressions.**
+```{r print_data_type_analysis_contingency_table}
+if(diag_present) {
+  kable(data.frame(dt_an_df_wide), 
+        col.names = c("Data Type", "Results - descriptive only", 
+                      "Results - inference", "Results - prediction"))
+}
+```
+
+```{r print_data_type_analysis_interaction_test, include = F}
+# testing null hypothesis that the reduced model is as good as the full model.
+# This rejects the null.  So we can say that the effect of the data type on the
+# number of studies depends on analysis approach. 
+dt_an_mod_independence_test # (same as below)
+```
+
+```{r data_type_analysis_assumption_check}
+# following this: https://newonlinecourses.science.psu.edu/stat504/node/169/
+
+# plot predicted v. observed for independence model
+plot(dt_an_df$predicted ~ dt_an_df$n) # looks ok
+abline(0, 1)
+
+# for independence model:
+summary(dt_an_mod_ind)
+22.655/8 # resid dev / df - A lot bigger than 1.  Overdispersed
+1-pchisq(dt_an_mod_ind$deviance, dt_an_mod_ind$df.residual) # (same as chisq test above)
+# p = 0.003.  So reject null hypothesis that model is correctly specified.  
+# However, http://thestatsgeek.com/2014/04/26/deviance-goodness-of-fit-test-for-poisson-regression/
+# warns that this test can often wrongly indicate that the model is incorrectly
+# specified.  But that seems to be more of a problem when expected means are low.
+# When that post used means between 20 and 55, the pchisq test worked ok.  My
+# observed cell count values are generally 10 or 15-ish up to a hundred.  So I
+# am right on the border of having "large" means.  
+
+# for saturated model:
+summary(dt_pd_mod_full)
+# (the residual deviance/df value would have division by 0.  Not meaningful. Of course fit is perfect in a saturated model.)
+```
+
+```{r ata_type_analysis_approach_nb_model}
+# fit saturated model
+dt_an_nb_full <- glm.nb(n ~ 1 + analysis_approach + data_type + 
+                        analysis_approach:data_type, data = dt_an_df, 
+                      init.theta = 1, link = identity, 
+                      start = dt_an_mod_full$coefficients)
+# fit model assuming independence between analysis approach and data type
+dt_an_nb_ind <- glm.nb(n ~ 1 + analysis_approach + data_type, 
+                     data = dt_an_df, 
+                     init.theta = 1, link = identity, 
+                     start = dt_an_mod_ind$coefficients)
+
+
+# fit saturated model - quasipoisson
+dt_an_qp_full <- glm(n ~ 1 + analysis_approach + data_type + 
+                        analysis_approach:data_type, data = dt_an_df, 
+                      family = quasipoisson(link = log))
+summary.glm(dt_an_qp_full)
+summary.glm(dt_an_qp_full)$dispersion
+# fit model assuming independence between analysis approach and data type
+dt_an_qp_ind <- glm(n ~ 1 + analysis_approach + data_type, 
+                     data = dt_an_df, family = quasipoisson(link = log))
+summary.glm(dt_an_qp_ind)
+summary.glm(dt_an_qp_ind)$dispersion
+
+dt_an_qp_independence_test <- anova(dt_an_qp_ind, dt_an_qp_full, test = "Chisq")
+# that doesn't work, but regardless, the residual deviance from the 
+# quasipoisson and poisson models are identical.  
+
+# Do I need to fix overdispersion, or should I just interpred the residuals?
+```
 
 ## Authors and data providing institutions
 
@@ -1027,31 +971,28 @@ resp_var_tab_cap <- tabs(name = "resp_var_tab_cap",
 
 ```{r resp_var_plot_cap}
 resp_var_plot_cap <- figs(name = "resp_var_plot_cap", 
-                     "The number of studies analyzing different ecological responses.  Points show number of studies, vertical lines show 95% bootstrap confidence intervals.")
+                     "The proportion of studies analyzing different ecological responses.  Points show proportion of studies, vertical lines show 95% bootstrap confidence intervals.  Proportions add up to more than one because some studies performed multiple analyses and used multiple different response variables.")
 ```
 
-Of the studies asking community-based questions, the number of studies analyzing species richness (*alpha*-diversity) (`r resp_var_list$sp_rich$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$sp_rich$ci_obj$bca[4]`, `r resp_var_list$sp_rich$ci_obj$bca[5]`]) was higher than the number of studies analyzing species turnover (*beta*-diversity) (`r resp_var_list$diversity$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$diversity$ci_obj$bca[4]`, `r resp_var_list$diversity$ci_obj$bca[5]`]) or other response variables (`r resp_var_list$other$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$other$ci_obj$bca[4]`, `r resp_var_list$other$ci_obj$bca[5]`]).  Of the studies asking individual species-based questions, the number of studies analyzing species distributions (`r resp_var_list$dist$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$dist$ci_obj$bca[4]`, `r resp_var_list$dist$ci_obj$bca[5]`]) was not significantly higher than the number of studies analyzing phenology (`r resp_var_list$phen$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$phen$ci_obj$bca[4]`, `r resp_var_list$phen$ci_obj$bca[5]`]) but was higher than the number of studies analyzing abundance (`r resp_var_list$abund$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$abund$ci_obj$bca[4]`, `r resp_var_list$abund$ci_obj$bca[5]`]) and other responses (`r resp_var_list$other$boot_obj$t0` studies, 95% bootstrap CI [`r resp_var_list$other$ci_obj$bca[4]`, `r resp_var_list$other$ci_obj$bca[5]`]).
+Over half the studies in this review analyzed species distribution as a response variable (proportion of studies = `r round(resp_var_list$dist$boot_obj$t0, digits = 2)` studies, 95% bootstrap CI [`r round(resp_var_list$dist$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$dist$ci_obj$bca[5], digits = 2)`], Fig. ??, Tab. S?).  The proportion of studies analyzing species distributions was significantly higher than the proportion analyzing any other response variable based on non-overlapping 95% bootstrap confidence intervals (Fig. ??, Tab. S?).  The second most common response variable for studies in this review was abundance (proportion of studies = `r round(resp_var_list$abund$boot_obj$t0, digits = 2)` studies, 95% bootstrap CI [`r round(resp_var_list$abund$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$abund$ci_obj$bca[5], digits = 2)`]), but the proportion of studies analyzing abundance was not significantly different from the proportion analyzing species richness (proportion of studies = `r round(resp_var_list$sp_rich$boot_obj$t0, digits = 2)` studies, 95% bootstrap CI [`r round(resp_var_list$sp_rich$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$sp_rich$ci_obj$bca[5], digits = 2)`]), phenology (proportion of studies = `r round(resp_var_list$phen$boot_obj$t0, digits = 2)` studies, 95% bootstrap CI [`r round(resp_var_list$phen$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$phen$ci_obj$bca[5], digits = 2)`]), or other response variables (proportion of studies = `r round(resp_var_list$other$boot_obj$t0, digits = 2)` studies, 95% bootstrap CI [`r round(resp_var_list$other$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$other$ci_obj$bca[5], digits = 2)`]) based on overlapping 95% bootstrap confidence intervals.  Too few studies were classified as having "diversity" as a response variable to estimate coder agreement using Krippendorff's alpha.  Therefore, we did not evaluate the diversity response variable category on its own, but studies that had been coded as using diversity and no other response variables are included in the "other" response variable category.  
 
-`r tabs("resp_var_tab_cap", display = "full")`
-
-```{r print_response_variable_table}
+```{r make_response_variable_df}
 resp_count_df <- data.frame(matrix(nrow = length(resp_var_list), 
-                                        ncol = 4))
-colnames(resp_count_df) <- c("response_variable", "n_studies", 
+                                        ncol = 5))
+colnames(resp_count_df) <- c("response_variable", "n_studies", "prop_studies",
                              "l_95ci", "u_95ci")
 
 # fill response variable counts data frame using the list of bootstrap results
 for(i in 1:length(resp_var_list)) {
   resp_count_df[i, "response_variable"] <- names(resp_var_list)[i]
-  resp_count_df[i, "n_studies"] <- resp_var_list[[i]]$ci_obj$t0
+  resp_count_df[i, "n_studies"] <- resp_var_list_counts[[i]]$ci_obj$t0
+  resp_count_df[i, "prop_studies"] <- resp_var_list[[i]]$ci_obj$t0
   resp_count_df[i, "l_95ci"] <- resp_var_list[[i]]$ci_obj$bca[4]
   resp_count_df[i, "u_95ci"] <- resp_var_list[[i]]$ci_obj$bca[5]
 }
 
 # clean response variable strings
 resp_count_df$response_variable <- gsub(".*sp_rich.*", "species richness", 
-                                        resp_count_df$response_variable)
-resp_count_df$response_variable <- gsub(".*diversi.*", "diversity (turnover)", 
                                         resp_count_df$response_variable)
 resp_count_df$response_variable <- gsub(".*other.*", "other", 
                                         resp_count_df$response_variable)
@@ -1061,25 +1002,19 @@ resp_count_df$response_variable <- gsub(".*abund.*", "abundance",
                                         resp_count_df$response_variable)
 resp_count_df$response_variable <- gsub(".*phen.*", "phenology", 
                                         resp_count_df$response_variable)
-
-kable(resp_count_df, col.names = c("response variable", 
-                                   "number of studies", 
-                                   "lower bound 95% bootstrap CI", 
-                                   "upper bound 95% bootstrap CI"), 
-      digits = 1)
 ```
 
+
 ```{r resp_var_by_paradigm_plot, fig.cap=resp_var_plot_cap}
-# plot number of studies using each response variable, with 95% CIs
+# plot proportion of studies using each response variable, with 95% CIs
 print(ggplot(data = resp_count_df, 
              aes(x = factor(response_variable, 
                             levels = c("species distribution", 
                                        "phenology", 
                                        "abundance",
                                        "species richness", 
-                                       "diversity (turnover)", 
                                        "other")), 
-                 y = n_studies)) + 
+                 y = prop_studies)) + 
         geom_point() + 
         geom_linerange(aes(x = factor(response_variable, 
                             levels = c("species distribution", 
@@ -1091,7 +1026,8 @@ print(ggplot(data = resp_count_df,
                            ymin = l_95ci, 
                            ymax = u_95ci)) + 
         xlab("") + 
-        ylab("Number of Studies") + 
+        ylab("Proportion of Studies") + 
+        ylim(c(0, 1)) + 
         theme_bw() + 
         theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1), 
               strip.background = element_blank(), strip.placement = "outside"))
@@ -1099,40 +1035,13 @@ print(ggplot(data = resp_count_df,
 ```
 
 ## Development of methodology across different study questions
-Reader agreement for variables used in this analysis.
-```{r vars_methodology_focus}
-if(diag_present) {
-    vs <- c("methodology.development.or.analysis", 
-            "response.variable...species.richness", 
-            "response.variable...diversity", 
-            "response.variable...distribution", 
-            "response.variable...abundance", 
-            "response.variable...phenology", "trends.over.time")
-  kable(prob_of_values[which(prob_of_values$variable %in% vs), 
-                       c("variable", "kripp_alpha", "n_40_adequate")], 
-        digits = 2)
-}
-if(diag_present) rm(vs)
-```
 
 ```{r method_study_focus_cap}
 method_study_focus_cap <- figs(name = "method_study_focus_cap", 
                                "The coefficient estimates from a logistic regression testing whether studies developing or testing methodology make up a larger proportion of total studies studies for some types of questions than for others.  Positive coefficient estimates mean the probability of a study developing or testing methodology is higher for a study addressing that ecological study question; negative coefficient estimates mean the probability of a study developing or testing methodology is lower for a study addressing that ecological question.  Confidence intervals (vertical lines) that overlap 0 indicate that the coefficient estimate is not significantly different from zero.  [Right now, some confidence interval estimates fail because of small sample size, so estimates for those variables are not plotted.]")
 ```
 
-The overall model predicting the probability of a study addressing a methodological question based on the ecological focus of the study [was/was not] significant (*p* = `r round(anova(method_mod, method_mod_null, test = "Chisq")[2, 5], 2)`).
-
-In the final manuscript, I plan to report estimated probabilities of a study addressing a methodological question for different ecological focuses.  I will calculate the probability of a study focusing on methodology given its ecological focus using this equation: 
-
-$\hat{probability_{methodology}} = {e^{intercept + \beta_{j}}} / {(1+e^{intercept + \beta_{j}})}$
-
-Here's an example of how the results will look (assuming assumptions are met): Studies focusing on species distributions are more likely to develop or test methodology than studies focusing on species richness (`r figs("method_study_focus_cap", display = "cite")`).  The estimated probability of a study addressing a methodological question when the ecological focus of the study is species distributions is `r round(exp(method_mod$coefficients[["(Intercept)"]] + method_mod$coefficients[["factor(response.variable...distribution)TRUE"]]) / (1 + exp(method_mod$coefficients[["(Intercept)"]] + method_mod$coefficients[["factor(response.variable...distribution)TRUE"]])), 2)`. The estimated probability of a study addressing a methodological question when the ecological focus of the study is species richness is `r round(exp(method_mod$coefficients[["(Intercept)"]] + method_mod$coefficients[["factor(response.variable...species.richness)TRUE"]]) / (1 + exp(method_mod$coefficients[["(Intercept)"]] + method_mod$coefficients[["factor(response.variable...species.richness)TRUE"]])), 2)`.
-
-```{r print_method_focus_model, include = F}
-anova(method_mod, method_mod_null, test = "Chisq")
-```
-
-**Dina & Jon, should I be graphing the probability or proportion of methodology studies within each category, rather than graphing coefficient estimates? Should I change the statistical analysis so that instead of logistic regression analyzing the probability of a study having a methodological focus based on the ecological question, instead I estimate bootstrap confidence intervals around the proportion of studies that are methodology studies?**  My goal is to see whether there are any ecological questions for which there is a lot of (or very little) methodological work happening. Any thoughts you have would be welcome.
+The overall model predicting the probability of a study addressing a methodological question based on the ecological focus of the study was not significant (Intercept-only model residual deviance = `r method_chisq$'Resid. Dev'[1]`, full model residual deviance = `r method_chisq$'Resid. Dev'[2]`, Chi-squared test *p* = `r round(anova(method_mod, method_mod_null, test = "Chisq")[2, 5], 2)`).  
 
 ```{r plot_method_study_focus_coefficients, fig.cap=method_study_focus_cap}
 meth_df <- data.frame(matrix(nrow = 6, ncol = 4))
@@ -1176,106 +1085,21 @@ print(ggplot(data = meth_df,
 ```
 
 
-## What data types are used for each study question paradigm?
-Agreement for variables in this analysis:
-```{r vars_data_type_study_question}
-if(diag_present) {
-  vs <- c("community.question", "individual.species.question", 
-        "data.type...what.where.when.only", 
-        "data.structure...organized.data.collection.scheme", 
-        "data.structure...sampling.effort.known", 
-        "data.structure...non.detection", "data.type...abundance", 
-        "data.type...visit.specific.covariates", 
-        "data.structure...multiple.datasets.integrated.for.analysis", 
-        "data.type...life.stage", 
-        "data.type...voucher.of.some.kind.necessary.for.analysis") 
-  kable(prob_of_values[which(prob_of_values$variable %in% vs), 
-                       c("variable", "kripp_alpha", "n_40_adequate")], 
-              digits = 2)
-}
-if(diag_present) rm(vs)
-```
+## What data types are used for each type of ecological study question?
 
 ```{r data_type_parad_cap}
 data_type_parad_cap <- figs(name = "data_type_parad_cap", 
                             "The number of studies using each type of biological records data within each of the broad study question paradigms.")
 ```
 
-A Chi-squared likelihood ratio test comparing the saturated Poisson regression model to a reduced model with only main effects for data type and study paradigm (but no interaction term) did not reject the null hypothesis that the reduced model is as good as the full model (*p* = `r round(dt_pd_interaction_test$"Pr(>Chi)"[2], 2)`).  So, there is no evidence that the use of data types differs between the different main study question paradigms (`r figs("data_type_parad_cap", display = "cite")`). For all question paradigms, "what where when only" data was the most common type of data, and the use of multiple data sets was also common (`r figs("data_type_parad_cap", display = "cite")`).
+A Chi-squared likelihood ratio test comparing the saturated Poisson regression model to a reduced model with only main effects for data type and ecological study focus (but no interaction term) rejected the null hypothesis that the reduced model fit the data as well as the full model (*p* = `r round(dt_pd_interaction_test$"Pr(>Chi)"[2], 2)`).  Thus, there is evidence that the use of data types differs between the different study questions.  Two cells had residuals with an absolute value bigger than two (Tab ??) - the cell for the number of studies investigating abundance using multiple biological datasets (residual = -3.65), and the cell for the number of studies investigating species distributions using multiple biological records datasets (residual = 3.03).  Furthermore, looking at all cells for which the absolute value of residuals was larger than one (Tab ??) showed a pattern in which residuals were positive for combinations of structured data types and study questions about abundance, and negative for combinations of structured data types and species distribution study questions.  This suggests that abundance studies use structured data types more often than would be expected if data type and study question were not related, and distribution studies use structured data types less often than would be expected if study question and data type were not related.  
 
-```{r data_type_by_paradigm_barplot, fig.cap=data_type_parad_cap, fig.height=7, fig.width=7}
-### plot data type by study question paradigm ----------------------
-# make plot, order factor levels by most important a-priori
-# dt_pd_df was created in the Methods section
-ggplot(dt_pd_df, 
-       aes(x = factor(data_type, 
-                         levels = c("data.type...what.where.when.only", 
-                           "data.structure...sampling.effort.known", 
-                           "data.type...abundance", 
-                           "data.structure...non.detection", 
-                           "data.structure...organized.data.collection.scheme", 
-                           "data.structure...multiple.datasets.integrated.for.analysis",
-                           "data.type...life.stage", 
-                           "data.type...visit.specific.covariates",
-                           "data.type...voucher.of.some.kind.necessary.for.analysis"), 
-                         labels = c("what where when only", 
-                                    "sampling effort", 
-                                    "abundance", 
-                                    "non detection", 
-                                    "organized scheme", 
-                                    "multiple datasets", 
-                                    "life stage", 
-                                    "visit-specific covariates", 
-                                    "voucher available")), 
-           y = n, 
-           fill = factor(data_type, 
-                         levels = c("data.type...what.where.when.only", 
-                           "data.structure...sampling.effort.known", 
-                           "data.type...abundance", 
-                           "data.structure...non.detection", 
-                           "data.structure...organized.data.collection.scheme", 
-                           "data.structure...multiple.datasets.integrated.for.analysis",
-                           "data.type...life.stage", 
-                           "data.type...visit.specific.covariates",
-                           "data.type...voucher.of.some.kind.necessary.for.analysis"), 
-                         labels = c("what where\nwhen only", 
-                                    "sampling effort", 
-                                    "abundance", 
-                                    "non detection", 
-                                    "organized\nscheme", 
-                                    "multiple\ndatasets", 
-                                    "life stage", 
-                                    "visit-specific\ncovariates", 
-                                    "voucher\navailable")))) + 
-  geom_bar(position = position_dodge(preserve = "single"), stat = "identity") + 
-    facet_wrap( ~ factor(paradigm, levels = c("community_question_only", 
-                                            "individual_species_question_only",
-                                            "both_ind_and_community_questions", 
-                                            "other_paradigm"),
-                       labels = c(
-                         "community questions", "individual species\nquestions",
-                         "both individual species\nand community\nquestions", 
-                         "other")), 
-              strip.position = "bottom") +
-  ggtitle("Data use based on study question paradigm") + 
-  scale_fill_discrete(name = "Data Type") + 
-  xlab("Study question paradigm") + 
-  ylab("Number of studies") + 
-  scale_y_continuous(breaks = seq(0, max(dt_pd_df$n), 5)) + 
-  theme_bw() + 
-  theme(axis.text.x = element_blank(), 
-        text = element_text(size = plot_text_size),
-        strip.background = element_blank(), strip.placement = "outside")
+```{r print_big_resids_table}
+kable(dt_pd_df[abs(dt_pd_df$resids) > 1, 
+               c("study_focus", "data_type", "n", "predicted", "resids")], 
+      col.names = c("Study Focus", "Data Type", "Observed number of studies", 
+                    "Predicted number of studies", "Residual (on the scale of the linear predictors)"),digits = 1)
 ```
-
-```{r print_data_type_paradigm_interaction_test, include = F}
-# testing null hypothesis that the reduced model is as good as the full model
-# cannot reject that null. Therefore there is no evidence that the interaction
-# term is significant.  So we can say that the use of data types does not
-# depend on the study question paradigm.  
-dt_pd_interaction_test
-```
-
 
 ## Analysis approach & data type
 Agreement for variables in this analysis:
@@ -1311,6 +1135,13 @@ data_type_analysis_cap <- figs(name = "data_type_analysis_cap",
 A Chi-squared likelihood ratio test comparing the saturated Poisson regression model  to a reduced model with only main effects for analysis approach and data type did not reject the null hypothesis that the reduced model is as good as the full model (*p* = `r round(dt_an_mod_independence_test$'Pr(>Chi)'[2], 2)`), suggesting that the data type does not influence or constrain the analysis approach (`r tabs(data_type_analysis_tab_cap, display = "cite")`, `r figs("data_type_analysis_cap", display = "cite")`).  
 
 `r if(diag_present) tabs("data_type_analysis_tab_cap", display = "full")`
+
+```{r data_type_analysis_resids_table}
+kable(dt_an_df[abs(dt_an_df$resids) > 1, ], 
+      col.names = c("Analysis approach", "Data type", "Observed number of studies", 
+                 "Predicted number of studies", "Residuals (on the scale of the linear predictors)"), digits = 1)
+```
+
 
 ```{r print_data_type_analysis_approach_contingency_table}
 if(diag_present) {
@@ -1646,8 +1477,360 @@ if(diag_present) {
 }
 ```
 
+### Ecological Focus
+
+`r tabs("resp_var_tab_cap", display = "full")`
+
+```{r print_response_variable_table}
+kable(resp_count_df, col.names = c("response variable", 
+                                   "number of studies", 
+                                   "proportion of studies", 
+                                   "lower bound 95% bootstrap CI on proportion", 
+                                   "upper bound 95% bootstrap CI on proportion"), 
+      digits = 2)
+```
+
+### Develoment of methodology across different study questions
+
+```{r method_assumptions}
+if(diag_present) {
+  method_mod_vif <- vif(method_mod) # assess multicollinearity
+  # H-L test H_0 is that model fits data well
+  method_mod_hlTest <- hoslem.test(method_mod$y, method_mod$fitted.values, 
+                                   g = 10) 
+  # make confusion matrix for full model with threshold 0.5
+  method_conf_matrix <- table(method_mod$y, method_mod$fitted.values > 0.5)
+  method_misclass_rate <- (method_conf_matrix["1", "FALSE"] + 
+                             tryCatch(method_conf_matrix["0", "TRUE"], 
+                                      error = function(x) 0))/length(method_mod$y)
+  # confusion matrix for null model
+  method_null_conf_matrix <- table(method_mod_null$y, 
+                                   method_mod_null$fitted.values > 0.5)
+  method_null_misclass_rate <- (method_null_conf_matrix["1", "FALSE"] + 
+                             tryCatch(
+                               method_null_conf_matrix["0", "TRUE"], 
+                               error = function(x) 0))/length(
+                                 method_mod_null$y)
+  method_diags <- LogisticDx::dx(method_mod, byCov = F)
+  
+  # determine which articles had large residuals or leverage
+  big_resids <- c(wg$title[abs(method_diags$Pr) > 2], 
+                  wg$title[abs(method_diags$dr) > 2], 
+                  wg$title[abs(method_diags$h) > 2])
+  big_resids <- unique(big_resids)
+  big_resids_df <- data.frame(
+    title = wg$title[which(wg$title %in% big_resids)],
+    pearson_resids = method_diags$Pr[which(wg$title %in% big_resids)], 
+    deviance_resids = method_diags$dr[which(wg$title %in% big_resids)], 
+    leverage = method_diags$h[which(wg$title %in% big_resids)], 
+    methodology.development.or.analysis = 
+      wg$methodology.development.or.analysis[which(wg$title %in% big_resids)])
+}
+```
+
+```{r cell_count_cap}
+cell_count_cap <- tabs(name = "cell_count_cap", 
+                       "Cell counts for predictor variables in methodology logistic regression.  Cell counts should be > 5.")
+```
+
+```{r method_vif_cap} 
+method_vif_cap <- tabs(name = "method_vif_cap", 
+                       "Variance inflation factors for variables used in the logistic regression estimating the proportion of studies with a methodological focus across different ecological study questions.")
+```
+
+```{r pearson_resids_cap}
+pearson_resids_cap <- figs(name = "pearson_resids_cap", 
+                           "Histogram of Pearson residuals for the logistic regression model of methodology studies across study questions.  Residuals with an absolute value larger than 2 are potentially problematic.")
+```
+
+```{r deviance_resids_cap}
+deviance_resids_cap <- figs(name = "deviance_resids_cap", 
+                           "Histogram of deviance residuals for the logistic regression model of methodology studies across study questions.  Residuals with an absolute value larger than 2 are potentially problematic.")
+```
+
+```{r leverage_cap}
+leverage_cap <- figs(name = "leverage_cap", 
+                           "Histogram of leverage for the logistic regression model of methodology studies across study questions.  Value larger than 2 are potentially problematic.")
+```
+
+```{r big_resids_cap}
+big_resids_cap <- tabs(name = "big_resids_cap", 
+                       "Studies with large Pearson or deviance residuals or leverage > 2.")
+```
+
+```{r confusion_matrix_cap}
+confusion_matrix_cap <- tabs(name = "confusion_matrix_cap", 
+                             "Confusion matrix for logistic regression model. (Right now the highest predicted probability from the model is 0.46, so the model does not predict any TRUE values).")
+```
+
+There were `r table(wg$methodology.development.or.analysis)[[2]]` methodological studies and `r table(wg$methodology.development.or.analysis)[[1]]` non-methodological studies, suggesting that we can fit `r min(table(wg$methodology.development.or.analysis))/10` predictors if we need at least 10 events or non-events per predictor.
+
+Variance inflation factors for all variables were small (`r tabs("method_vif_cap", display = "cite")`) indicating that correlation among the predictor variables is not likely to cause large uncertainty in the coefficient estimates of the logistic regression model [@Fox1992].  A Hosmer-Lemeshow goodness of fit test failed to reject the null hypothesis that the model fits the data well (*p* = `r round(method_mod_hlTest$p.value, 2)`). There were `r length(big_resids)` observations with big Pearson or deviance residuals or with leverage larger than two (`r tabs("big_resids_cap", display = "cite")`).
+
+Most of the model diagnostics suggested that the logistic regression assumtions were met.  However, because there were `r length(big_resids)` large residuals, we decided to use bootstrapping to estimate 95% confidence intervals around the proportion of studies that were methodological within each of the six ecological or biological study focuses.  The 95% bootstrap CIs for the proportion of studies with each ecological focus that were methodological all overlapped (Fig. S??), confirming the conclusion from the logistic regression that we were unable reject a null hypothesis of no difference in the proportion of studies within each focus area that are methodological.
+
+Print number of events:
+```{r print_n_events, echo=TRUE}
+if(diag_present) {
+  # check number of events/ non-events to make sure we have enough data
+  table(wg$methodology.development.or.analysis)
+}
+```
+
+`r tabs("cell_count_cap", display = "full")`
+
+```{r cell_counts_table_print}
+if(diag_present){
+  # check for sparse cells in predictors (need > 5 observations in each cell)
+  kable(data.frame(select(wg, response.variable...phenology, trends.over.time, 
+                          response.variable...abundance, 
+                          response.variable...species.richness, 
+                          response.variable...distribution, other_focus) %>%
+                     apply(MARGIN = 2, FUN = table)) %>%
+          rownames_to_column() %>%
+          gather(-1, key = "variable", value = "count") %>%
+          spread(rowname, count))
+}
+```
+
+`r if(diag_present) tabs("method_vif_cap", display = "full")`
+
+```{r print_method_vif}
+if(diag_present) {
+  vif_df <- data.frame(method_mod_vif)
+  vif_df$variable <- rownames(vif_df)
+  rownames(vif_df) <- NULL
+  kable(vif_df, col.names = c("VIF", "variable"), digits = 2)
+}
+```
+
+```{r print_pearson_resids_plot, fig.cap=pearson_resids_cap}
+if(diag_present) {
+  hist(method_diags$Pr, main = "Pearson residuals for methodology\nby study focus logistic regression")
+}
+```
+
+```{r deviance_resids_methodology_plot, fig.cap=deviance_resids_cap}
+if(diag_present) {
+  hist(method_diags$dr, main = "Deviance residuals for methodology\nby study focus logistic regression")
+}
+```
+
+```{r leverage_methodology_plot, fig.cap=leverage_cap}
+if(diag_present) {
+  hist(method_diags$h, main = "Leverage for methodology\nby study focus logistic regression")
+}
+```
+
+`r if(diag_present) tabs("big_resids_cap", display = "full")`
+```{r print_big_resids_table}
+if(diag_present) kable(big_resids_df, digits = 2)
+```
+
+`r if(diag_present) tabs("confusion_matrix_cap", display = "full")`
+```{r print_confusion_matrix_methodology}
+if(diag_present) {
+  kable(method_conf_matrix)
+}
+```
 
 
+```{r method_prop_boot}
+# Get bootstrap CIs for proportion of studies with each focus that are 
+# methodological
+# This is a sensitivity analysis since logistic regression had some big resids.
+
+method_prop_fun <- function(x, indices) {
+  # ARGS: x - a 2-column dataframe with TRUE/FALSE values in each column, in 
+  #           which the 1st column indicates whether the study is within the
+  #           target study focus (e.g. phenology) and the
+  #           2nd column indicates whether the study is methodological
+  #       indices - a vector of indices as required by boot
+  x_b <- x[indices, ]
+  
+  x_b <- x_b[x_b[, 1] == T, ] # subset to only studies with this focus
+  # calculate proportion that are methodological
+  sum(as.numeric(as.logical(as.character(x_b[, 2]))), na.rm = TRUE)/nrow(x_b) 
+}
+
+method_list_boot <- lapply(
+  list(sp_rich = wg[, c("response.variable...species.richness", 
+                        "methodology.development.or.analysis")], 
+       dist = wg[, c("response.variable...distribution", 
+                     "methodology.development.or.analysis")], 
+       abund = wg[, c("response.variable...abundance", 
+                     "methodology.development.or.analysis")], 
+       phen = wg[, c("response.variable...phenology", 
+                     "methodology.development.or.analysis")], 
+       temp_trends = wg[, c("trends.over.time", 
+                     "methodology.development.or.analysis")], 
+       other_focus = wg[, c("other_focus", 
+                     "methodology.development.or.analysis")]),
+  FUN = get_boot_CI, fun_to_use = method_prop_fun)
+```
+
+```{r make_method_boot_df}
+method_boot_df <- data.frame(matrix(nrow = length(method_list_boot), 
+                                        ncol = 4))
+colnames(method_boot_df) <- c("response_variable", "prop_studies",
+                             "l_95ci", "u_95ci")
+
+# fill response variable counts data frame using the list of bootstrap results
+for(i in 1:length(method_list_boot)) {
+  method_boot_df[i, "response_variable"] <- names(method_list_boot)[i]
+  method_boot_df[i, "prop_studies"] <- method_list_boot[[i]]$ci_obj$t0
+  method_boot_df[i, "l_95ci"] <- method_list_boot[[i]]$ci_obj$bca[4]
+  method_boot_df[i, "u_95ci"] <- method_list_boot[[i]]$ci_obj$bca[5]
+}
+
+# clean response variable strings
+method_boot_df$response_variable <- gsub(".*sp_rich.*", "species richness", 
+                                        method_boot_df$response_variable)
+method_boot_df$response_variable <- gsub(".*other.*", "other", 
+                                        method_boot_df$response_variable)
+method_boot_df$response_variable <- gsub(".*dist.*", "species distribution", 
+                                        method_boot_df$response_variable)
+method_boot_df$response_variable <- gsub(".*abund.*", "abundance", 
+                                        method_boot_df$response_variable)
+method_boot_df$response_variable <- gsub(".*phen.*", "phenology", 
+                                        method_boot_df$response_variable)
+method_boot_df$response_variable <- gsub(".*temp.*", "temporal trends", 
+                                        method_boot_df$response_variable)
+```
+
+```{r method_boot_plot}
+# plot proportion of studies using each response variable, with 95% CIs
+print(ggplot(data = method_boot_df, 
+             aes(x = factor(response_variable, 
+                            levels = c("species distribution", 
+                                       "phenology", 
+                                       "abundance",
+                                       "species richness", 
+                                       "temporal trends", 
+                                       "other")), 
+                 y = prop_studies)) + 
+        geom_point() + 
+        geom_linerange(aes(x = factor(response_variable, 
+                            levels = c("species distribution", 
+                                       "phenology", 
+                                       "abundance",
+                                       "species richness", 
+                                       "temporal trends", 
+                                       "other")), 
+                           ymin = l_95ci, 
+                           ymax = u_95ci)) + 
+        xlab("") + 
+        ylab("Proportion of Studies") + 
+        ylim(c(0, 1)) + 
+        theme_bw() + 
+        theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1), 
+              strip.background = element_blank(), strip.placement = "outside"))
+      # theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)))
+```
+
+### What data types are used for each study question paradigm?
+
+```{r data_type_parad_table_cap}
+data_type_parad_table_cap <- tabs(name = "data_type_parad_table_cap", 
+                                  "Table of counts for data type by study question paradigm.")
+```
+
+`r tabs("data_type_parad_table_cap", display = "full")`
+
+```{r print_data_type_paradigm_contingency_table}
+if(diag_present) {
+  dt_pd_df_wide$data_type <- gsub("\\.", " ", dt_pd_df_wide$data_type)
+  colnames(dt_pd_df_wide) <- gsub("_", " ", colnames(dt_pd_df_wide))
+  kable(data.frame(dt_pd_df_wide))
+}
+```
+
+```{r print_data_type_paradigm_interaction_test, include = F}
+# testing null hypothesis that the reduced model is as good as the full model
+# cannot reject that null. Therefore there is no evidence that the interaction
+# term is significant.  So we can say that the use of data types does not
+# depend on the study question paradigm.  
+dt_pd_interaction_test
+```
+
+```{r data_type_paradigm_assumption_check}
+# following this: https://newonlinecourses.science.psu.edu/stat504/node/169/
+
+# plot predicted v. observed for independence model
+plot(dt_pd_df$predicted ~ dt_pd_df$n) # actually looks decent
+abline(0, 1)
+
+# for independence model:
+summary(dt_pd_mod_ind)
+37.545/20 # a bit bigger than one, but not huge.
+1-pchisq(dt_pd_mod_ind$deviance, dt_pd_mod_ind$df.residual) 
+# p = 0.01.  So reject null hypothesis that model is correctly specified.  
+# However, http://thestatsgeek.com/2014/04/26/deviance-goodness-of-fit-test-for-poisson-regression/
+# warns that this test can often wrongly indicate that the model is incorrectly
+# specified.  But that seems to be more of a problem when expected means are low.
+# When that post used means between 20 and 55, the pchisq test worked ok.  My
+# observed cell count values are generally 10 or 15-ish up to a hundred.  So I
+# am right on the border of having "large" means.  
+
+# for saturated model:
+summary(dt_pd_mod_full)
+# (the residual deviance/df value would have division by 0.  Not meaningful. Of course fit is perfect in a saturated model.)
+```
+
+```{r data_type_by_paradigm_barplot, fig.cap=data_type_parad_cap, fig.height=7, fig.width=7, include = F}
+### plot data type by study question paradigm ----------------------
+# make plot, order factor levels by most important a-priori
+# dt_pd_df was created in the Methods section
+ggplot(dt_pd_df, 
+       aes(x = factor(
+         data_type, 
+         levels = c("sampling.effort.known", 
+                    "non.detection", 
+                    "organized.data.collection.scheme", 
+                    "multiple.datasets.integrated.for.analysis",
+                    "visit.specific.covariates"), 
+         labels = c("sampling effort", 
+                    "non detection", 
+                    "organized scheme", 
+                    "multiple datasets", 
+                    "visit-specific covariates")), 
+         y = n, 
+         fill = factor(
+           data_type,  
+           levels = c("sampling.effort.known", 
+                      "non.detection", 
+                      "organized.data.collection.scheme",
+                      "multiple.datasets.integrated.for.analysis",
+                      "visit.specific.covariates"), 
+           labels = c("sampling effort", 
+                      "non detection", 
+                      "organized scheme", 
+                      "multiple datasets", 
+                      "visit-specific covariates")))) + 
+  geom_bar(position = position_dodge(preserve = "single"), stat = "identity") + 
+  facet_wrap( ~ factor(study_focus, levels = c("abundance", 
+                                               "distribution",
+                                               "phenology", 
+                                               "species.richness", 
+                                               "trends.over.time", 
+                                               "other_focus"),
+                       labels = c("abundance",
+                                  "distribution",
+                                  "phenology", 
+                                  "species richness", 
+                                  "trends over time", 
+                                  "other focus")), 
+              strip.position = "bottom") +
+  ggtitle("Data type used for different ecological study questions") + 
+  scale_fill_discrete(name = "Data Type") + 
+  xlab("Study question") + 
+  ylab("Number of studies") + 
+  scale_y_continuous(breaks = seq(0, max(dt_pd_df$n), 5)) + 
+  theme_bw() + 
+  theme(axis.text.x = element_blank(), 
+        text = element_text(size = plot_text_size),
+        strip.background = element_blank(), strip.placement = "outside")
+```
 
 # Appendix 2 - Instructions for Coders
 [ Attach pdf of Instructions for Coders ]
