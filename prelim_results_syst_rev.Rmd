@@ -1,6 +1,6 @@
 ---
 title: "Biological Records Systematic Review - Preliminary Methods and Results"
-date: 16 Jan 2020
+date: 18 Jan 2020
 csl: ecology.csl
 output:
   html_document:
@@ -102,6 +102,8 @@ plot_text_size <- 15
 if(diag == F) { # turn off warnings when not running diagnostics
   knitr::opts_chunk$set(echo=F, message=F, warning=F, cache=F)
 }
+
+set.seed(18012020) # 18 Jan 2020
 
 source("./clean_data_syst_rev.R")
 ```
@@ -478,7 +480,7 @@ method_mod_null <- glm(factor(as.character(methodology.development.or.analysis),
 method_chisq <- anova(method_mod_null, method_mod, test = "Chisq")
 ```
 
-## What data types are used for each study question paradigm? 
+## What data types are used for each study question? 
 
 We asked whether different types of biological records data are used to study different types of questions.  We fit Poisson regression models of the counts (number of studies) for each combination of data type and ecological study focus, fitting both a saturated model and an independence model with only main effects.  We used a Chi-squared likelihood ratio test to compare the saturated and independence models. 
 
@@ -608,6 +610,69 @@ dt_an_df$predicted <- dt_an_mod_ind$fitted.values
 dt_an_df$resids <- residuals(dt_an_mod_ind)
 ```
 
+```{r data_analysis_approach_randomization}
+# randomly re-shuffle analysis strategies (but keep them associated with each
+# other in the same way), and keep data types associated with each other.
+# This will give H_0 counts for each cell.
+n_perm <- 1000 # number of permutations to perform
+rand_array <- array(NA, c(5, 3, n_perm))
+
+for(i in 1:n_perm-1) {
+  ind <- sample(1:nrow(wg), replace = F)
+  # make data frame of data types
+  df_dat <- wg[, grepl(
+    ".*multiple.dat.*|.*non.det.*|.*organized.*|.*sampling.eff.*|.*visit.speci.*", colnames(wg))]
+  # make data frame of analysis methods
+  df_an <- wg[, grepl(".*descriptive.on.*|.*inferen.*|.prediction.*", 
+                      colnames(wg))]
+  # permute analysis methods
+  df_an <- df_an[ind, ]
+  df <- cbind(df_dat, df_an)
+  
+  df <- gather(df, key = "data_type", value = "dt_val", 
+               data.structure...organized.data.collection.scheme:
+                 data.type...visit.specific.covariates) %>%
+    filter(dt_val == TRUE) %>%
+    gather(key = "analysis_approach", value = "an_val", results.type...inference,
+           results.type...prediction, results.type...descriptive.only) %>%
+    filter(an_val == TRUE) %>%
+    count(analysis_approach, data_type) %>%
+    complete(analysis_approach, data_type, fill = list(n = 0))
+  
+  # clean character strings
+  df$data_type <- gsub("data.structure...", "", df$data_type)
+  df$data_type <- gsub("data.type...", "", df$data_type)
+  df$analysis_approach <- gsub("results.type...", "", df$analysis_approach)
+  
+  # spread for easy visualisation of 2-way table
+  df <- spread(df, key = analysis_approach, value = n)
+  df$data_type <- gsub("\\.", " ", df$data_type)
+  rand_array[, , i] <- as.matrix(df[, 2:4])
+}
+
+# add observed values as one permutation
+rand_array[, , n_perm] <- as.matrix(dt_an_df_wide[, 2:ncol(dt_an_df_wide)])
+
+perm_p_vals <- dt_an_df_wide
+perm_p_vals[, 2:4] <- NA # clear counts
+
+perm_resids <- dt_an_df_wide
+perm_resids[, 2:4] <- NA # clear counts
+
+for(i in 1:nrow(perm_p_vals)) {
+  for(j in 1:(ncol(perm_p_vals) - 1)) {
+    emp_dist <- ecdf(rand_array[i, j, ])
+    # calculate empirical p-value
+    perm_p_vals[i, j + 1] <- emp_dist(dt_an_df_wide[i, j + 1])
+    # make this a 2-tailed p-value
+    if(perm_p_vals[i, j + 1] > 0.5) {
+      perm_p_vals[i, j + 1] <- 1 - perm_p_vals[i, j + 1]
+    }
+    # calculate residual
+    perm_resids[i, j + 1] <- dt_an_df_wide[i, j + 1] - mean(rand_array[i, j, ])
+  }
+}
+```
 
 
 
@@ -1623,7 +1688,7 @@ if(diag_present) {
 ```
 
 `r if(diag_present) tabs("big_resids_cap", display = "full")`
-```{r print_big_resids_table}
+```{r print_big_resids}
 if(diag_present) kable(big_resids_df, digits = 2)
 ```
 

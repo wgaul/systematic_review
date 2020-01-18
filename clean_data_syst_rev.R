@@ -19,7 +19,7 @@ library(tidyverse)
 source("combine_search_results.R")
 
 # read in data
-elig <- read_csv("~/Documents/UCD/PhD_Project/systematic_review/master_eligibility_results.csv")
+elig <- read_csv("./data/master_eligibility_results.csv")
 wg <- read_csv("./data/wg_systematic_review_coding.csv")
 er <- read_csv("./data/ellie_systematic_review_coding_04.csv")
 
