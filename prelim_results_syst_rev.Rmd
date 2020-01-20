@@ -558,13 +558,13 @@ dt_pd_df$resids <- residuals(dt_pd_mod_ind)
 
 ## Analysis approach & data type
 
-To investigate whether the data type affects the analysis approach, we used a Poisson regression to model the relationship between three different analysis approaches (inference, prediction, and description) and data type.  The data type categories included in models based on *a-priori* expectations of importance were (in order of expected importance): sampling effort known; non-detection; organized monitoring scheme; visit-specific covariates; and multiple datasets integrated for analysis. 
+To investigate whether the data type affects the analysis approach, we used a random permutation procedure to test the null hypothesis of no difference in the types of data used with different analysis approaches.  We identified the analysis approach of each study as inference, prediction, or descriptive analyses only.  The data type categories we tested based on *a-priori* expectations of importance were (in order of expected importance): sampling effort; non-detection; organized monitoring scheme; visit-specific covariates; and multiple datasets integrated for analysis.  In the ranom permutation test, we broke the association between data type and analysis approach by randomly shuffling the analysis approach results.  We preserved associations between analysis approaches by preserving the rows (and therefore associations) within the analysis approach variables, and we preserved associations between data types by preserving the rows (and therefore associations) within the data type variables (Fig. S??).  We performed 10,000 permutations, and for each permutation counted the number of studies using each combination of analysis approach and data type. We calculated empirical p-values by finding the proportion of the 10,000 permuted cell count values that were smaller than the observed value if the observed value was below the median of the permuted values, or above the observed value if the observed value was greater than the median of the permuted values.  We then doubled this proportion to make a two-sided empirical p-value giving the probability of a cell count more extreme than the observed cell count given the null hypothesis.  Small values of the empirical p-value for a cell indicate that the observed number of studies in that cell is unlikely if there was no relationship between that data type and that analysis approach.  
+
 
 $H_a$: Different types of data are analysed with different broad analysis approaches.
 
 $H_0$: Different types of data are analysed with the same broad analysis approaches.
 
-*Proposed Test*: A likelihood ratio test comparing a saturated Poisson regression modeling cell counts with a model containing only the main effects of data type and analysis approach (but no interaction).  
 
 ```{r data_type_analysis_approach_df}
 dt_an_df <- select(wg, data.structure...organized.data.collection.scheme, 
@@ -613,7 +613,7 @@ dt_an_df$resids <- residuals(dt_an_mod_ind)
 # randomly re-shuffle analysis strategies (but keep them associated with each
 # other in the same way), and keep data types associated with each other.
 # This will give H_0 counts for each cell.
-n_perm <- 1000 # number of permutations to perform
+n_perm <- 10000 # number of permutations to perform
 rand_array <- array(NA, c(5, 3, n_perm))
 
 for(i in 1:n_perm-1) {
@@ -668,6 +668,9 @@ for(i in 1:nrow(perm_p_vals)) {
     if(perm_p_vals[i, j + 1] > 0.5) {
       perm_p_vals[i, j + 1] <- 1 - perm_p_vals[i, j + 1]
     }
+    # Double the proportion to make it roughly two-tailed (i.e. the proportion
+    # of values more extreme than the observed value)
+    perm_p_vals[i, j + 1] <- 2 * perm_p_vals[i, j + 1] 
     # calculate residual
     perm_resids[i, j + 1] <- dt_an_df_wide[i, j + 1] - mean(rand_array[i, j, ])
   }
@@ -752,78 +755,7 @@ any_auth_inst_boot <- boot(wg$author.associated.with.proximate.data.provider,
 
 
 
-## Analysis approach & data type
 
-```{r print_data_type_analysis_contingency_table}
-if(diag_present) {
-  kable(data.frame(dt_an_df_wide), 
-        col.names = c("Data Type", "Results - descriptive only", 
-                      "Results - inference", "Results - prediction"))
-}
-```
-
-```{r print_data_type_analysis_interaction_test, include = F}
-# testing null hypothesis that the reduced model is as good as the full model.
-# This rejects the null.  So we can say that the effect of the data type on the
-# number of studies depends on analysis approach. 
-dt_an_mod_independence_test # (same as below)
-```
-
-```{r data_type_analysis_assumption_check}
-# following this: https://newonlinecourses.science.psu.edu/stat504/node/169/
-
-# plot predicted v. observed for independence model
-plot(dt_an_df$predicted ~ dt_an_df$n) # looks ok
-abline(0, 1)
-
-# for independence model:
-summary(dt_an_mod_ind)
-22.655/8 # resid dev / df - A lot bigger than 1.  Overdispersed
-1-pchisq(dt_an_mod_ind$deviance, dt_an_mod_ind$df.residual) # (same as chisq test above)
-# p = 0.003.  So reject null hypothesis that model is correctly specified.  
-# However, http://thestatsgeek.com/2014/04/26/deviance-goodness-of-fit-test-for-poisson-regression/
-# warns that this test can often wrongly indicate that the model is incorrectly
-# specified.  But that seems to be more of a problem when expected means are low.
-# When that post used means between 20 and 55, the pchisq test worked ok.  My
-# observed cell count values are generally 10 or 15-ish up to a hundred.  So I
-# am right on the border of having "large" means.  
-
-# for saturated model:
-summary(dt_pd_mod_full)
-# (the residual deviance/df value would have division by 0.  Not meaningful. Of course fit is perfect in a saturated model.)
-```
-
-```{r ata_type_analysis_approach_nb_model}
-# fit saturated model
-dt_an_nb_full <- glm.nb(n ~ 1 + analysis_approach + data_type + 
-                        analysis_approach:data_type, data = dt_an_df, 
-                      init.theta = 1, link = identity, 
-                      start = dt_an_mod_full$coefficients)
-# fit model assuming independence between analysis approach and data type
-dt_an_nb_ind <- glm.nb(n ~ 1 + analysis_approach + data_type, 
-                     data = dt_an_df, 
-                     init.theta = 1, link = identity, 
-                     start = dt_an_mod_ind$coefficients)
-
-
-# fit saturated model - quasipoisson
-dt_an_qp_full <- glm(n ~ 1 + analysis_approach + data_type + 
-                        analysis_approach:data_type, data = dt_an_df, 
-                      family = quasipoisson(link = log))
-summary.glm(dt_an_qp_full)
-summary.glm(dt_an_qp_full)$dispersion
-# fit model assuming independence between analysis approach and data type
-dt_an_qp_ind <- glm(n ~ 1 + analysis_approach + data_type, 
-                     data = dt_an_df, family = quasipoisson(link = log))
-summary.glm(dt_an_qp_ind)
-summary.glm(dt_an_qp_ind)$dispersion
-
-dt_an_qp_independence_test <- anova(dt_an_qp_ind, dt_an_qp_full, test = "Chisq")
-# that doesn't work, but regardless, the residual deviance from the 
-# quasipoisson and poisson models are identical.  
-
-# Do I need to fix overdispersion, or should I just interpred the residuals?
-```
 
 ## Authors and data providing institutions
 
@@ -1229,53 +1161,36 @@ if(diag_present) {
 # dt_an_df was created in the Methods section
 ggplot(dt_an_df, 
        aes(x = factor(data_type, 
-                         levels = c("data.type...what.where.when.only", 
-                           "data.structure...sampling.effort.known", 
-                           "data.type...abundance", 
-                           "data.structure...non.detection", 
-                           "data.structure...organized.data.collection.scheme", 
-                           "data.structure...multiple.datasets.integrated.for.analysis",
-                           "data.type...life.stage", 
-                           "data.type...visit.specific.covariates",
-                           "data.type...voucher.of.some.kind.necessary.for.analysis"), 
-                         labels = c("what where when only", 
-                                    "sampling effort", 
-                                    "abundance", 
-                                    "non detection", 
-                                    "organized scheme", 
-                                    "multiple datasets", 
-                                    "life stage", 
-                                    "visit-specific covariates", 
-                                    "voucher available")), 
+                      levels = c("sampling.effort.known", 
+                                 "non.detection", 
+                                 "organized.data.collection.scheme", 
+                                 "multiple.datasets.integrated.for.analysis",
+                                 "data.type...visit.specific.covariates"), 
+                      labels = c("sampling effort", 
+                                 "non detection", 
+                                 "organized scheme", 
+                                 "multiple datasets", 
+                                 "visit-specific covariates")), 
            y = n, 
            fill = factor(data_type, 
-                         levels = c("data.type...what.where.when.only", 
-                           "data.structure...sampling.effort.known", 
-                           "data.type...abundance", 
-                           "data.structure...non.detection", 
-                           "data.structure...organized.data.collection.scheme", 
-                           "data.structure...multiple.datasets.integrated.for.analysis",
-                           "data.type...life.stage", 
-                           "data.type...visit.specific.covariates",
-                           "data.type...voucher.of.some.kind.necessary.for.analysis"), 
-                         labels = c("what where\nwhen only", 
-                                    "sampling effort", 
-                                    "abundance", 
+                         levels = c("data.structure...sampling.effort.known", 
+                                    "non.detection", 
+                                    "organized.data.collection.scheme", 
+                                    "multiple.datasets.integrated.for.analysis", 
+                                    "visit.specific.covariates"), 
+                         labels = c("sampling effort", 
                                     "non detection", 
                                     "organized\nscheme", 
                                     "multiple\ndatasets", 
-                                    "life stage", 
-                                    "visit-specific\ncovariates", 
-                                    "voucher\navailable")))) + 
+                                    "visit-specific\ncovariates")))) + 
   geom_bar(position = position_dodge(preserve = "single"), stat = "identity") + 
     facet_wrap( ~ factor(analysis_approach, 
-                         levels = c("results.type...inference", 
-                                    "results.type...prediction",
-                                    "results.type...descriptive.only"),
-                       labels = c(
-                         "inference", "prediction",
-                         "description only")), 
-              strip.position = "bottom") +
+                         levels = c("inference", 
+                                    "prediction",
+                                    "descriptive.only"),
+                         labels = c("inference", "prediction",
+                                    "description only")), 
+                strip.position = "bottom") +
   ggtitle("Data used in different analysis approaches") + 
   scale_fill_discrete(name = "Data Type") + 
   xlab("Analysis Approach") + 
@@ -1291,6 +1206,56 @@ if(diag_present) {
   print("Likelihood test comparing saturated model to model with no interaction: ")
   dt_an_mod_independence_test
 }
+```
+
+```{r print_data_type_analysis_method_heatmap_table_permutation}
+perm_p_vals_long <- gather(perm_p_vals, key = "inference_method", 
+                           value = "p_value", 2:4)
+ggplot(data = perm_p_vals_long, aes(x = inference_method, y = data_type)) + 
+  geom_tile(aes(fill = p_value)) + 
+  geom_text(aes(label = round(p_value, 2))) + # write the values
+  scale_fill_gradient(low = "orange", high = "white") + 
+  theme(panel.grid.major.x=element_blank(), #no gridlines
+        panel.grid.minor.x=element_blank(), 
+        panel.grid.major.y=element_blank(), 
+        panel.grid.minor.y=element_blank(),
+        panel.background=element_rect(fill="white"), # background=white
+        axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
+        axis.text.y = element_text(angle=45)) + 
+  labs(fill = "empirical\np-value") + 
+  ggtitle("Empirical p-values from\npermutation test")
+
+perm_resids_long <- gather(perm_resids, key = "inference_method", 
+                           value = "residual", 2:4)
+ggplot(data = perm_resids_long, aes(x = inference_method, y = data_type)) + 
+  geom_tile(aes(fill = residual)) + 
+  geom_text(aes(label = round(residual, digits = 1))) + # write the values
+  scale_fill_gradient2(low = "blue", mid = "white", high = "orange") + 
+  theme(panel.grid.major.x=element_blank(), #no gridlines
+        panel.grid.minor.x=element_blank(), 
+        panel.grid.major.y=element_blank(), 
+        panel.grid.minor.y=element_blank(),
+        panel.background=element_rect(fill="white"), # background=white
+        axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
+        axis.text.y = element_text(angle=45)) + 
+  labs(fill = "observed -\nexpected") + 
+  ggtitle("Residuals from permutation test")
+```
+
+```{r print_data_type_analysis_method_heatmap_table_poisson}
+ggplot(data = dt_an_df, aes(x = analysis_approach, y = data_type)) + 
+  geom_tile(aes(fill = resids)) + 
+  geom_text(aes(label = round(resids, digits = 1))) + # write the values
+  scale_fill_gradient2(low = "blue", mid = "white", high = "orange") + 
+  theme(panel.grid.major.x=element_blank(), #no gridlines
+        panel.grid.minor.x=element_blank(), 
+        panel.grid.major.y=element_blank(), 
+        panel.grid.minor.y=element_blank(),
+        panel.background=element_rect(fill="white"), # background=white
+        axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
+        axis.text.y = element_text(angle=45)) + 
+  labs(fill = "Poisson\nresiduals") + 
+  ggtitle("Residuals from Poisson\nindependence model")
 ```
 
 
@@ -1895,6 +1860,82 @@ ggplot(dt_pd_df,
   theme(axis.text.x = element_blank(), 
         text = element_text(size = plot_text_size),
         strip.background = element_blank(), strip.placement = "outside")
+```
+
+### Analysis approach & data type
+
+To investigate whether the data type affects the analysis approach, we used a Poisson regression to model the relationship between three different analysis approaches (inference, prediction, and description) and data type.  We used a likelihood ratio test comparing a saturated Poisson regression modeling cell counts with a model containing only the main effects of data type and analysis approach (but no interaction).  The independence model (no interatctions) was overdispersed.  However, model residuals showed the same pattern as the randomization test, suggesting that the interpretation of the results is robust to using different statistical tests, and the overdispersion in the independence model is not severe enough to make the model uninformative.  
+
+```{r print_data_type_analysis_contingency_table}
+if(diag_present) {
+  kable(data.frame(dt_an_df_wide), 
+        col.names = c("Data Type", "Results - descriptive only", 
+                      "Results - inference", "Results - prediction"))
+}
+```
+
+```{r print_data_type_analysis_interaction_test, include = F}
+# testing null hypothesis that the reduced model is as good as the full model.
+# This rejects the null.  So we can say that the effect of the data type on the
+# number of studies depends on analysis approach. 
+dt_an_mod_independence_test # (same as below)
+```
+
+```{r data_type_analysis_assumption_check}
+# following this: https://newonlinecourses.science.psu.edu/stat504/node/169/
+
+# plot predicted v. observed for independence model
+plot(dt_an_df$predicted ~ dt_an_df$n) # looks ok
+abline(0, 1)
+
+# for independence model:
+summary(dt_an_mod_ind)
+22.655/8 # resid dev / df - A lot bigger than 1.  Overdispersed
+1-pchisq(dt_an_mod_ind$deviance, dt_an_mod_ind$df.residual) # (same as chisq test above)
+# p = 0.003.  So reject null hypothesis that model is correctly specified.  
+# However, http://thestatsgeek.com/2014/04/26/deviance-goodness-of-fit-test-for-poisson-regression/
+# warns that this test can often wrongly indicate that the model is incorrectly
+# specified.  But that seems to be more of a problem when expected means are low.
+# When that post used means between 20 and 55, the pchisq test worked ok.  My
+# observed cell count values are generally 10 or 15-ish up to a hundred.  So I
+# am right on the border of having "large" means.  
+
+# for saturated model:
+summary(dt_pd_mod_full)
+# (the residual deviance/df value would have division by 0.  Not meaningful. Of course fit is perfect in a saturated model.)
+```
+
+```{r ata_type_analysis_approach_nb_model}
+# fit saturated model
+dt_an_nb_full <- try(glm.nb(n ~ 1 + analysis_approach + data_type + 
+                        analysis_approach:data_type, data = dt_an_df, 
+                      init.theta = 1, link = identity, 
+                      start = dt_an_mod_full$coefficients))
+# fit model assuming independence between analysis approach and data type
+dt_an_nb_ind <- glm.nb(n ~ 1 + analysis_approach + data_type, 
+                     data = dt_an_df, 
+                     init.theta = 1, link = identity, 
+                     start = dt_an_mod_ind$coefficients)
+
+
+# fit saturated model - quasipoisson
+dt_an_qp_full <- glm(n ~ 1 + analysis_approach + data_type + 
+                        analysis_approach:data_type, data = dt_an_df, 
+                      family = quasipoisson(link = log))
+summary.glm(dt_an_qp_full)
+summary.glm(dt_an_qp_full)$dispersion
+# fit model assuming independence between analysis approach and data type
+dt_an_qp_ind <- glm(n ~ 1 + analysis_approach + data_type, 
+                     data = dt_an_df, family = quasipoisson(link = log))
+summary.glm(dt_an_qp_ind)
+summary.glm(dt_an_qp_ind)$dispersion
+
+dt_an_qp_independence_test <- try(anova(dt_an_qp_ind, dt_an_qp_full, 
+                                        test = "Chisq"))
+# that doesn't work, but regardless, the residual deviance from the 
+# quasipoisson and poisson models are identical.  
+
+# Do I need to fix overdispersion, or should I just interpred the residuals?
 ```
 
 # Appendix 2 - Instructions for Coders
