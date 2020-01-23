@@ -553,12 +553,7 @@ dt_pd_df$resids <- residuals(dt_pd_mod_ind)
 
 ## Analysis approach & data type
 
-To investigate whether the data type affects the analysis approach, we used a random permutation procedure to test the null hypothesis of no difference in the types of data used with different analysis approaches.  We identified the analysis approach of each study as inference, prediction, or descriptive analyses only.  The data type categories we tested based on *a-priori* expectations of importance were (in order of expected importance): sampling effort; non-detection; organized monitoring scheme; visit-specific covariates; and multiple datasets integrated for analysis.  In the ranom permutation test, we broke the association between data type and analysis approach by randomly shuffling the analysis approach results.  We preserved associations between analysis approaches by preserving the rows (and therefore associations) within the analysis approach variables, and we preserved associations between data types by preserving the rows (and therefore associations) within the data type variables (Fig. S??).  We performed 10,000 permutations, and for each permutation counted the number of studies using each combination of analysis approach and data type. We calculated empirical p-values by finding the proportion of the 10,000 permuted cell count values that were smaller than the observed value if the observed value was below the median of the permuted values, or above the observed value if the observed value was greater than the median of the permuted values.  We then doubled this proportion to make a two-sided empirical p-value giving the probability of a cell count more extreme than the observed cell count given the null hypothesis.  Small values of the empirical p-value for a cell indicate that the observed number of studies in that cell is unlikely if there was no relationship between that data type and that analysis approach.  
-
-
-$H_a$: Different types of data are analysed with different broad analysis approaches.
-
-$H_0$: Different types of data are analysed with the same broad analysis approaches.
+To investigate whether the data type affects the analysis approach, we used random permutations to test the null hypothesis of no difference in the types of data used with different analysis approaches.  We identified the analysis approach of each study as inference, prediction, or descriptive analyses only.  The data type categories we tested based on *a-priori* expectations of importance were: sampling effort; non-detection; organized monitoring scheme; visit-specific covariates; and multiple datasets integrated for analysis.  In the ranom permutation test, we broke the association between data type and analysis approach by randomly shuffling the analysis approach results.  We preserved associations between analysis approaches by preserving the rows (and therefore associations) within the analysis approach variables, and we preserved associations between data types by preserving the rows (and therefore associations) within the data type variables (Fig. S??).  We performed 10,000 permutations.  To test for an overall interaction between data type and analysis approach, we calculated a chi-squared test statistic for each permuted dataset and for the observed dataset, and calculated the significance level as the proportion of chi-squared statistic values from the randomized datasets that were higher than the chi-squared statistic for the observed dataset.  To determine which combinations of data type and analysis approach were found more or less often than expected by chance, we counted the number of studies using each combination of analysis approach and data type for the permuted datasets and for the observed data.  We calculated residuals for each cell of the contingency table by subtracting the median count for each cell in the permuted data contingency tables from the observed cell count for the same cells. We calculated permutation significance levels for each cell by finding the proportion of the cell counts from the permuted datasets that were more extreme than the observed count for each cell.  Small permutation significance levels for a cell indicate that the observed number of studies in that cell was unlikely if there was no relationship between that data type and that analysis approach.
 
 
 ```{r data_type_analysis_approach_df}
@@ -647,12 +642,32 @@ for(i in 1:n_perm-1) {
 # add observed values as one permutation
 rand_array[, , n_perm] <- as.matrix(dt_an_df_wide[, 2:ncol(dt_an_df_wide)])
 
-# make empty template df to hold p-values later
+
+# get permutation chi-squared p-value to test for overall interaction
+# See Manley (2007) p. 313
+chis_perm <- c()
+for(k in 1:n_perm) {
+  chis_perm[k] <- chisq.test(rand_array[, , k])$statistic
+}
+chis_perm_fun <- ecdf(chis_perm)
+# calculate permutation p-value for observed chi-squared test statistic
+chis_perm_pvalue <- 1 - chis_perm_fun(chisq.test(dt_an_df_wide[, 2:4])$statistic)
+# double check using chisq.test.  This gives a different p-value by an order
+# of magnitude (though still small).  I think this must be because the built-in
+# MC method does not preserve correlations within each variable in the way my
+# randomization process does. 
+# chisq.test(dt_an_df_wide[, 2:4], simulate.p.value = TRUE, B = n_perm)
+
+
+# make empty template df to hold cell p-values later
 perm_p_vals <- dt_an_df_wide
 perm_p_vals[, 2:4] <- NA # clear counts
 # make empty template df to hold residuals later
 perm_resids <- dt_an_df_wide
 perm_resids[, 2:4] <- NA # clear counts 
+# make template df to hold expected counts later
+perm_exp_counts <- dt_an_df_wide
+perm_exp_counts[, 2:4] <- NA # clear counts
 
 for(i in 1:nrow(perm_p_vals)) {
   for(j in 1:(ncol(perm_p_vals) - 1)) {
@@ -667,7 +682,9 @@ for(i in 1:nrow(perm_p_vals)) {
     # of values more extreme than the observed value)
     perm_p_vals[i, j + 1] <- 2 * perm_p_vals[i, j + 1] 
     # calculate residual
-    perm_resids[i, j + 1] <- dt_an_df_wide[i, j + 1] - mean(rand_array[i, j, ])
+    perm_resids[i, j + 1] <- dt_an_df_wide[i, j + 1] - median(rand_array[i, j, ])
+    # get expected counts
+    perm_exp_counts[i, j + 1] <- median(rand_array[i, j, ])
   }
 }
 ```
@@ -676,9 +693,7 @@ for(i in 1:nrow(perm_p_vals)) {
 
 ## Authors and Data Providing Institutions
 
-**Who choses to use biological records data?**
-
-We used bootstrap confidence intervals to describe the proportion of studies that have an author associated with the institution that provided the data. 
+To answer the question of who chooses to use biological records data, we used bootstrap confidence intervals to describe the proportion of studies that have an author associated with the institution that provided the data. 
 
 # Results
 
@@ -689,18 +704,18 @@ kripp_sum_cap <- figs(name = "kripp_sum_cap",
 
 ## Search results 
 
-The search returned `r nrow(elig)` potentially relevant studies, of which we judged `r length(which(wg$qualifies == TRUE))` to be eligible for inclusion in this review.  The number of percent of potentially relevant studies returned by more than one search method was `r length(n_duplicate_titles)` (`r round((length(n_duplicate_titles)/nrow(elig))*100, digits = 1)`%).  Of the studies that we deemed eligible for inclusion in this review, `r length(which(wg$title %in% names(n_duplicate_titles)))` (`r round((length(which(wg$title %in% names(n_duplicate_titles)))/nrow(wg))*100, digits = 1)`) were returned by more than one search method.  
+The search returned `r nrow(elig)` potentially relevant studies, of which we judged `r length(which(wg$qualifies == TRUE))` (`r round((length(which(wg$qualifies == TRUE))/nrow(elig)) * 100, digits = 1)`%) to be eligible for inclusion in this review.  The number of potentially relevant studies returned by more than one search method was `r length(n_duplicate_titles)` (`r round((length(n_duplicate_titles)/nrow(elig))*100, digits = 1)`%).  Of the studies that we deemed eligible for inclusion in this review, `r length(which(wg$title %in% names(n_duplicate_titles)))` (`r round((length(which(wg$title %in% names(n_duplicate_titles)))/nrow(wg))*100, digits = 1)`%) were returned by more than one search method.  
 
-One reader has coded `r nrow(wg)` articles and a second reader has coded `r nrow(er)` of those. 
+One reader coded all `r nrow(wg)` studies and a second reader independently coded `r nrow(er)` of the studies. 
 
 ## Coding reliability
 
-Most variables for which Krippendorff's *alpha* was estimated show that the coding is reliable enough to be used in analysis, at least for drawing tentative conclusions (Tab. 1, Fig. S1).  Many of the variables have Krippendorff's *alpha* values above the minimum required level of 0.67 but below the prefered level of 0.8, which indicates that they should be interpreted with caution.  Fewer variables have Krippendorff's *alpha* values higher than the prefered level of 0.8.  The number of articles that have been evaluated by two readers is too small for reliable estimation of Krippendorff's alpha for some variables for which the smallest class is particularly uncommon (Tab. S1). Some of the variables we coded are not reliable according to Krippendorff's *alpha*.  
+Most variables for which Krippendorff's *alpha* was estimated show that the coding is reliable enough to be used in analysis, at least for drawing tentative conclusions (Tab. 1, Fig. S1).  Many of the variables have Krippendorff's *alpha* values above the minimum required level of 0.67 but below the prefered level of 0.8, which indicates that they should be interpreted with caution.  The number of articles that have been evaluated by two readers was too small for reliable estimation of Krippendorff's alpha for some variables for which the smallest class is particularly uncommon (Tab. S1). 
 
 
 ```{r kripp_samp_size_cap}
 kripp_samp_size_cap <- tabs(name = "kripp_samp_size_cap", 
-                            paste0("Recommended sample size for accurate estimation of Krippendorff's alpha given the proportion of the minority class in the results, and a desired confidence level of 0.1 for a minimum Krippendorff's alpha value of 0.667 (Krippendorff 2004).  So far there are ", nrow(er), " double-coded studies."))
+                            paste0("Coding reliability for systematic review variables coded by two people for ", nrow(er), " studies.  Krippendorff's alpha values above 0.8 suggest that coding reliability is high enough to interpret variables with confidence, while values below 0.8 but above 0.667 suggest that coding reliability is only moderate and variables should be interpreted with caution.  Krippendorff's alpha values below 0.667 suggest that coding is unreliable and the variable should not be interpreted.  Coding reliability was estimated for all variables for which the least common class had enough observations to allow us to estimate with a confidence level of 0.1 whether Krippendorff's alpha was higher than 0.667."))
 ```
 
 `r if(diag_present) tabs("kripp_samp_size_cap", display = "full")`
@@ -751,9 +766,12 @@ prob_of_values <- prob_of_values[order(prob_of_values$n_40_adequate,
 
 # list only those for which sample size is adequate
 samp_adequate <- prob_of_values[which(prob_of_values$n_40_adequate == T), ]
-print(kable(samp_adequate[order(
-  samp_adequate$kripp_alpha, decreasing = T), -2], 
-  digits = 2))
+rownames(samp_adequate) <- NULL
+samp_adequate$variable <- gsub("\\.\\.\\.", " - ", samp_adequate$variable)
+samp_adequate$variable <- gsub("\\.", " ", samp_adequate$variable)
+kable(samp_adequate[order(samp_adequate$kripp_alpha, decreasing = T), -c(2, 4)], 
+      col.names = c("Variable", "Krippendorff's alpha"),
+      digits = 2)
 rm(samp_adequate)
 ```
 
@@ -761,7 +779,7 @@ rm(samp_adequate)
 
 ```{r temp_extent_cap}
 temp_extent_cap <- figs(name = "temp_extent_cap", 
-                        "The temporal extent covered by studies using different types biological records data.  This plot shows the observed temporal extent of studies (not the fitted values from the regression model).  Note the log-transformed y-axis.")
+                        "The temporal extent covered by studies using different types biological records data.  A linear regression showed that the log of the temporal extent of studies (in years) was significantly different for studies using different types of data.  This plot shows the observed temporal extent of studies (not fitted values from the linear regression model). Note the log-transformed y-axis.")
 ```
 
 ```{r print_time_individual_predictor_significance}
@@ -773,25 +791,37 @@ if(diag) {
 }
 ```
 
-The overall model using data type to predict the natural log of temporal extent of study (in years) was  significant ($F_{`r format(round(m_time_full_anova[2, "Df"], digits = 2), scientific = F)`, `r format(round(m_time_full_anova[2, "Res.Df"], digits = 2), scientific = F)`}$ = `r format(round(m_time_full_anova[, "F"][2], digits = 2), scientific = F)`, *p* `r if(m_time_full_anova[6][[1]][2] >= 0.0001) {format(round(m_time_full_anova[6][[1]][2], digits = 4), scientific = T)} else print("< 0.0001")`, Adjusted $R^2$ = `r format(round(time_summary$adj.r.squared, digits = 2), scientific = F)`, `r figs("temp_extent_cap", display = "cite")`).  Studies that used multiple different biological records datasets covered significantly longer temporal extents than studies that did not use multiple different datasets after accounting for other data types ($F_{1, 195}$ = 39.4, *p* < 0.0001, Fig. 1).  The expected temporal extent covered by a study that used multiple biological records datasets was `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[6])), digits = 1)` years (95% CI: [`r round(temp_extent_preds$pred_years_lowerCI[5], digits = 1)`, `r round(temp_extent_preds$pred_years_upperCI[5], digits = 1)`]) when the data did not have any of the other data types we recorded.  Studies that used visit specific covariates were covered significantly shorter temporal extents than studies that did not, after accounting for other data types ($F_{1,195}$ = 25.8, *p* < 0.0001).  The expected temporal extent covered by a study that used visit specific covariates was `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[5])), digits = 1)` years (95% CI: [`r round(temp_extent_preds$pred_years_lowerCI[4], digits = 1)`, `r round(temp_extent_preds$pred_years_upperCI[4], digits = 1)`]) when the data did not have any of the other data types we recorded. We did not detect a significant effect of sampling effort data ($F_{1,195}$ = 0.2, *p* = 0.65), non-detection data ($F_{1,195}$ = 2.4, *p* = 0.13), or the data coming from an organized monitoring scheme ($F_{1,195}$ = 3.6, *p* = 0.06) on the temporal extent of studies.  However, pairs plots and variance inflation factors show that the "sampling effort" and "non-detection" data types are strongly correlated with each other, and both are correlated less strongly with the "organized monitoring scheme" data type (Fig. S?, Tab. S1).  This suggests that we may have been unable to dis-entangle the effects of each of these correlated variables with our current sample size (Fox 2016, p. 341-2).
+The overall linear regression model using data type to predict the natural log of the temporal extent of studies (in years) was  significant ($F_{`r format(round(m_time_full_anova[2, "Df"], digits = 2), scientific = F)`, `r format(round(m_time_full_anova[2, "Res.Df"], digits = 2), scientific = F)`}$ = `r format(round(m_time_full_anova[, "F"][2], digits = 2), scientific = F)`, *p* `r if(m_time_full_anova[6][[1]][2] >= 0.0001) {format(round(m_time_full_anova[6][[1]][2], digits = 4), scientific = T)} else "< 0.0001"`, Adjusted $R^2$ = `r format(round(time_summary$adj.r.squared, digits = 2), scientific = F)`, `r figs("temp_extent_cap", display = "cite")`).  Studies that used multiple different biological records datasets covered significantly longer temporal extents than studies that did not use multiple different datasets after accounting for other data types ($F_{1, 195}$ = 39.4, *p* < 0.0001, Fig. 1).  The expected temporal extent covered by a study that used multiple biological records datasets was `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[6])), digits = 1)` years (95% CI: [`r round(temp_extent_preds$pred_years_lowerCI[5], digits = 1)`, `r round(temp_extent_preds$pred_years_upperCI[5], digits = 1)`]) when the data did not have any of the other data types we recorded.  Studies that used visit-specific covariates covered significantly shorter temporal extents than studies that did not, after accounting for other data types ($F_{1,195}$ = 25.8, *p* < 0.0001).  The expected temporal extent covered by a study that used visit-specific covariates was `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[5])), digits = 1)` years (95% CI: [`r round(temp_extent_preds$pred_years_lowerCI[4], digits = 1)`, `r round(temp_extent_preds$pred_years_upperCI[4], digits = 1)`]) when the data did not have any of the other data types we recorded. We did not detect a significant effect of sampling effort data ($F_{1,195}$ = 0.2, *p* = 0.65), non-detection data ($F_{1,195}$ = 2.4, *p* = 0.13), or thedata coming from an organized monitoring scheme ($F_{1,195}$ = 3.6, *p* = 0.06) on the temporal extent of studies.  However, pairs plots and variance inflation factors show that the "sampling effort" and "non-detection" data types are strongly correlated with each other, and both are correlated less strongly with the "organized monitoring scheme" data type (Fig. S?, Tab. S1), suggesting that we may have been unable to dis-entangle the effects of each of these correlated variables with our current sample size (Fox 2016, p. 341-2).
 
 ```{r time_extent_results_plot, fig.cap=temp_extent_cap}
-print(ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + 
-        geom_boxplot(varwidth = T) +
-        scale_y_log10() + 
-        xlab("Data Type") + 
-        ylab("Temporal Extent of Study (years)") + 
-        annotate("text", x = 3, y = 2600, 
-                 label = "paste(\"Adjusted \", 
-                 italic(R) ^ 2, \" = 0.36\")", 
-                parse = TRUE) + 
-  annotate("text", x = 3, y = 1200, 
-           label = "paste(\"Overall model significance \", 
-                 italic(p), \" < 0.0001\")", 
-           parse = TRUE) +
-        theme_bw() + 
-        theme(axis.text.x = element_text(angle = 35, vjust = 0.9, hjust = 1)) 
-)
+temp_extent_plot <- ggplot(data = temp_extent, 
+                           aes(y = temp_extent, 
+                               x = factor(data_type, 
+                                          levels = c("sampling effort known", 
+                                                     "non detection", 
+                                                     "organized scheme", 
+                                                     "visit specific covariates", 
+                                                     "multiple datasets"), 
+                                          labels = c("sampling effort\nknown", 
+                                                     "non-detection", 
+                                                     "organized\nscheme", 
+                                                     "visit-specific\ncovariates", 
+                                                     "multiple\ndatasets")))) + 
+  geom_boxplot(varwidth = T) +
+  scale_y_log10() + 
+  xlab("Data Type") + 
+  ylab("Temporal Extent of Study (years)") + 
+  # annotate("text", x = 3, y = 2600, 
+  #          label = "paste(\"Adjusted \", 
+  #                italic(R) ^ 2, \" = 0.36\")", 
+  #          parse = TRUE) + 
+  # annotate("text", x = 3, y = 1200, 
+  #          label = "paste(\"Overall model significance \", 
+  #                italic(p), \" < 0.0001\")", 
+  #          parse = TRUE) +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 35, vjust = 0.9, hjust = 1)) 
+print(temp_extent_plot)
 ```
 
 ```{r time_extent_results_plot_for_presentation_slide, eval = F, include = F}
@@ -1000,16 +1030,9 @@ data_type_analysis_cap <- figs(name = "data_type_analysis_cap",
                             "The number of studies using different types of biological records data as part of different analysis approaches.  Analysis approaches are inference (e.g. *p*-values or confidence intervals), prediction (e.g. prediction of species presence or absence into unsampled areas) and description (maps, graphs, narrative descriptions, or descriptive statistics with no inference or prediction).")
 ```
 
-A Chi-squared likelihood ratio test comparing the saturated Poisson regression model  to a reduced model with only main effects for analysis approach and data type did not reject the null hypothesis that the reduced model is as good as the full model (*p* = `r round(dt_an_mod_independence_test$'Pr(>Chi)'[2], 2)`), suggesting that the data type does not influence or constrain the analysis approach (`r tabs(data_type_analysis_tab_cap, display = "cite")`, `r figs("data_type_analysis_cap", display = "cite")`).  
+There was strong evidence that data type and analysis approach are not independent (permutation-based significance level of the chi-squared test statistic for the observed data = `r chis_perm_pvalue` with `r n_perm` permutations).  Residuals and permutation significance levels for each combination of data type and analysis method show that residuals are generally large, negative, and highly significantly different from zero for combinations of more structured or "rich" data types and descriptive-only analyses (Fig. ??), suggesting that those rich data types are analyzed descriptively less often than would be expected if there was no relationship between data type and analysis approach.  Residuals are generally large, positive, and highly significantly different from zero for combinations of "rich" data types and inferential analyses, suggesting that those rich data types are analyzed with inferential methods more frequently than would be expected if there were no relationship between data type and analysis approach.  Notably, the absolute value of residuals for combinations of data with visit-specific covariates and both descriptive-only and inferential studies are small and not significantly different from zero, despite visit-specific covariates being a relatively "rich" additional type of data to have associated with biological records.  The absolute value of residuals and significance levels for combinations of all data types with predictive analysis methods generally indicated that the use of data types in predictive analyses did not differ strongly from what would be expected if there were no relationship between data type and analysis approach.  The residuals and significance levels for the cells associated with multiple data sets being used in an analysis suggest that multiple datasets are less often for inference and more often for descriptive-only analyses than would be expected if there was no relationship between data type and analysis approach, though both the absolute magnitued of the residuals and the significance levels suggested that the observed use of multiple datasets for those two analysis approaches differed less strongly from the null expectation than did the use of data with non-detection and/or sampling effort information and data from organized monitoring schemes.  
 
 `r if(diag_present) tabs("data_type_analysis_tab_cap", display = "full")`
-
-```{r data_type_analysis_resids_table}
-kable(dt_an_df[abs(dt_an_df$resids) > 1, ], 
-      col.names = c("Analysis approach", "Data type", "Observed number of studies", 
-                 "Predicted number of studies", "Residuals (on the scale of the linear predictors)"), digits = 1)
-```
-
 
 ```{r print_data_type_analysis_approach_contingency_table}
 if(diag_present) {
@@ -1036,7 +1059,7 @@ ggplot(dt_an_df,
                                  "non.detection", 
                                  "organized.data.collection.scheme", 
                                  "multiple.datasets.integrated.for.analysis",
-                                 "data.type...visit.specific.covariates"), 
+                                 "visit.specific.covariates"), 
                       labels = c("sampling effort", 
                                  "non detection", 
                                  "organized scheme", 
@@ -1044,7 +1067,7 @@ ggplot(dt_an_df,
                                  "visit-specific covariates")), 
            y = n, 
            fill = factor(data_type, 
-                         levels = c("data.structure...sampling.effort.known", 
+                         levels = c("sampling.effort.known", 
                                     "non.detection", 
                                     "organized.data.collection.scheme", 
                                     "multiple.datasets.integrated.for.analysis", 
@@ -1066,55 +1089,52 @@ ggplot(dt_an_df,
   scale_fill_discrete(name = "Data Type") + 
   xlab("Analysis Approach") + 
   ylab("Number of studies") + 
-  scale_y_continuous(breaks = seq(0, max(dt_pd_df$n), 5)) + 
+  scale_y_continuous(breaks = seq(0, max(dt_an_df$n) + 5, 5)) + 
   theme_bw() + 
   theme(axis.text.x = element_blank(), 
         strip.background = element_blank(), strip.placement = "outside")
 ```
 
-```{r data_type_analysis_apprach_likelihood_test_print, include = F}
-if(diag_present) {
-  print("Likelihood test comparing saturated model to model with no interaction: ")
-  dt_an_mod_independence_test
-}
-```
-
 ```{r print_data_type_analysis_method_heatmap_table_permutation}
 perm_p_vals_long <- gather(perm_p_vals, key = "analysis_approach", 
-                           value = "p_value", 2:4)
-ggplot(data = perm_p_vals_long,        
-       aes(x = factor(analysis_approach, 
-                      levels = c("descriptive.only", "inference", "prediction"), 
-                      labels = c("descriptive\nonly", 
-                                 "inference", "prediction")), 
-           y = factor(data_type,
-                      levels = c("multiple datasets integrated for analysis", 
-                                 "sampling effort known", 
-                                 "non detection",
-                                 "visit specific covariates",
-                                 "organized data collection scheme"), 
-                      labels = c("multiple\ndatasets", 
-                                 "sampling effort", 
-                                 "non detection", 
-                                 "visit-specific\ncovariates",
-                                 "organized\nscheme")))) + 
-  geom_tile(aes(fill = p_value)) + 
-  xlab("Analysis Approach") + 
-  ylab("Data Type") + 
-  geom_text(aes(label = round(p_value, 2))) + # write the values
-  scale_fill_gradient(low = "orange", high = "white") + 
-  theme(panel.grid.major.x=element_blank(), #no gridlines
-        panel.grid.minor.x=element_blank(), 
-        panel.grid.major.y=element_blank(), 
-        panel.grid.minor.y=element_blank(),
-        panel.background=element_rect(fill="white"), # background=white
-        axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
-        axis.text.y = element_text(angle=45)) + 
-  labs(fill = "empirical\np-value") + 
-  ggtitle("Empirical p-values from\npermutation test")
+                           value = "significance", 2:4)
+# ggplot(data = perm_p_vals_long,        
+#        aes(x = factor(analysis_approach, 
+#                       levels = c("descriptive.only", "inference", "prediction"), 
+#                       labels = c("descriptive\nonly", 
+#                                  "inference", "prediction")), 
+#            y = factor(data_type,
+#                       levels = c("multiple datasets integrated for analysis", 
+#                                  "sampling effort known", 
+#                                  "non detection",
+#                                  "visit specific covariates",
+#                                  "organized data collection scheme"), 
+#                       labels = c("multiple\ndatasets", 
+#                                  "sampling effort", 
+#                                  "non detection", 
+#                                  "visit-specific\ncovariates",
+#                                  "organized\nscheme")))) + 
+#   geom_tile(aes(fill = significance)) + 
+#   xlab("Analysis Approach") + 
+#   ylab("Data Type") + 
+#   geom_text(aes(label = round(significance, 2))) + # write the values
+#   scale_fill_gradient(low = "orange", high = "white") + 
+#   theme(panel.grid.major.x=element_blank(), #no gridlines
+#         panel.grid.minor.x=element_blank(), 
+#         panel.grid.major.y=element_blank(), 
+#         panel.grid.minor.y=element_blank(),
+#         panel.background=element_rect(fill="white"), # background=white
+#         axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
+#         axis.text.y = element_text(angle=45)) + 
+#   labs(fill = "significance\nlevel") + 
+#   ggtitle("Permutation-based significance levels")
 
 perm_resids_long <- gather(perm_resids, key = "analysis_approach", 
                            value = "residual", 2:4)
+# add significance levels to residuals data frame
+perm_resids_long <- left_join(perm_resids_long, perm_p_vals_long, 
+                              by = c("data_type", "analysis_approach"))
+
 ggplot(data = perm_resids_long,        
        aes(x = factor(analysis_approach, 
                       levels = c("descriptive.only", "inference", "prediction"), 
@@ -1134,51 +1154,20 @@ ggplot(data = perm_resids_long,
   geom_tile(aes(fill = residual)) + 
   xlab("Analysis Approach") + 
   ylab("Data Type") + 
-  geom_text(aes(label = round(residual, digits = 1))) + # write the values
-  scale_fill_gradient2(low = "blue", mid = "white", high = "orange") + 
+  geom_text(aes(label = paste0(round(residual, digits = 1), " (", 
+                               round(significance, digits = 2), ")"))) + # write the values
+  scale_fill_gradient2(low = "#3366ff", mid = "white", high = "#ff751a") + 
   theme(panel.grid.major.x=element_blank(), #no gridlines
         panel.grid.minor.x=element_blank(), 
         panel.grid.major.y=element_blank(), 
         panel.grid.minor.y=element_blank(),
         panel.background=element_rect(fill="white"), # background=white
         axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
-        axis.text.y = element_text(angle=45)) + 
-  labs(fill = "observed -\nexpected") + 
-  ggtitle("Residuals from permutation test")
+        axis.text.y = element_text(angle=45)) +  
+  # ggtitle("Residuals (significance level)\nfrom permutation test") + 
+  labs(fill = "observed -\nexpected\ncounts")
 ```
 
-```{r print_data_type_analysis_method_heatmap_table_poisson}
-ggplot(data = dt_an_df, 
-       aes(x = factor(analysis_approach, 
-                      levels = c("descriptive.only", "inference", "prediction"), 
-                      labels = c("descriptive\nonly", 
-                                 "inference", "prediction")), 
-           y = factor(data_type,
-                      levels = c("multiple.datasets.integrated.for.analysis", 
-                                 "sampling.effort.known", 
-                                 "non.detection",
-                                 "visit.specific.covariates",
-                                 "organized.data.collection.scheme"), 
-                      labels = c("multiple\ndatasets", 
-                                 "sampling effort", 
-                                 "non detection", 
-                                 "visit-specific\ncovariates",
-                                 "organized\nscheme")))) + 
-  geom_tile(aes(fill = resids)) + 
-  xlab("Analysis Approach") + 
-  ylab("Data Type") + 
-  geom_text(aes(label = round(resids, digits = 1))) + # write the values
-  scale_fill_gradient2(low = "blue", mid = "white", high = "orange") + 
-  theme(panel.grid.major.x=element_blank(), #no gridlines
-        panel.grid.minor.x=element_blank(), 
-        panel.grid.major.y=element_blank(), 
-        panel.grid.minor.y=element_blank(),
-        panel.background=element_rect(fill="white"), # background=white
-        axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
-        axis.text.y = element_text(angle=45)) + 
-  labs(fill = "Poisson\nresiduals") + 
-  ggtitle("Residuals from Poisson\nindependence model")
-```
 
 
 ## Authors and Data Providing Institutions
@@ -1751,7 +1740,9 @@ ggplot(dt_pd_df,
 
 ### Analysis approach & data type
 
-To investigate whether the data type affects the analysis approach, we used a Poisson regression to model the relationship between three different analysis approaches (inference, prediction, and description) and data type.  We used a likelihood ratio test comparing a saturated Poisson regression modeling cell counts with a model containing only the main effects of data type and analysis approach (but no interaction).  The independence model (no interatctions) was overdispersed.  However, model residuals showed the same pattern as the randomization test, suggesting that the interpretation of the results is robust to using different statistical tests, and the overdispersion in the independence model is not severe enough to make the model uninformative.  
+To investigate whether the data type affects the analysis approach, we used a Poisson regression to model the relationship between three different analysis approaches (inference, prediction, and description) and data type.  We used a likelihood ratio test comparing a saturated Poisson regression modeling cell counts with a model containing only the main effects of data type and analysis approach (but no interaction).  The independence model (no interatctions) was overdispersed.  However, model residuals from the Poisson independence model (Fig. S??) showed the same pattern as the randomization test (Fig. ??), suggesting that the interpretation of the results is robust to using different statistical tests, and the overdispersion in the independence model is not severe enough to make the model uninformative.  
+
+A Chi-squared likelihood ratio test comparing the saturated Poisson regression model  to a reduced model with only main effects for analysis approach and data type rejected the null hypothesis that the reduced model is as good as the full model (*p* = `r round(dt_an_mod_independence_test$'Pr(>Chi)'[2], 2)`), suggesting that the data type does influence or constrain the analysis approach.  
 
 ```{r print_data_type_analysis_contingency_table}
 if(diag_present) {
@@ -1821,8 +1812,39 @@ dt_an_qp_independence_test <- try(anova(dt_an_qp_ind, dt_an_qp_full,
                                         test = "Chisq"))
 # that doesn't work, but regardless, the residual deviance from the 
 # quasipoisson and poisson models are identical.  
+```
 
-# Do I need to fix overdispersion, or should I just interpred the residuals?
+```{r print_data_type_analysis_method_heatmap_table_poisson}
+ggplot(data = dt_an_df, 
+       aes(x = factor(analysis_approach, 
+                      levels = c("descriptive.only", "inference", "prediction"), 
+                      labels = c("descriptive\nonly", 
+                                 "inference", "prediction")), 
+           y = factor(data_type,
+                      levels = c("multiple.datasets.integrated.for.analysis", 
+                                 "sampling.effort.known", 
+                                 "non.detection",
+                                 "visit.specific.covariates",
+                                 "organized.data.collection.scheme"), 
+                      labels = c("multiple\ndatasets", 
+                                 "sampling effort", 
+                                 "non detection", 
+                                 "visit-specific\ncovariates",
+                                 "organized\nscheme")))) + 
+  geom_tile(aes(fill = resids)) + 
+  xlab("Analysis Approach") + 
+  ylab("Data Type") + 
+  geom_text(aes(label = round(resids, digits = 1))) + # write the values
+  scale_fill_gradient2(low = "blue", mid = "white", high = "orange") + 
+  theme(panel.grid.major.x=element_blank(), #no gridlines
+        panel.grid.minor.x=element_blank(), 
+        panel.grid.major.y=element_blank(), 
+        panel.grid.minor.y=element_blank(),
+        panel.background=element_rect(fill="white"), # background=white
+        axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
+        axis.text.y = element_text(angle=45)) + 
+  labs(fill = "Poisson\nresiduals") + 
+  ggtitle("Residuals from Poisson\nindependence model")
 ```
 
 # Appendix 2 - Instructions for Coders
@@ -1843,6 +1865,28 @@ Google Scholar searched through Publish or Perish (@Harzing2007) over multiple d
 - 8 June 2018: Publish or Perish search term: all of the words: "citizen science", species, Ireland; none of the words: disease, book, "new report", "new species", "new record"; years: 2014 to 2018
 - 8 June 2018: Publish or Perish search terms: all of the words: "citizen science", species, "United Kingdom"; none of the words: disease, book, "new report", "new species", "new record"; years: 2014 to 2018
 - 12 June 2018: PoP search terms: all of the words: "biological records", "United Kingdom"; none of the words: book‚ "new report", "new species", "new record"
+
+# Save plots
+```{r save_plots_main_text}
+t_size_save <- 25
+
+ggsave("Fig1.svg", temp_extent_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+
+
+ggsave("Fig1.jpg", temp_extent_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+
+```
+
+```{r save_plots_appendices}
+
+
+```
 
 
 # References
