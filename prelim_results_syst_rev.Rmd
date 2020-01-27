@@ -534,7 +534,7 @@ dt_pd_interaction_test <- anova(dt_pd_mod_ind, dt_pd_mod_full,  test = "Chisq")
 dt_pd_df$predicted <- dt_pd_mod_ind$fitted.values
 
 # get residuals from independence model
-dt_pd_df$resids <- residuals(dt_pd_mod_ind)
+dt_pd_df$resids <- residuals(dt_pd_mod_ind, type = "deviance")
 # show big residuals.  This is very interesting b/c it looks like the worst
 # places where the independence model doesn't fit have to do with when 
 # multiple data types are integrated for analysis.  So that might be the data
@@ -998,6 +998,12 @@ print(ggplot(data = meth_df,
 
 The use of data types differed significantly between study questions (*p* = `r round(dt_pd_interaction_test$"Pr(>Chi)"[2], 2)` for chi-squared likelihood ratio test of a null hypothesis that a Poisson regression independence model with main effects for data type and ecological study focus (but no interaction term) model fit the data as well as a saturated model.  In the independence model, two cells had residuals with an absolute value bigger than two (Fig. 4) - the cell for the number of studies investigating abundance using multiple biological datasets (residual = -3.7), and the cell for the number of studies investigating species distributions using multiple biological records datasets (residual = 3).  Residuals were mostly positive for combinations of structured data types and study questions about abundance, and negative for combinations of structured data types and species distribution study questions (Fig. 4).  This suggests that abundance studies use structured data types more often than would be expected if data type and study question were not related, and distribution studies use structured data types less often than would be expected if study question and data type were not related. 
 
+```{r data_type_study_question_cap}
+data_type_study_question_cap <- figs(name = "data_type_study_question_cap", 
+                               "Deviance residuals from a Poisson regression model of independence between data type and study question.  The direction and size of the residuals indicated deviations from what would be expected if there were no relationship between data type and study question.  Large negative residuals indicate that there are fewer studies with that combination of data type and study question than would be expected if there were no relationship between data type and study question.  Large positive residuals indicate that there were more studies with that combination of data type and study question than would be expected if there were no relationship between data type and study question.")
+```
+
+
 ```{r data_type_study_question_graph}
 ggplot(data = dt_pd_df, 
        aes(x = factor(study_focus, 
@@ -1030,7 +1036,7 @@ ggplot(data = dt_pd_df,
         panel.background=element_rect(fill="white"), # background=white
         axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
         axis.text.y = element_text(angle=45)) + 
-  labs(fill = "Poisson\nresiduals") + 
+  labs(fill = "Poisson\ndeviance\nresiduals") + 
   ggtitle("Residuals from Poisson\nindependence model\nData Type by Study Question")
 ```
 
