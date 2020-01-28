@@ -476,13 +476,13 @@ method_chisq <- anova(method_mod_null, method_mod, test = "Chisq")
 
 ## What data types are used for each study question? 
 
-We asked whether different types of biological records data are used to study different types of questions.  We fit Poisson regression models of the counts (number of studies) for each combination of data type and ecological study focus, fitting both a saturated model and an independence model with only main effects.  We used a Chi-squared likelihood ratio test to compare the saturated and independence models. 
+We asked whether different types of biological records data are used to study different types of questions.  We fit Poisson regression models of the counts (number of studies) for each combination of data type and ecological study focus, fitting both a saturated model and an independence model with only main effects.  We tested whether there was an interaction between data type and study question using a Chi-squared likelihood ratio test to compare the saturated and independence models.  We explored deviations from a model of independence by examining the deviance residuals from the fitted independence model.  
 
 $H_a$: Analyses of different ecological study questions use different types of biological records data.
 
 $H_0$: Analyses of different ecological study questions do not use different types of biological records data.
 
-The response is the cell counts in the contingency table in section 2.5 (Table 5 I think).  I think an assumption of the Poisson regression is that the cell counts are independent, meaning that the count in one cell doesn’t go up or down with the count in another cell. So I need to asses if there is any dependence between the levels of each categorical variable. For example, does the count in the “sampling effort x community” cell go up in correlation with the count in the “abundance x community” cell? Could I use some kind of permutation approach to test for independence of cell counts? **Dina, how should I check to make sure cell counts are independent?** I could perhaps do this using a permutation procedure to look for non-random patterns in the data types.  For each pair of data type variables, I could a table in which each study is a row and there is a column for each of the two data type variables being assessed, and a 1 or a 0 for whether the study had the data type.  I could then take the row sums and look at the distribution of row sums of 0 (studies using neither of the two data types being tested), 1 (studies using only 1 of the two data types), and 2 (studies using both of the two data types).  I could then randomly permute one of the two columns, breaking any associations between the two data types, and take row sums again, getting a distribution of row sums under the null hypothesis.   
+The response variable was the cell counts in the contingency table in section 2.5 (Table 5 I think).  I think an assumption of the Poisson regression is that the cell counts are independent, meaning that the count in one cell doesn’t go up or down with the count in another cell. So I need to asses if there is any dependence between the levels of each categorical variable. For example, does the count in the “sampling effort x community” cell go up in correlation with the count in the “abundance x community” cell? Could I use some kind of permutation approach to test for independence of cell counts? **Dina, how should I check to make sure cell counts are independent?** I could perhaps do this using a permutation procedure to look for non-random patterns in the data types.  For each pair of data type variables, I could a table in which each study is a row and there is a column for each of the two data type variables being assessed, and a 1 or a 0 for whether the study had the data type.  I could then take the row sums and look at the distribution of row sums of 0 (studies using neither of the two data types being tested), 1 (studies using only 1 of the two data types), and 2 (studies using both of the two data types).  I could then randomly permute one of the two columns, breaking any associations between the two data types, and take row sums again, getting a distribution of row sums under the null hypothesis.   
 
 **Dina, how should I check other model assumptions for the Poisson regression?**
 
@@ -532,6 +532,7 @@ dt_pd_interaction_test <- anova(dt_pd_mod_ind, dt_pd_mod_full,  test = "Chisq")
 
 # look at predicted values compared to observed values
 dt_pd_df$predicted <- dt_pd_mod_ind$fitted.values
+dt_pd_df$saturated_predictions <- dt_pd_mod_full$fitted.values
 
 # get residuals from independence model
 dt_pd_df$resids <- residuals(dt_pd_mod_ind, type = "deviance")
@@ -1000,19 +1001,20 @@ The use of data types differed significantly between study questions (*p* = `r r
 
 ```{r data_type_study_question_cap}
 data_type_study_question_cap <- figs(name = "data_type_study_question_cap", 
-                               "Deviance residuals from a Poisson regression model of independence between data type and study question.  The direction and size of the residuals indicated deviations from what would be expected if there were no relationship between data type and study question.  Large negative residuals indicate that there are fewer studies with that combination of data type and study question than would be expected if there were no relationship between data type and study question.  Large positive residuals indicate that there were more studies with that combination of data type and study question than would be expected if there were no relationship between data type and study question.")
+                               "Deviance residuals from a Poisson regression model of independence between data type and study question.  The direction and size of the residuals indicated deviations from what would be expected if there were no relationship between data type and study question.  Large negative residuals indicate that there were fewer studies with that combination of data type and study question than would be expected if there were no relationship between data type and study question.  Large positive residuals indicate that there were more studies with that combination of data type and study question than would be expected if there were no relationship between data type and study question.")
 ```
 
 
-```{r data_type_study_question_graph}
+```{r data_type_study_question_graph, fig.cap=data_type_study_question_cap}
 ggplot(data = dt_pd_df, 
        aes(x = factor(study_focus, 
                       levels = c("abundance", "distribution", "phenology", 
                                  "species.richness", "trends.over.time", 
                                  "other_focus"), 
-                      labels = c("abundance", "distribution", "phenology", 
+                      labels = c("abundance", "species\ndistribution", 
+                                 "phenology", 
                                  "species\nrichness", "trends\nover\ntime", 
-                                 "other\nfocus")), 
+                                 "other")), 
            y = factor(data_type,
                       levels = c("multiple.datasets.integrated.for.analysis", 
                                  "sampling.effort.known", 
@@ -1021,14 +1023,14 @@ ggplot(data = dt_pd_df,
                                  "organized.data.collection.scheme"), 
                       labels = c("multiple\ndatasets", 
                                  "sampling effort", 
-                                 "non detection", 
+                                 "non-detection", 
                                  "visit-specific\ncovariates",
                                  "organized\nscheme")))) + 
   geom_tile(aes(fill = resids)) + 
   xlab("Study Question") + 
   ylab("Data Type") + 
   geom_text(aes(label = round(resids, digits = 1))) + # write the values
-  scale_fill_gradient2(low = "blue", mid = "white", high = "orange") + 
+  scale_fill_gradient2(low = "#3366ff", mid = "white", high = "#ff751a") + 
   theme(panel.grid.major.x=element_blank(), #no gridlines
         panel.grid.minor.x=element_blank(), 
         panel.grid.major.y=element_blank(), 
@@ -1036,8 +1038,8 @@ ggplot(data = dt_pd_df,
         panel.background=element_rect(fill="white"), # background=white
         axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
         axis.text.y = element_text(angle=45)) + 
-  labs(fill = "Poisson\ndeviance\nresiduals") + 
-  ggtitle("Residuals from Poisson\nindependence model\nData Type by Study Question")
+    # ggtitle("Residuals from Poisson\nindependence model\nData Type by Study Question") + 
+  labs(fill = "Deviance\nresiduals") 
 ```
 
 
@@ -1046,11 +1048,6 @@ ggplot(data = dt_pd_df,
 ```{r data_type_analysis_tab_cap}
 data_type_analysis_tab_cap <- tabs(name = "data_type_analysis_tab_cap", 
                                    "Table of counts of studies using each data type and analysis approach.")
-```
-
-```{r data_type_analysis_cap}
-data_type_analysis_cap <- figs(name = "data_type_analysis_cap", 
-                            "The number of studies using different types of biological records data as part of different analysis approaches.  Analysis approaches are inference (e.g. *p*-values or confidence intervals), prediction (e.g. prediction of species presence or absence into unsampled areas) and description (maps, graphs, narrative descriptions, or descriptive statistics with no inference or prediction).")
 ```
 
 There was strong evidence that data type and analysis approach are not independent (permutation-based significance level of the chi-squared test statistic for the observed data = `r chis_perm_pvalue` with `r n_perm` permutations).  Residuals and permutation significance levels for each combination of data type and analysis method show that residuals are generally large, negative, and highly significantly different from zero for combinations of more structured or "rich" data types and descriptive-only analyses (Fig. ??), suggesting that those rich data types are analyzed descriptively less often than would be expected if there was no relationship between data type and analysis approach.  Residuals are generally large, positive, and highly significantly different from zero for combinations of "rich" data types and inferential analyses, suggesting that those rich data types are analyzed with inferential methods more frequently than would be expected if there were no relationship between data type and analysis approach.  Notably, the absolute value of residuals for combinations of data with visit-specific covariates and both descriptive-only and inferential studies are small and not significantly different from zero, despite visit-specific covariates being a relatively "rich" additional type of data to have associated with biological records.  The absolute value of residuals and significance levels for combinations of all data types with predictive analysis methods generally indicated that the use of data types in predictive analyses did not differ strongly from what would be expected if there were no relationship between data type and analysis approach.  The residuals and significance levels for the cells associated with multiple data sets being used in an analysis suggest that multiple datasets are less often for inference and more often for descriptive-only analyses than would be expected if there was no relationship between data type and analysis approach, though both the absolute magnitued of the residuals and the significance levels suggested that the observed use of multiple datasets for those two analysis approaches differed less strongly from the null expectation than did the use of data with non-detection and/or sampling effort information and data from organized monitoring schemes.  
@@ -1072,86 +1069,17 @@ if(diag_present) {
 }
 ```
 
-```{r data_type_analysis_approach_graph, fig.cap=data_type_analysis_cap}
-### plot data type by analysis approach ----------------------
-# make plot, order factor levels by most important a-priori
-# dt_an_df was created in the Methods section
-ggplot(dt_an_df, 
-       aes(x = factor(data_type, 
-                      levels = c("sampling.effort.known", 
-                                 "non.detection", 
-                                 "organized.data.collection.scheme", 
-                                 "multiple.datasets.integrated.for.analysis",
-                                 "visit.specific.covariates"), 
-                      labels = c("sampling effort", 
-                                 "non detection", 
-                                 "organized scheme", 
-                                 "multiple datasets", 
-                                 "visit-specific covariates")), 
-           y = n, 
-           fill = factor(data_type, 
-                         levels = c("sampling.effort.known", 
-                                    "non.detection", 
-                                    "organized.data.collection.scheme", 
-                                    "multiple.datasets.integrated.for.analysis", 
-                                    "visit.specific.covariates"), 
-                         labels = c("sampling effort", 
-                                    "non detection", 
-                                    "organized\nscheme", 
-                                    "multiple\ndatasets", 
-                                    "visit-specific\ncovariates")))) + 
-  geom_bar(position = position_dodge(preserve = "single"), stat = "identity") + 
-    facet_wrap( ~ factor(analysis_approach, 
-                         levels = c("inference", 
-                                    "prediction",
-                                    "descriptive.only"),
-                         labels = c("inference", "prediction",
-                                    "description only")), 
-                strip.position = "bottom") +
-  ggtitle("Data used in different analysis approaches") + 
-  scale_fill_discrete(name = "Data Type") + 
-  xlab("Analysis Approach") + 
-  ylab("Number of studies") + 
-  scale_y_continuous(breaks = seq(0, max(dt_an_df$n) + 5, 5)) + 
-  theme_bw() + 
-  theme(axis.text.x = element_blank(), 
-        strip.background = element_blank(), strip.placement = "outside")
+```{r data_type_analysis_method_perm_cap}
+data_type_analysis_method_perm_cap <- figs(
+  name = "data_type_analysis_method_perm_cap", 
+  "Residuals from a permutation test of independence between data type and analysis method show that more structured types of data (non-detection, sampling effort, and data from organized monitoring schemes) are analysed more frequently with statistical inference and less frequently with purely descriptive methods than would be expected if data type and analysis method were not related.  When multiple different biological records datasets were integretad for a one study, that study was more likely to use purely descriptive analyses and less likely to use statistical inference than would be expected if there was no relationship between data type and analysis approach. The data types used for predictive analyses did not differ strongly from what would be expected if there was no relationship between data type and analysis approach.  Residuals for each cell were calculated as the difference between the observed number of studies in each cell and the median of the number of studies in the same cell in 10,000 permuted datasets.  Values in each grid cell are presented as: residual (permutation significance level).  Colors indicate direction and size of residuals.")
 ```
 
-```{r print_data_type_analysis_method_heatmap_table_permutation}
+```{r print_data_type_analysis_method_heatmap_table_permutation, fig.cap=data_type_analysis_method_perm_cap}
+# get permutation significance levels
 perm_p_vals_long <- gather(perm_p_vals, key = "analysis_approach", 
                            value = "significance", 2:4)
-# ggplot(data = perm_p_vals_long,        
-#        aes(x = factor(analysis_approach, 
-#                       levels = c("descriptive.only", "inference", "prediction"), 
-#                       labels = c("descriptive\nonly", 
-#                                  "inference", "prediction")), 
-#            y = factor(data_type,
-#                       levels = c("multiple datasets integrated for analysis", 
-#                                  "sampling effort known", 
-#                                  "non detection",
-#                                  "visit specific covariates",
-#                                  "organized data collection scheme"), 
-#                       labels = c("multiple\ndatasets", 
-#                                  "sampling effort", 
-#                                  "non detection", 
-#                                  "visit-specific\ncovariates",
-#                                  "organized\nscheme")))) + 
-#   geom_tile(aes(fill = significance)) + 
-#   xlab("Analysis Approach") + 
-#   ylab("Data Type") + 
-#   geom_text(aes(label = round(significance, 2))) + # write the values
-#   scale_fill_gradient(low = "orange", high = "white") + 
-#   theme(panel.grid.major.x=element_blank(), #no gridlines
-#         panel.grid.minor.x=element_blank(), 
-#         panel.grid.major.y=element_blank(), 
-#         panel.grid.minor.y=element_blank(),
-#         panel.background=element_rect(fill="white"), # background=white
-#         axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
-#         axis.text.y = element_text(angle=45)) + 
-#   labs(fill = "significance\nlevel") + 
-#   ggtitle("Permutation-based significance levels")
-
+# get permutation residuals
 perm_resids_long <- gather(perm_resids, key = "analysis_approach", 
                            value = "residual", 2:4)
 # add significance levels to residuals data frame
@@ -1171,7 +1099,7 @@ ggplot(data = perm_resids_long,
                                  "organized data collection scheme"), 
                       labels = c("multiple\ndatasets", 
                                  "sampling effort", 
-                                 "non detection", 
+                                 "non-detection", 
                                  "visit-specific\ncovariates",
                                  "organized\nscheme")))) + 
   geom_tile(aes(fill = residual)) + 
@@ -1766,6 +1694,57 @@ ggplot(dt_pd_df,
 To investigate whether the data type affects the analysis approach, we used a Poisson regression to model the relationship between three different analysis approaches (inference, prediction, and description) and data type.  We used a likelihood ratio test comparing a saturated Poisson regression modeling cell counts with a model containing only the main effects of data type and analysis approach (but no interaction).  The independence model (no interatctions) was overdispersed.  However, model residuals from the Poisson independence model (Fig. S??) showed the same pattern as the randomization test (Fig. ??), suggesting that the interpretation of the results is robust to using different statistical tests, and the overdispersion in the independence model is not severe enough to make the model uninformative.  
 
 A Chi-squared likelihood ratio test comparing the saturated Poisson regression model  to a reduced model with only main effects for analysis approach and data type rejected the null hypothesis that the reduced model is as good as the full model (*p* = `r round(dt_an_mod_independence_test$'Pr(>Chi)'[2], 2)`), suggesting that the data type does influence or constrain the analysis approach.  
+
+```{r data_type_analysis_cap}
+data_type_analysis_cap <- figs(name = "data_type_analysis_cap", 
+                            "The number of studies using different types of biological records data with different analysis approaches.  Analysis approaches are inference (e.g. *p*-values or confidence intervals), prediction (e.g. prediction of species presence or absence into unsampled areas) and description (maps, graphs, narrative descriptions, or descriptive statistics with no inference or prediction).")
+```
+
+```{r data_type_analysis_approach_graph, fig.cap=data_type_analysis_cap}
+### plot data type by analysis approach ----------------------
+# make plot, order factor levels by most important a-priori
+# dt_an_df was created in the Methods section
+ggplot(dt_an_df, 
+       aes(x = factor(data_type, 
+                      levels = c("sampling.effort.known", 
+                                 "non.detection", 
+                                 "organized.data.collection.scheme", 
+                                 "multiple.datasets.integrated.for.analysis",
+                                 "visit.specific.covariates"), 
+                      labels = c("sampling effort", 
+                                 "non detection", 
+                                 "organized scheme", 
+                                 "multiple datasets", 
+                                 "visit-specific covariates")), 
+           y = n, 
+           fill = factor(data_type, 
+                         levels = c("sampling.effort.known", 
+                                    "non.detection", 
+                                    "organized.data.collection.scheme", 
+                                    "multiple.datasets.integrated.for.analysis", 
+                                    "visit.specific.covariates"), 
+                         labels = c("sampling effort", 
+                                    "non detection", 
+                                    "organized\nscheme", 
+                                    "multiple\ndatasets", 
+                                    "visit-specific\ncovariates")))) + 
+  geom_bar(position = position_dodge(preserve = "single"), stat = "identity") + 
+    facet_wrap( ~ factor(analysis_approach, 
+                         levels = c("inference", 
+                                    "prediction",
+                                    "descriptive.only"),
+                         labels = c("inference", "prediction",
+                                    "description only")), 
+                strip.position = "bottom") +
+  ggtitle("Data used in different analysis approaches") + 
+  scale_fill_discrete(name = "Data Type") + 
+  xlab("Analysis Approach") + 
+  ylab("Number of studies") + 
+  scale_y_continuous(breaks = seq(0, max(dt_an_df$n) + 5, 5)) + 
+  theme_bw() + 
+  theme(axis.text.x = element_blank(), 
+        strip.background = element_blank(), strip.placement = "outside")
+```
 
 ```{r print_data_type_analysis_contingency_table}
 if(diag_present) {
