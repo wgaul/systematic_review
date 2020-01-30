@@ -116,6 +116,20 @@ tabs <- captioner(prefix = "Table")
 
 # Methods
 
+```{r define_boot_function}
+# bootstrap ci function for use throught this script
+get_boot_CI <- function(x, fun_to_use, n_perm) {
+  b_o <- boot(x, fun_to_use, R = n_perm, stype = "i")
+  ci_o <- tryCatch(boot.ci(b_o, conf = 0.95, type = "bca"), 
+                   error = function(x) NA)
+  to_return <- list(obs = x, 
+                    boot_obj = b_o, 
+                    ci_obj = ci_o)
+  to_return
+}
+```
+
+
 **See Hao et al as a template for how to write syst. rev. methods.**
 
 We did a systematic review of original research published since 2014 that used biological records from Ireland and/or the United Kingdom (UK).  We generated a list of relevant articles from Web of Science, Scopus, ProQuest, GoogleScholar via Publish or Perish software (@Harzing2007), and the Global Biodiversity Information Facility (GBIF) website using the search terms shown in Appendix 2.  One researcher evaluated each article for inclusion eligibility and coded information on 46 variables describing characteristics of each article.  A second reader coded all variables for a subset of 20% of the articles.  Agreement between the two readers was evaluated using Krippendorff's alpha (Krippendorff 2004).  Variables that did not meet minimum standards for reader agreement were not used in subsequent analyses.  Analyses were conducted in R version 3.5 (@RCoreTeam2015).
@@ -141,6 +155,9 @@ We described the main focus(es) of each study in terms of whether the study was 
 We classified the broad analysis approach used by each study into one of three categories: inference; prediction; or description.  For each study, we evaluated the analysis approach only for analyses that used biological records data.
 
 We considered studies estimating parameters and reporting some measure of uncertainty (e.g. *p*-values, confidence intervals, posterior probability distributions) to be using inference.  We considered studies that built models and made predictions to be using an analysis strategy of prediction, even if no uncertainty or inference was reported with the predictions.  Finally, we considered the analysis approach to be descriptive only if results were descriptive with no prediction or inference.  Descriptive results could be narrative, graphical, or quantitative as long as no inference or uncertainty was reported (e.g. point estimates of descriptive statistics without any confidence interval or *p*-values).  Studies could use both inference and prediction as analysis strategies and so those categories were not mutually exclusive, but studies were only categorized as using a descriptive analysis approach if all results were descriptive only and the study used no inference or prediction.  
+
+### Temporal and spatial extent
+We determined the temporal extent covered by studies by determining the start and end dates of the study.  We determined the spatial extent of the study (in km^2) by recording the spatial extent reported in the study if a quantitative spatial extent was reported, or when spatial extents were reported only qualitatively, by using the spatial areas of political units (e.g. countries) or geographic regions reported in Google search results (www.google.com), Wikipedia (en.wikipedia.org), or from Eakins and Sharman (2010).
 
 ### Coding reliability
 We used Krippendorff's *alpha* [@Krippendorff2004] to evaluate the agreement between two readers for each of `r ncol(er)-6` variables that were coded by two people.  We calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package [@irr2012].  Krippendorff's alpha measures agreement between multiple coders while accounting for agrement by chance.  Rule-of-thumb guidelines suggest that Krippendorff's alpha values below 0.67 indicate poor agreement such that the data cannot be trusted for analysis; values between 0.67 and 0.8 suggest that the data are moderately reliable and may be suitable for only tentative interpretation, and values above 0.8 indicate that the data are reliable.  In order to estimate reliability using Krippendorff's alpha, there must be sufficient variation in the variable being coded.  The amount of data needed to estimate alpha for a categorical variable depends on the probability of the least common class for that variable. Krippendorff [@Krippendorff2004] provides guidelines about the number of coded cases needed to estimate the value of Krippendorff's alpha given the probability of the least common class for a variable.  We examined Krippendorff's alpha values only for variables for which the least common class had a probability of 0.14 or higher, which should allow us to identify with a confidence level of 0.1 those variables for which Krippendorff's alpha is above 0.667 [@Krippendorff2004].  We removed from subsequent statistical analyses all variables for which we did not have enough codings to estimate Krippendorff's alpha, and all variables with Krippendorff's alpha values below 0.67 from analyses. 
@@ -208,23 +225,79 @@ kripp_all_dbl_coded <- lapply(dbl_coded_list, FUN = do_kripp.alpha,
 ```
 
 
-## Temporal extent of studies
+## Temporal and spatial extent of studies
 
 ```{r correlation_cap}
 correlation_cap <- figs(name = "correlation_cap", 
                         "Correlation of the binary data type predictor variables.")
 ```
 
-We used linear regression with natural-log transformed time (in years) as the response variable.  We used five binary predictor variables indicating whether the study used at least some data that had the following characteristics or information: known sampling effort; explicit non-detection data; data came from an organized monitoring scheme; visit-specific covariates; multiple different biological records datasets integrated for analyses.  Although some of the predictor variables may be correlated (`r figs("correlation_cap", display = "cite")`), we kept all variables in the regression model because we were interested in the effect of each additional type of information *after accounting for other information types*.  For example, we were interested in the additional effect of having non-detection data after adjusting for whether the data came from an organized monitoring scheme.  We assessed collinearity of predictor variables using variance inflation factors in order to determine if collinearity is likely to cause additional uncertainty in the the coefficient estimates for the effect of each data type (Fox 2016). 
+We expected the temporal extent covered by studies to be shorter for studies using more structured or "rich" data types compared to studies using less structured data.  We tested whether the temporal extent of studies differed based on the data type by fitting a linear regression with natural-log transformed time (in years) as the response variable.  We used five binary predictor variables indicating whether the study used at least some data that had the following characteristics or information: known sampling effort; explicit non-detection data; data came from an organized monitoring scheme; visit-specific covariates; multiple different biological records datasets integrated for analyses.  Although some of the predictor variables may be correlated (`r figs("correlation_cap", display = "cite")`), we kept all variables in the regression model because we were interested in the effect of each additional type of information *after accounting for other information types*.  For example, we were interested in the additional effect of having non-detection data after adjusting for whether the data came from an organized monitoring scheme.  We assessed collinearity of predictor variables using variance inflation factors in order to determine if collinearity is likely to cause additional uncertainty in the the coefficient estimates for the effect of each data type (Fox 2016). Because the data types are not mutually exclusive, each data type category is treated as an individual binary variable, rather than treating each data type as a factor level of a categorical variable.  
 
-Because the variables are not mutually exclusive, each category is treated as an individual binary variable, rather than treating each variable as a factor level of a categorical "data type" variable.  
+We assessed the significance of data types for predicting temporal extent by using a likelihood ratio test to compare a model containing main effects (but no interactions) for all data types to an intercept only model.  We then assessed the significance of each individual data type by comparing the model with all main effects to a reduced model in which the variable representing the data type being tested had been removed.
 
-We assessed the significance data types for predicting temporal extent by using a likelihood ratio test to compare a model containing main effects (but no interactions) for all data types to an intercept only model.  We then assessed the significance of each individual data type by comparing the model with all main effects to a reduced model in which the variable being tested had been removed.
+```{r prepare_spatial_extent_df}
+spat_extent <- select(
+  wg, c(title, spatial.extent.of.study, 
+        # data.type...what.where.when.only, # alpha too low
+        data.structure...sampling.effort.known, 
+        # data.type...abundance, # alpha too low
+        data.structure...non.detection,
+        data.structure...organized.data.collection.scheme, 
+        data.type...visit.specific.covariates, 
+        data.structure...multiple.datasets.integrated.for.analysis
+        # data.type...life.stage, # can't estimate alpha
+        # data.type...voucher.of.some.kind.necessary.for.analysis # can't estimate alpha
+        )) %>%
+  gather(key = "data_type", value = "dt_value", 
+         data.structure...sampling.effort.known:data.structure...multiple.datasets.integrated.for.analysis, 
+         factor_key = T) %>%
+  filter(dt_value == T) %>%
+  group_by(data_type)
 
-$H_a$: ~~The mean temporal extent of studies using only "what, where, when" data is longer than the mean temporal extent of studies using richer data types.~~  The use of more complex data types will reduce the mean temporal extent of studies.  
+# make names prettier
+spat_extent$data_type <- gsub("data.type...", "", spat_extent$data_type)
+spat_extent$data_type <- gsub("data.structure...", "", spat_extent$data_type)
 
-$H_0$: ~~The mean temporal extent of studies using what, where, when-only data is the same as the mean temporal extent of studies using richer data types.~~  Studies using more complex data types do not have shorter mean temporal extents than studies that do not use those data types.  
- 
+# remove km^2 text
+spat_extent$spatial.extent.of.study <- gsub(" km\\^2", "", 
+                                            spat_extent$spatial.extent.of.study)
+spat_extent$spatial.extent.of.study <- as.numeric(as.character(
+  spat_extent$spatial.extent.of.study))
+```
+
+```{r spat_extent_randomization}
+# make spatial extents numeric
+wg$log_spat_extent <- gsub(" km\\^2", "", wg$spatial.extent.of.study)
+wg$log_spat_extent <- log(as.numeric(as.character(wg$log_spat_extent)))
+
+median_fun <- function(x, indices) {
+  # ARGS: x - a vector of TRUE/FALSE values, for which the TRUEs will be counted
+  #       indices - a vector of indices as required by boot
+  x_b <- x[indices]
+  median(as.numeric(x_b), na.rm = TRUE)
+}
+
+spat_time_df <- select(wg, c(spat_extent, 
+        data.structure...sampling.effort.known, 
+        data.structure...non.detection,
+        data.structure...organized.data.collection.scheme, 
+        data.type...visit.specific.covariates, 
+        data.structure...multiple.datasets.integrated.for.analysis)) %>%
+  filter(!is.na(spat_extent))
+
+spat_time_boot_array <- array(NA, dim = c(nrow(spat_time_df), 
+                                          ncol(spat_time_df), 
+                                          n_perm))
+# draw bootstrap samples 
+stop("I should use boot function instead so I can caluclate bca easier.")
+for(i in 1:n_perm) {
+  spat_time_boot_array[, , i] <- as.array(as.matrix(
+    spat_time_df[sample(1:nrow(spat_time_df), 
+                        replace = TRUE), ]))
+}
+```
+
 ```{r prepare_temporal_extent_df}
 temp_extent <- select(
   wg, c(title, temp_extent, 
@@ -359,6 +432,7 @@ temp_extent_preds$pred_years_lowerCI <- exp(temp_extent_preds$pred_log_y_lowerCI
 ```
 
 
+
 ## What is the most popular study question paradigm for studies using biological records?
 
 We categorized study questions into two broad question paradigms: individual species questions and community questions [Appendix 2].  We estimated the proportion of studies that focused on each of the two broad study question paradigms, and used bias-corrected accelerated bootstrap confidence intervals [@Efron1993] to estimate 95% confidence intervals around the point estimates of the proportions.  
@@ -378,18 +452,9 @@ count_fun <- function(x, indices) {
   sum(as.numeric(x_b), na.rm = TRUE)
 }
 
-get_boot_CI <- function(x, fun_to_use) {
-  b_o <- boot(x, fun_to_use, R = 10000, stype = "i")
-  ci_o <- tryCatch(boot.ci(b_o, conf = 0.95, type = "bca"), 
-                   error = function(x) NA)
-  to_return <- list(obs = x, 
-                    boot_obj = b_o, 
-                    ci_obj = ci_o)
-  to_return
-}
-
 proportion_individual <- get_boot_CI(wg$individual.species.question,
-                                     fun_to_use = proportion_fun)
+                                     fun_to_use = proportion_fun, 
+                                     n_perm = n_perm)
 ```
 
 ## Ecological focus
@@ -425,7 +490,7 @@ resp_var_list <- lapply(
        phen = resp_var_df$response.variable...phenology, 
        temp_trends = resp_var_df$trends.over.time, 
        other = resp_var_df$other_resp),
-  FUN = get_boot_CI, fun_to_use = proportion_fun)
+  FUN = get_boot_CI, fun_to_use = proportion_fun, n_perm = n_perm)
 
 resp_var_list_counts <- lapply(
   list(sp_rich = resp_var_df$response.variable...species.richness, 
@@ -434,7 +499,7 @@ resp_var_list_counts <- lapply(
        phen = resp_var_df$response.variable...phenology, 
        temp_trends = resp_var_df$trends.over.time, 
        other = resp_var_df$other_resp),
-  FUN = get_boot_CI, fun_to_use = count_fun)
+  FUN = get_boot_CI, fun_to_use = count_fun, n_perm = n_perm)
 ```
 
 ## Development of methodology across different study questions
@@ -597,7 +662,7 @@ dt_an_mod_ind <- glm(n ~ 1 + analysis_approach + data_type,
 dt_an_mod_independence_test <- anova(dt_an_mod_ind, dt_an_mod_full, test = "Chisq")
 
 dt_an_df$predicted <- dt_an_mod_ind$fitted.values
-dt_an_df$resids <- residuals(dt_an_mod_ind)
+dt_an_df$resids <- residuals(dt_an_mod_ind, type = "deviance")
 ```
 
 ```{r data_analysis_approach_randomization}
@@ -776,11 +841,16 @@ kable(samp_adequate[order(samp_adequate$kripp_alpha, decreasing = T), -c(2, 4)],
 rm(samp_adequate)
 ```
 
-## Temporal extent of studies
+## Temporal and spatial extent of studies
 
 ```{r temp_extent_cap}
 temp_extent_cap <- figs(name = "temp_extent_cap", 
                         "The temporal extent covered by studies using different types biological records data.  A linear regression showed that the log of the temporal extent of studies (in years) was significantly different for studies using different types of data.  This plot shows the observed temporal extent of studies (not fitted values from the linear regression model). Note the log-transformed y-axis.")
+```
+
+```{r spat_extent_cap}
+spat_extent_cap <- figs(name = "spat_extent_cap", 
+                        "The spatial extent covered by studies was significantly different for studies using different types biological records data.  This plot shows the observed temporal extent of studies. Note the log-transformed y-axis.")
 ```
 
 ```{r print_time_individual_predictor_significance}
@@ -792,7 +862,7 @@ if(diag) {
 }
 ```
 
-The overall linear regression model using data type to predict the natural log of the temporal extent of studies (in years) was  significant ($F_{`r format(round(m_time_full_anova[2, "Df"], digits = 2), scientific = F)`, `r format(round(m_time_full_anova[2, "Res.Df"], digits = 2), scientific = F)`}$ = `r format(round(m_time_full_anova[, "F"][2], digits = 2), scientific = F)`, *p* `r if(m_time_full_anova[6][[1]][2] >= 0.0001) {format(round(m_time_full_anova[6][[1]][2], digits = 4), scientific = T)} else "< 0.0001"`, Adjusted $R^2$ = `r format(round(time_summary$adj.r.squared, digits = 2), scientific = F)`, `r figs("temp_extent_cap", display = "cite")`).  Studies that used multiple different biological records datasets covered significantly longer temporal extents than studies that did not use multiple different datasets after accounting for other data types ($F_{1, 195}$ = 39.4, *p* < 0.0001, Fig. 1).  The expected temporal extent covered by a study that used multiple biological records datasets was `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[6])), digits = 1)` years (95% CI: [`r round(temp_extent_preds$pred_years_lowerCI[5], digits = 1)`, `r round(temp_extent_preds$pred_years_upperCI[5], digits = 1)`]) when the data did not have any of the other data types we recorded.  Studies that used visit-specific covariates covered significantly shorter temporal extents than studies that did not, after accounting for other data types ($F_{1,195}$ = 25.8, *p* < 0.0001).  The expected temporal extent covered by a study that used visit-specific covariates was `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[5])), digits = 1)` years (95% CI: [`r round(temp_extent_preds$pred_years_lowerCI[4], digits = 1)`, `r round(temp_extent_preds$pred_years_upperCI[4], digits = 1)`]) when the data did not have any of the other data types we recorded. We did not detect a significant effect of sampling effort data ($F_{1,195}$ = 0.2, *p* = 0.65), non-detection data ($F_{1,195}$ = 2.4, *p* = 0.13), or thedata coming from an organized monitoring scheme ($F_{1,195}$ = 3.6, *p* = 0.06) on the temporal extent of studies.  However, pairs plots and variance inflation factors show that the "sampling effort" and "non-detection" data types are strongly correlated with each other, and both are correlated less strongly with the "organized monitoring scheme" data type (Fig. S?, Tab. S1), suggesting that we may have been unable to dis-entangle the effects of each of these correlated variables with our current sample size (Fox 2016, p. 341-2).
+The temporal extent of studies differed significantly for studies using different types of biological records data (anova of a linear regression model using data type to predict the natural log of the temporal extent of studies (in years) compared to a model that did not use data type $F_{`r format(round(m_time_full_anova[2, "Df"], digits = 2), scientific = F)`, `r format(round(m_time_full_anova[2, "Res.Df"], digits = 2), scientific = F)`}$ = `r format(round(m_time_full_anova[, "F"][2], digits = 2), scientific = F)`, *p* `r if(m_time_full_anova[6][[1]][2] >= 0.0001) {format(round(m_time_full_anova[6][[1]][2], digits = 4), scientific = T)} else "< 0.0001"`, Adjusted $R^2$ = `r format(round(time_summary$adj.r.squared, digits = 2), scientific = F)`, `r figs("temp_extent_cap", display = "cite")`).  Studies that used multiple different biological records datasets covered significantly longer temporal extents than studies that did not use multiple different datasets after accounting for other data types ($F_{1, 195}$ = 39.4, *p* < 0.0001, Fig. 1).  The expected temporal extent covered by a study that used multiple biological records datasets was `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[6])), digits = 1)` years (95% CI: [`r round(temp_extent_preds$pred_years_lowerCI[5], digits = 1)`, `r round(temp_extent_preds$pred_years_upperCI[5], digits = 1)`]) when the data did not have any of the other data types we recorded.  Studies that used visit-specific covariates covered significantly shorter temporal extents than studies that did not, after accounting for other data types ($F_{1,195}$ = 25.8, *p* < 0.0001).  The expected temporal extent covered by a study that used visit-specific covariates was `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[5])), digits = 1)` years (95% CI: [`r round(temp_extent_preds$pred_years_lowerCI[4], digits = 1)`, `r round(temp_extent_preds$pred_years_upperCI[4], digits = 1)`]) when the data did not have any of the other data types we recorded. We did not detect a significant effect of sampling effort data ($F_{1,195}$ = 0.2, *p* = 0.65), non-detection data ($F_{1,195}$ = 2.4, *p* = 0.13), or thedata coming from an organized monitoring scheme ($F_{1,195}$ = 3.6, *p* = 0.06) on the temporal extent of studies.  However, pairs plots and variance inflation factors show that the "sampling effort" and "non-detection" data types are strongly correlated with each other, and both are correlated less strongly with the "organized monitoring scheme" data type (Fig. S?, Tab. S1), suggesting that we may have been unable to dis-entangle the effects of each of these correlated variables with our current sample size (Fox 2016, p. 341-2).  We removed from the analysis `r length(which(is.na(wg$temp_extent)))` studies for which the coder could not determine the temporal extent.
 
 ```{r time_extent_results_plot, fig.cap=temp_extent_cap}
 temp_extent_plot <- ggplot(data = temp_extent, 
@@ -848,6 +918,30 @@ ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + #, color = sig
   scale_color_discrete(name = "Significantly Different from\nWhat, Where, When-only\nstudies (alpha = 0.1 level)") + 
   theme(axis.text.x = element_text(angle = 330, vjust = 1, hjust = 0), 
         text = element_text(size = t_size)) 
+```
+
+```{r spat_extent_results_plot, fig.cap=spat_extent_cap}
+spat_extent_plot <- ggplot(
+  data = spat_extent, 
+  aes(y = spatial.extent.of.study, 
+      x = factor(data_type, 
+                 levels = c("sampling.effort.known", 
+                            "non.detection", 
+                            "organized.data.collection.scheme", 
+                            "visit.specific.covariates", 
+                            "multiple.datasets.integrated.for.analysis"), 
+                 labels = c("sampling effort\nknown", 
+                            "non-detection", 
+                            "organized\nscheme", 
+                            "visit-specific\ncovariates", 
+                            "multiple\ndatasets")))) + 
+  geom_boxplot(varwidth = T) +
+  scale_y_log10() + 
+  xlab("Data Type") + 
+  ylab("Spatial Extent of Study (km^2)") + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 35, vjust = 0.9, hjust = 1)) 
+print(spat_extent_plot)
 ```
 
 
@@ -1050,7 +1144,7 @@ data_type_analysis_tab_cap <- tabs(name = "data_type_analysis_tab_cap",
                                    "Table of counts of studies using each data type and analysis approach.")
 ```
 
-There was strong evidence that data type and analysis approach are not independent (permutation-based significance level of the chi-squared test statistic for the observed data = `r chis_perm_pvalue` with `r n_perm` permutations).  Residuals and permutation significance levels for each combination of data type and analysis method show that residuals are generally large, negative, and highly significantly different from zero for combinations of more structured or "rich" data types and descriptive-only analyses (Fig. ??), suggesting that those rich data types are analyzed descriptively less often than would be expected if there was no relationship between data type and analysis approach.  Residuals are generally large, positive, and highly significantly different from zero for combinations of "rich" data types and inferential analyses, suggesting that those rich data types are analyzed with inferential methods more frequently than would be expected if there were no relationship between data type and analysis approach.  Notably, the absolute value of residuals for combinations of data with visit-specific covariates and both descriptive-only and inferential studies are small and not significantly different from zero, despite visit-specific covariates being a relatively "rich" additional type of data to have associated with biological records.  The absolute value of residuals and significance levels for combinations of all data types with predictive analysis methods generally indicated that the use of data types in predictive analyses did not differ strongly from what would be expected if there were no relationship between data type and analysis approach.  The residuals and significance levels for the cells associated with multiple data sets being used in an analysis suggest that multiple datasets are less often for inference and more often for descriptive-only analyses than would be expected if there was no relationship between data type and analysis approach, though both the absolute magnitued of the residuals and the significance levels suggested that the observed use of multiple datasets for those two analysis approaches differed less strongly from the null expectation than did the use of data with non-detection and/or sampling effort information and data from organized monitoring schemes.  
+There was strong evidence that data type and analysis approach are not independent (permutation-based significance level of the chi-squared test statistic for the observed data = `r chis_perm_pvalue` with `r n_perm` permutations).  Permutation test residuals and significance levels for each combination of data type and analysis method show that residuals are generally large, negative, and highly significantly different from zero for combinations of more structured data types and descriptive-only analyses (Fig. 5), suggesting that those rich data types are analyzed descriptively less often than would be expected if there was no relationship between data type and analysis approach.  Residuals are generally large, positive, and significantly different from zero for combinations of structured data types and inferential analyses, suggesting that those data types are analyzed with inferential methods more frequently than would be expected if there were no relationship between data type and analysis approach.  The absolute value of residuals for combinations of data with visit-specific covariates and both descriptive-only and inferential studies are small and not significantly different from zero, despite visit-specific covariates being a relatively rich and structured additional type of data to have associated with biological records.  The absolute value of residuals and significance levels for combinations of all data types with predictive analysis methods generally indicated that the use of data types in predictive analyses did not differ strongly from what would be expected if there were no relationship between data type and analysis approach.  The residuals and significance levels for the cells associated with multiple data sets being used in an analysis suggest that multiple datasets are used less often for inference and more often for descriptive-only analyses than would be expected if there was no relationship between data type and analysis approach, though both the absolute magnitude of the residuals and the significance levels suggested that the observed use of multiple datasets for those two analysis approaches differed less strongly from the null expectation than did the use of data with non-detection and/or sampling effort information and data from organized monitoring schemes.  
 
 `r if(diag_present) tabs("data_type_analysis_tab_cap", display = "full")`
 
@@ -1199,6 +1293,25 @@ kable(data.frame(prob_of_values),
                     "Krippendorff's alpha", "sample size 40 adequate"), 
       digits = 2)
 ```
+
+```{r coding_match_temp_extent}
+# in two cases ellie found a start year when I did not
+wg_dbl_cd$start.year[er$start.year == "unknown"]
+er$start.year[wg_dbl_cd$start.year == "unknown"]
+
+both_numeric <- which(!is.na(as.numeric(wg_dbl_cd$start.year)) & 
+                        !is.na(as.numeric(er$start.year)))
+plot(as.numeric(wg_dbl_cd$start.year[both_numeric]) ~ 
+       as.numeric(er$start.year[both_numeric]), 
+     xlab = "start year determined by coder two", 
+     ylab = "start year determined by coder one")
+# correlation is good enough.  Two very different studies, but others match.
+cor(as.numeric(wg_dbl_cd$start.year[both_numeric]),  
+       as.numeric(er$start.year[both_numeric]), 
+    method = "spearman") 
+```
+
+We only calculated Krippendorff's *alpha* for binary variables.  For temporal extent, we compared the start year and the end year determined by each of the two coders using scatter plots and correlation measured using Spearman's *rho*.  There were two cases in which one coder determined a start year but the other coder did not.  For cases in which both coders determined a start year, Spearman's *rho* for correlation of start years was `r round(cor(as.numeric(wg_dbl_cd$start.year[both_numeric]), as.numeric(er$start.year[both_numeric]), method = "spearman"), digits = 2)` (Fig. S??).  
 
 ### Temporal extent of studies
 
@@ -1508,7 +1621,7 @@ method_list_boot <- lapply(
                      "methodology.development.or.analysis")], 
        other_focus = wg[, c("other_focus", 
                      "methodology.development.or.analysis")]),
-  FUN = get_boot_CI, fun_to_use = method_prop_fun)
+  FUN = get_boot_CI, fun_to_use = method_prop_fun, n_perm = n_perm)
 ```
 
 ```{r make_method_boot_df}
@@ -1845,7 +1958,7 @@ ggplot(data = dt_an_df,
         panel.background=element_rect(fill="white"), # background=white
         axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
         axis.text.y = element_text(angle=45)) + 
-  labs(fill = "Poisson\nresiduals") + 
+  labs(fill = "Deviance\nresiduals") + 
   ggtitle("Residuals from Poisson\nindependence model")
 ```
 
