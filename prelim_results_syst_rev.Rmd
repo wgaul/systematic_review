@@ -127,6 +127,9 @@ get_boot_CI <- function(x, fun_to_use, n_perm) {
                     ci_obj = ci_o)
   to_return
 }
+
+# set number of permutations to perform for all bootstrap and randomization tests in this script
+n_perm <- 10000 
 ```
 
 
@@ -160,7 +163,7 @@ We considered studies estimating parameters and reporting some measure of uncert
 We determined the temporal extent covered by studies by determining the start and end dates of the study.  We determined the spatial extent of the study (in km^2) by recording the spatial extent reported in the study if a quantitative spatial extent was reported, or when spatial extents were reported only qualitatively, by using the spatial areas of political units (e.g. countries) or geographic regions reported in Google search results (www.google.com), Wikipedia (en.wikipedia.org), or from Eakins and Sharman (2010).
 
 ### Coding reliability
-We used Krippendorff's *alpha* [@Krippendorff2004] to evaluate the agreement between two readers for each of `r ncol(er)-6` variables that were coded by two people.  We calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package [@irr2012].  Krippendorff's alpha measures agreement between multiple coders while accounting for agrement by chance.  Rule-of-thumb guidelines suggest that Krippendorff's alpha values below 0.67 indicate poor agreement such that the data cannot be trusted for analysis; values between 0.67 and 0.8 suggest that the data are moderately reliable and may be suitable for only tentative interpretation, and values above 0.8 indicate that the data are reliable.  In order to estimate reliability using Krippendorff's alpha, there must be sufficient variation in the variable being coded.  The amount of data needed to estimate alpha for a categorical variable depends on the probability of the least common class for that variable. Krippendorff [@Krippendorff2004] provides guidelines about the number of coded cases needed to estimate the value of Krippendorff's alpha given the probability of the least common class for a variable.  We examined Krippendorff's alpha values only for variables for which the least common class had a probability of 0.14 or higher, which should allow us to identify with a confidence level of 0.1 those variables for which Krippendorff's alpha is above 0.667 [@Krippendorff2004].  We removed from subsequent statistical analyses all variables for which we did not have enough codings to estimate Krippendorff's alpha, and all variables with Krippendorff's alpha values below 0.67 from analyses. 
+We used Krippendorff's *alpha* [@Krippendorff2004] to evaluate the agreement between two readers for each of `r ncol(er)-6` variables that were coded by two people.  We calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package [@irr2012].  Krippendorff's alpha measures agreement between multiple coders while accounting for agrement by chance.  Rule-of-thumb guidelines suggest that Krippendorff's alpha values below 0.67 indicate poor agreement such that the data cannot be trusted for analysis; values between 0.67 and 0.8 suggest that the data are moderately reliable and may be suitable for only tentative interpretation, and values above 0.8 indicate that the data are reliable.  In order to estimate reliability using Krippendorff's alpha, there must be sufficient variation in the variable being coded.  The amount of data needed to estimate alpha for a categorical variable depends on the probability of the least common class for that variable. Krippendorff [@Krippendorff2004] provides guidelines about the number of coded cases needed to estimate the value of Krippendorff's alpha given the probability of the least common class for a variable.  We examined Krippendorff's alpha values only for variables for which the least common class had a probability of 0.14 or higher, which should allow us to identify with a confidence level of 0.1 those variables for which Krippendorff's alpha is above 0.667 [@Krippendorff2004].  We removed from subsequent statistical analyses all variables with Krippendorff's alpha values below 0.67.  We also did not perform statistical analyses on variables for which we did not have enough codings to estimate Krippendorff's alpha, but we did present descriptive results for these variables because the rare classes of these variables are of interest from a horizon-scanning perspective. 
 
 ```{r inter_coder_agreement_subset_dfs, warning=TRUE}
 ## ellie's results ----------------------------------------------------
@@ -236,19 +239,15 @@ We expected the temporal extent covered by studies to be shorter for studies usi
 
 We assessed the significance of data types for predicting temporal extent by using a likelihood ratio test to compare a model containing main effects (but no interactions) for all data types to an intercept only model.  We then assessed the significance of each individual data type by comparing the model with all main effects to a reduced model in which the variable representing the data type being tested had been removed.
 
+We assessed whether the mean spatial extent was different for studies using different types of data.  We assessed differences between means by determining whether 95% bias-corrected accelerated bootstrap confidence intervals (Efron & Tibshirani 1993) overlapped because the spatial extents in our sample did not seem to come from any known parametric distribution.  Bootstrap confidence intervals were calculated using the "boot" package in R (Canty & Ripley, 2015).
+
 ```{r prepare_spatial_extent_df}
 spat_extent <- select(
   wg, c(title, spatial.extent.of.study, 
-        # data.type...what.where.when.only, # alpha too low
         data.structure...sampling.effort.known, 
-        # data.type...abundance, # alpha too low
         data.structure...non.detection,
         data.structure...organized.data.collection.scheme, 
-        data.type...visit.specific.covariates, 
-        data.structure...multiple.datasets.integrated.for.analysis
-        # data.type...life.stage, # can't estimate alpha
-        # data.type...voucher.of.some.kind.necessary.for.analysis # can't estimate alpha
-        )) %>%
+        data.structure...multiple.datasets.integrated.for.analysis)) %>%
   gather(key = "data_type", value = "dt_value", 
          data.structure...sampling.effort.known:data.structure...multiple.datasets.integrated.for.analysis, 
          factor_key = T) %>%
@@ -256,7 +255,6 @@ spat_extent <- select(
   group_by(data_type)
 
 # make names prettier
-spat_extent$data_type <- gsub("data.type...", "", spat_extent$data_type)
 spat_extent$data_type <- gsub("data.structure...", "", spat_extent$data_type)
 
 # remove km^2 text
@@ -268,49 +266,59 @@ spat_extent$spatial.extent.of.study <- as.numeric(as.character(
 
 ```{r spat_extent_randomization}
 # make spatial extents numeric
-wg$log_spat_extent <- gsub(" km\\^2", "", wg$spatial.extent.of.study)
-wg$log_spat_extent <- log(as.numeric(as.character(wg$log_spat_extent)))
+wg$spat_extent <- gsub(" km\\^2", "", wg$spatial.extent.of.study)
+wg$spat_extent <- as.numeric(as.character(wg$spat_extent))
 
-median_fun <- function(x, indices) {
-  # ARGS: x - a vector of TRUE/FALSE values, for which the TRUEs will be counted
+mean_spat_extent_fun <- function(x, indices, var_name) {
+  # ARGS: x - a dataframe with a column of spatial extents and a column 
+  #           of T/F values for each data type
   #       indices - a vector of indices as required by boot
-  x_b <- x[indices]
-  median(as.numeric(x_b), na.rm = TRUE)
+  #       var_name - character string with the column name of the data type
+  #           for which the median spatial extent should be calculated
+  x_b <- x[indices, ]
+  mean(as.numeric(x_b$spat_extent[x_b[ , colnames(x_b) == var_name] == TRUE]), 
+         na.rm = TRUE)
 }
 
-spat_time_df <- select(wg, c(spat_extent, 
-        data.structure...sampling.effort.known, 
-        data.structure...non.detection,
-        data.structure...organized.data.collection.scheme, 
-        data.type...visit.specific.covariates, 
-        data.structure...multiple.datasets.integrated.for.analysis)) %>%
-  filter(!is.na(spat_extent))
-
-spat_time_boot_array <- array(NA, dim = c(nrow(spat_time_df), 
-                                          ncol(spat_time_df), 
-                                          n_perm))
-# draw bootstrap samples 
-stop("I should use boot function instead so I can caluclate bca easier.")
-for(i in 1:n_perm) {
-  spat_time_boot_array[, , i] <- as.array(as.matrix(
-    spat_time_df[sample(1:nrow(spat_time_df), 
-                        replace = TRUE), ]))
+# bootstrap ci function for getting median spatial extent
+call_boot_spat_extent <- function(x, fun_to_use, n_perm, var_name) {
+  b_o <- boot(x, fun_to_use, R = n_perm, stype = "i", var_name = var_name)
+  ci_o <- tryCatch(boot.ci(b_o, conf = 0.95, type = "bca"), 
+                   error = function(x) NA)
+  to_return <- list(obs = x, 
+                    boot_obj = b_o, 
+                    ci_obj = ci_o)
+  to_return
 }
+
+# make list of data types for which median spatial extent is desired
+data_types <- list(
+  sampling.effort = "data.structure...sampling.effort.known", 
+  non.detection = "data.structure...non.detection",
+  organized.scheme = "data.structure...organized.data.collection.scheme", 
+  multiple.datasets = "data.structure...multiple.datasets.integrated.for.analysis")
+
+spat_ext_data_type_CIs <- lapply(
+  data_types, 
+  FUN = function(dt, wg, n_perm) {
+    call_boot_spat_extent(x = wg, fun_to_use = mean_spat_extent_fun, 
+                          n_perm = n_perm, var_name = dt)
+  }, wg = wg, n_perm = n_perm)
 ```
 
 ```{r prepare_temporal_extent_df}
+# only use data "structures" (not "data types") as most "data type" variables
+# could not have Krippendorff's alpha estimated.  "Data structure" and "data
+# type" variables are not very comparable in the same analysis because "data
+# structure" was asking whether that data type was available, whether or not it
+# was used, while "data type" was asking whether the data type was actually used
+# for the analysis.  
 temp_extent <- select(
   wg, c(title, temp_extent, 
-        # data.type...what.where.when.only, # alpha too low
         data.structure...sampling.effort.known, 
-        # data.type...abundance, # alpha too low
         data.structure...non.detection,
         data.structure...organized.data.collection.scheme, 
-        data.type...visit.specific.covariates, 
-        data.structure...multiple.datasets.integrated.for.analysis
-        # data.type...life.stage, # can't estimate alpha
-        # data.type...voucher.of.some.kind.necessary.for.analysis # can't estimate alpha
-        )) %>%
+        data.structure...multiple.datasets.integrated.for.analysis)) %>%
   gather(key = "data_type", value = "dt_value", 
          data.structure...sampling.effort.known:data.structure...multiple.datasets.integrated.for.analysis, 
          factor_key = T) %>%
@@ -318,20 +326,16 @@ temp_extent <- select(
   group_by(data_type)
 
 # make names prettier
-temp_extent$data_type <- gsub("data.type...", "", temp_extent$data_type)
 temp_extent$data_type <- gsub("data.structure...", "", temp_extent$data_type)
 
 temp_extent$data_type <- factor(as.character(temp_extent$data_type), 
-                            levels = c("sampling.effort.known",
-                                       "non.detection", 
-                                       "organized.data.collection.scheme", 
-                                       "visit.specific.covariates", 
-                                       "multiple.datasets.integrated.for.analysis"), 
-                            labels = c("sampling effort known",
-                                       "non detection", 
-                                       "organized scheme", 
-                                       "visit specific covariates", 
-                                       "multiple datasets"))
+                                levels = c("sampling.effort.known",
+                                           "non.detection", 
+                                           "organized.data.collection.scheme",                                        "multiple.datasets.integrated.for.analysis"), 
+                                labels = c("sampling effort known",
+                                           "non detection", 
+                                           "organized scheme", 
+                                           "multiple datasets"))
 ```
 
 
@@ -345,7 +349,6 @@ time_lm_full <- lm(log_years ~ 1 +
                      data.structure...sampling.effort.known +
                      data.structure...non.detection + 
                      data.structure...organized.data.collection.scheme + 
-                     data.type...visit.specific.covariates + 
                      data.structure...multiple.datasets.integrated.for.analysis,
                    data = wg[!is.na(wg$log_years), ], 
                    na.action = na.exclude, y = TRUE) 
@@ -375,47 +378,35 @@ m_time_full_anova <- anova(m0, time_lm_full)
 m_no_effort <- lm(log_years ~ 1 + 
                      data.structure...non.detection + 
                      data.structure...organized.data.collection.scheme + 
-                     data.type...visit.specific.covariates + 
                      data.structure...multiple.datasets.integrated.for.analysis,
                   data = wg[!is.na(wg$log_years), ])
 m_no_nonDet <- lm(log_years ~ 1 + 
                      data.structure...sampling.effort.known + 
                      data.structure...organized.data.collection.scheme + 
-                     data.type...visit.specific.covariates + 
                      data.structure...multiple.datasets.integrated.for.analysis,
                   data = wg[!is.na(wg$log_years), ])
 m_no_scheme <- lm(log_years ~ 1 + 
                      data.structure...sampling.effort.known + 
                      data.structure...non.detection + 
-                     data.type...visit.specific.covariates + 
                      data.structure...multiple.datasets.integrated.for.analysis,
                   data = wg[!is.na(wg$log_years), ])
-m_no_visitCovs <- lm(log_years ~ 1 + 
-                     data.structure...sampling.effort.known + 
-                     data.structure...non.detection + 
-                     data.structure...organized.data.collection.scheme + 
-                     data.structure...multiple.datasets.integrated.for.analysis,
-                     data = wg[!is.na(wg$log_years), ])
 m_no_multData <- lm(log_years ~ 1 + 
                      data.structure...sampling.effort.known + 
                      data.structure...non.detection + 
-                     data.structure...organized.data.collection.scheme + 
-                     data.type...visit.specific.covariates,
+                     data.structure...organized.data.collection.scheme,
                     data = wg[!is.na(wg$log_years), ])
 
 indiv_mods_time <- list("m_no_effort" = m_no_effort, "m_no_nonDet" = m_no_nonDet, 
                         "m_no_scheme" = m_no_scheme, 
-                        "m_no_visitCovs" = m_no_visitCovs, 
                         "m_no_multData" = m_no_multData)
 ```
 
 ```{r temp_extent_predictions}
 temp_extent_preds <- data.frame(
-  "data.structure...sampling.effort.known" = c(T,F,F,F,F), 
-  "data.structure...non.detection" = c(F, T, F, F, F), 
-  "data.structure...organized.data.collection.scheme" = c(F, F, T, F, F), 
-  "data.type...visit.specific.covariates" = c(F,F,F,T,F), 
-  "data.structure...multiple.datasets.integrated.for.analysis" = c(F,F,F,F,T))
+  "data.structure...sampling.effort.known" = c(T,F,F,F), 
+  "data.structure...non.detection" = c(F, T, F, F), 
+  "data.structure...organized.data.collection.scheme" = c(F, F, T, F), 
+  "data.structure...multiple.datasets.integrated.for.analysis" = c(F,F,F,T))
 temp_extent_preds$pred_log_years <- predict(time_lm_full, 
                                             newdata = temp_extent_preds)
 temp_extent_preds$pred_log_y_lowerCI <- predict(time_lm_full, 
@@ -558,7 +549,6 @@ dt_pd_df <- select(wg, data.structure...organized.data.collection.scheme,
                    data.structure...sampling.effort.known,
                    data.structure...non.detection,
                    data.structure...multiple.datasets.integrated.for.analysis,
-                   data.type...visit.specific.covariates, 
                    response.variable...distribution,
                    response.variable...phenology, 
                    response.variable...abundance, 
@@ -567,7 +557,7 @@ dt_pd_df <- select(wg, data.structure...organized.data.collection.scheme,
                    other_focus) %>%
   gather(key = "data_type", value = "dt_val", 
          data.structure...organized.data.collection.scheme:
-           data.type...visit.specific.covariates) %>%
+           data.structure...multiple.datasets.integrated.for.analysis) %>%
   filter(dt_val == TRUE) %>%
   gather(key = "study_focus", value = "focus_val", 
          response.variable...distribution:other_focus) %>%
@@ -578,7 +568,6 @@ dt_pd_df <- select(wg, data.structure...organized.data.collection.scheme,
 # clean character strings
 dt_pd_df$study_focus <- gsub("response.variable...", "", dt_pd_df$study_focus)
 dt_pd_df$data_type <- gsub("data.structure...", "", dt_pd_df$data_type)
-dt_pd_df$data_type <- gsub("data.type...", "", dt_pd_df$data_type)
 
 # spread for easy visualisation of 2-way table
 dt_pd_df_wide <- spread(dt_pd_df, key = study_focus, value = n)
@@ -619,7 +608,7 @@ dt_pd_df$resids <- residuals(dt_pd_mod_ind, type = "deviance")
 
 ## Analysis approach & data type
 
-To investigate whether the data type affects the analysis approach, we used random permutations to test the null hypothesis of no difference in the types of data used with different analysis approaches.  We identified the analysis approach of each study as inference, prediction, or descriptive analyses only.  The data type categories we tested based on *a-priori* expectations of importance were: sampling effort; non-detection; organized monitoring scheme; visit-specific covariates; and multiple datasets integrated for analysis.  In the ranom permutation test, we broke the association between data type and analysis approach by randomly shuffling the analysis approach results.  We preserved associations between analysis approaches by preserving the rows (and therefore associations) within the analysis approach variables, and we preserved associations between data types by preserving the rows (and therefore associations) within the data type variables (Fig. S??).  We performed 10,000 permutations.  To test for an overall interaction between data type and analysis approach, we calculated a chi-squared test statistic for each permuted dataset and for the observed dataset, and calculated the significance level as the proportion of chi-squared statistic values from the randomized datasets that were higher than the chi-squared statistic for the observed dataset.  To determine which combinations of data type and analysis approach were found more or less often than expected by chance, we counted the number of studies using each combination of analysis approach and data type for the permuted datasets and for the observed data.  We calculated residuals for each cell of the contingency table by subtracting the median count for each cell in the permuted data contingency tables from the observed cell count for the same cells. We calculated permutation significance levels for each cell by finding the proportion of the cell counts from the permuted datasets that were more extreme than the observed count for each cell.  Small permutation significance levels for a cell indicate that the observed number of studies in that cell was unlikely if there was no relationship between that data type and that analysis approach.
+To investigate whether the data type affects the analysis approach, we used random permutations to test the null hypothesis of no difference in the types of data used with different analysis approaches.  We identified the analysis approach of each study as inference, prediction, or descriptive analyses only.  The data type categories we tested based on *a-priori* expectations of importance were: sampling effort; non-detection; organized monitoring scheme; and multiple datasets integrated for analysis.  In the ranom permutation test, we broke the association between data type and analysis approach by randomly shuffling the analysis approach results.  We preserved associations between analysis approaches by preserving the rows (and therefore associations) within the analysis approach variables, and we preserved associations between data types by preserving the rows (and therefore associations) within the data type variables (Fig. S??).  We performed 10,000 permutations.  To test for an overall interaction between data type and analysis approach, we calculated a chi-squared test statistic for each permuted dataset and for the observed dataset, and calculated the significance level as the proportion of chi-squared statistic values from the randomized datasets that were higher than the chi-squared statistic for the observed dataset.  To determine which combinations of data type and analysis approach were found more or less often than expected by chance, we counted the number of studies using each combination of analysis approach and data type for the permuted datasets and for the observed data.  We calculated residuals for each cell of the contingency table by subtracting the median count for each cell in the permuted data contingency tables from the observed cell count for the same cells. We calculated permutation significance levels for each cell by finding the proportion of the cell counts from the permuted datasets that were more extreme than the observed count for each cell.  Small permutation significance levels for a cell indicate that the observed number of studies in that cell was unlikely if there was no relationship between that data type and that analysis approach.
 
 
 ```{r data_type_analysis_approach_df}
@@ -627,13 +616,12 @@ dt_an_df <- select(wg, data.structure...organized.data.collection.scheme,
                    data.structure...sampling.effort.known,
                    data.structure...non.detection,
                    data.structure...multiple.datasets.integrated.for.analysis,
-                   data.type...visit.specific.covariates, 
                    results.type...inference, 
                    results.type...prediction, 
                    results.type...descriptive.only) %>%
   gather(key = "data_type", value = "dt_val", 
          data.structure...organized.data.collection.scheme:
-           data.type...visit.specific.covariates) %>%
+           data.structure...multiple.datasets.integrated.for.analysis) %>%
   filter(dt_val == TRUE) %>%
   gather(key = "analysis_approach", value = "an_val", results.type...inference,
          results.type...prediction, results.type...descriptive.only) %>%
@@ -643,7 +631,6 @@ dt_an_df <- select(wg, data.structure...organized.data.collection.scheme,
 
 # clean character strings
 dt_an_df$data_type <- gsub("data.structure...", "", dt_an_df$data_type)
-dt_an_df$data_type <- gsub("data.type...", "", dt_an_df$data_type)
 dt_an_df$analysis_approach <- gsub("results.type...", "", dt_an_df$analysis_approach)
 
 # spread for easy visualisation of 2-way table
@@ -669,24 +656,23 @@ dt_an_df$resids <- residuals(dt_an_mod_ind, type = "deviance")
 # randomly re-shuffle analysis strategies (but keep them associated with each
 # other in the same way), and keep data types associated with each other.
 # This will give H_0 counts for each cell.
-n_perm <- 10000 # number of permutations to perform
-rand_array <- array(NA, c(5, 3, n_perm))
+rand_array <- array(NA, c(4, 3, n_perm))
 
 for(i in 1:n_perm-1) {
   ind <- sample(1:nrow(wg), replace = F)
   # make data frame of data types
   df_dat <- wg[, grepl(
-    ".*multiple.dat.*|.*non.det.*|.*organized.*|.*sampling.eff.*|.*visit.speci.*", colnames(wg))]
+    ".*multiple.dat.*|.*non.det.*|.*organized.*|.*sampling.eff.*", colnames(wg))]
   # make data frame of analysis methods
   df_an <- wg[, grepl(".*descriptive.on.*|.*inferen.*|.prediction.*", 
                       colnames(wg))]
   # permute analysis methods
   df_an <- df_an[ind, ]
-  df <- cbind(df_dat, df_an)
+  dat <- cbind(df_dat, df_an)
   
-  df <- gather(df, key = "data_type", value = "dt_val", 
+  dat <- gather(dat, key = "data_type", value = "dt_val", 
                data.structure...organized.data.collection.scheme:
-                 data.type...visit.specific.covariates) %>%
+                 data.structure...multiple.datasets.integrated.for.analysis) %>%
     filter(dt_val == TRUE) %>%
     gather(key = "analysis_approach", value = "an_val", results.type...inference,
            results.type...prediction, results.type...descriptive.only) %>%
@@ -695,14 +681,13 @@ for(i in 1:n_perm-1) {
     complete(analysis_approach, data_type, fill = list(n = 0))
   
   # clean character strings
-  df$data_type <- gsub("data.structure...", "", df$data_type)
-  df$data_type <- gsub("data.type...", "", df$data_type)
-  df$analysis_approach <- gsub("results.type...", "", df$analysis_approach)
+  dat$data_type <- gsub("data.structure...", "", dat$data_type)
+  dat$analysis_approach <- gsub("results.type...", "", dat$analysis_approach)
   
   # spread for easy visualisation of 2-way table
-  df <- spread(df, key = analysis_approach, value = n)
-  df$data_type <- gsub("\\.", " ", df$data_type) 
-  rand_array[, , i] <- as.matrix(df[, 2:4])
+  dat <- spread(dat, key = analysis_approach, value = n)
+  dat$data_type <- gsub("\\.", " ", dat$data_type) 
+  rand_array[, , i] <- as.matrix(dat[, 2:4])
 }
 
 # add observed values as one permutation
@@ -754,7 +739,6 @@ for(i in 1:nrow(perm_p_vals)) {
   }
 }
 ```
-
 
 
 ## Authors and Data Providing Institutions
@@ -850,7 +834,7 @@ temp_extent_cap <- figs(name = "temp_extent_cap",
 
 ```{r spat_extent_cap}
 spat_extent_cap <- figs(name = "spat_extent_cap", 
-                        "The spatial extent covered by studies was significantly different for studies using different types biological records data.  This plot shows the observed temporal extent of studies. Note the log-transformed y-axis.")
+                        "The spatial extent covered by studies was not significantly different for studies using different types biological records data.  Black cirles show the mean spatial extent of studies using each type of data and lines show 95% bootstrap CI around the mean.")
 ```
 
 ```{r print_time_individual_predictor_significance}
@@ -862,7 +846,11 @@ if(diag) {
 }
 ```
 
-The temporal extent of studies differed significantly for studies using different types of biological records data (anova of a linear regression model using data type to predict the natural log of the temporal extent of studies (in years) compared to a model that did not use data type $F_{`r format(round(m_time_full_anova[2, "Df"], digits = 2), scientific = F)`, `r format(round(m_time_full_anova[2, "Res.Df"], digits = 2), scientific = F)`}$ = `r format(round(m_time_full_anova[, "F"][2], digits = 2), scientific = F)`, *p* `r if(m_time_full_anova[6][[1]][2] >= 0.0001) {format(round(m_time_full_anova[6][[1]][2], digits = 4), scientific = T)} else "< 0.0001"`, Adjusted $R^2$ = `r format(round(time_summary$adj.r.squared, digits = 2), scientific = F)`, `r figs("temp_extent_cap", display = "cite")`).  Studies that used multiple different biological records datasets covered significantly longer temporal extents than studies that did not use multiple different datasets after accounting for other data types ($F_{1, 195}$ = 39.4, *p* < 0.0001, Fig. 1).  The expected temporal extent covered by a study that used multiple biological records datasets was `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[6])), digits = 1)` years (95% CI: [`r round(temp_extent_preds$pred_years_lowerCI[5], digits = 1)`, `r round(temp_extent_preds$pred_years_upperCI[5], digits = 1)`]) when the data did not have any of the other data types we recorded.  Studies that used visit-specific covariates covered significantly shorter temporal extents than studies that did not, after accounting for other data types ($F_{1,195}$ = 25.8, *p* < 0.0001).  The expected temporal extent covered by a study that used visit-specific covariates was `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[5])), digits = 1)` years (95% CI: [`r round(temp_extent_preds$pred_years_lowerCI[4], digits = 1)`, `r round(temp_extent_preds$pred_years_upperCI[4], digits = 1)`]) when the data did not have any of the other data types we recorded. We did not detect a significant effect of sampling effort data ($F_{1,195}$ = 0.2, *p* = 0.65), non-detection data ($F_{1,195}$ = 2.4, *p* = 0.13), or thedata coming from an organized monitoring scheme ($F_{1,195}$ = 3.6, *p* = 0.06) on the temporal extent of studies.  However, pairs plots and variance inflation factors show that the "sampling effort" and "non-detection" data types are strongly correlated with each other, and both are correlated less strongly with the "organized monitoring scheme" data type (Fig. S?, Tab. S1), suggesting that we may have been unable to dis-entangle the effects of each of these correlated variables with our current sample size (Fox 2016, p. 341-2).  We removed from the analysis `r length(which(is.na(wg$temp_extent)))` studies for which the coder could not determine the temporal extent.
+The temporal extent of studies differed significantly for studies using different types of biological records data (anova of a linear regression model using data type to predict the natural log of the temporal extent of studies (in years) compared to a model that did not use data type $F_{`r format(round(m_time_full_anova[2, "Df"], digits = 2), scientific = F)`, `r format(round(m_time_full_anova[2, "Res.Df"], digits = 2), scientific = F)`}$ = `r format(round(m_time_full_anova[, "F"][2], digits = 2), scientific = F)`, *p* `r if(m_time_full_anova[6][[1]][2] >= 0.0001) {format(round(m_time_full_anova[6][[1]][2], digits = 4), scientific = T)} else "< 0.0001"`, Adjusted $R^2$ = `r format(round(time_summary$adj.r.squared, digits = 2), scientific = F)`, Fig. 1).  Studies that used multiple different biological records datasets covered significantly longer temporal extents than studies that did not use multiple different datasets after accounting for other data types ($F_{1, 196}$ = `r round(anova(indiv_mods_time$m_no_multData, time_lm_full)$F[2], digits = 2)`, *p* < 0.0001, Fig. 1).  Studies that used data from an organized monitoring scheme covered significantly shorter temporal extents than studies that did not use data from an organized monitoring scheme after accounting for other data types ($F_{1, 196}$ = `r round(anova(indiv_mods_time$m_no_scheme, time_lm_full)$F[2], digits = 2)`, *p* = `r round(anova(indiv_mods_time$m_no_scheme, time_lm_full)$'Pr(>F)'[2], digits = 2)`). The expected temporal extent covered by a study that used multiple biological records datasets was `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[5])), digits = 1)` years (95% CI: [`r round(temp_extent_preds$pred_years_lowerCI[4], digits = 1)`, `r round(temp_extent_preds$pred_years_upperCI[4], digits = 1)`]) when the data did not have any of the other data types we recorded.  The expected temporal extent of a study that used data from an organized monitoring scheme was `r round(exp(time_lm_full$coefficients[1] + time_lm_full$coefficients[4]), digits = 1)` years (95% CI: [`r round(temp_extent_preds$pred_years_lowerCI[3], digits = 1)`, `r round(temp_extent_preds$pred_years_upperCI[3], digits = 1)`]) when the data did not have any of the other data types we recorded.
+
+We did not detect a significant effect of sampling effort data ($F_{1,196}$ = `r round(anova(indiv_mods_time$m_no_effort, time_lm_full)$F[2], digits = 2)`, *p* = `r round(anova(indiv_mods_time$m_no_effort, time_lm_full)$'Pr(>F)'[2], digits = 2)`) or non-detection data ($F_{1,196}$ = `r round(anova(indiv_mods_time$m_no_nonDet, time_lm_full)$F[2], digits = 2)`, *p* = `r round(anova(indiv_mods_time$m_no_nonDet, time_lm_full)$'Pr(>F)'[2], digits = 2)`) on the temporal extent of studies.  However, pairs plots and variance inflation factors show that the "sampling effort" and "non-detection" data types are strongly correlated with each other, and both are correlated less strongly with the "organized monitoring scheme" data type (Fig. S?, Tab. S1), suggesting that we may have been unable to dis-entangle the effects of each of these correlated variables with our current sample size (Fox 2016, p. 341-2).  We removed from the analysis `r length(which(is.na(wg$temp_extent)))` studies for which the coder could not determine the temporal extent.
+
+The mean spatial extent was not different for studies using different types of data based on overlapping 95% bootstrap confidence intervals (Fig. 2).
 
 ```{r time_extent_results_plot, fig.cap=temp_extent_cap}
 temp_extent_plot <- ggplot(data = temp_extent, 
@@ -871,12 +859,10 @@ temp_extent_plot <- ggplot(data = temp_extent,
                                           levels = c("sampling effort known", 
                                                      "non detection", 
                                                      "organized scheme", 
-                                                     "visit specific covariates", 
                                                      "multiple datasets"), 
                                           labels = c("sampling effort\nknown", 
                                                      "non-detection", 
-                                                     "organized\nscheme", 
-                                                     "visit-specific\ncovariates", 
+                                                     "organized\nscheme",  
                                                      "multiple\ndatasets")))) + 
   geom_boxplot(varwidth = T) +
   scale_y_log10() + 
@@ -898,6 +884,7 @@ print(temp_extent_plot)
 ```{r time_extent_results_plot_for_presentation_slide, eval = F, include = F}
 ## This code is to be run in the console for making plot to be exported as jpg for slides
 ## TODO: need to hand-annotate R2 and p-value in plot
+# summary(time_lm_full)
 t_size = 22 # plot text size
 ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + #, color = sig_different_from_WhWhWh
   geom_boxplot(varwidth = T) +
@@ -906,7 +893,7 @@ ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + #, color = sig
   ylab("Temporal Extent of Study (years)") + 
   annotate("text", x = 3, y = 2000,
            label = "paste(\"Adjusted \",
-                 italic(R) ^ 2, \" = 0.39\")",
+                 italic(R) ^ 2, \" = 0.28\")",
            parse = TRUE,
            size = t_size - 15) +
   annotate("text", x = 3, y = 5000, 
@@ -920,29 +907,52 @@ ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + #, color = sig
         text = element_text(size = t_size)) 
 ```
 
-```{r spat_extent_results_plot, fig.cap=spat_extent_cap}
-spat_extent_plot <- ggplot(
-  data = spat_extent, 
-  aes(y = spatial.extent.of.study, 
-      x = factor(data_type, 
-                 levels = c("sampling.effort.known", 
-                            "non.detection", 
-                            "organized.data.collection.scheme", 
-                            "visit.specific.covariates", 
-                            "multiple.datasets.integrated.for.analysis"), 
-                 labels = c("sampling effort\nknown", 
-                            "non-detection", 
-                            "organized\nscheme", 
-                            "visit-specific\ncovariates", 
-                            "multiple\ndatasets")))) + 
-  geom_boxplot(varwidth = T) +
-  scale_y_log10() + 
-  xlab("Data Type") + 
-  ylab("Spatial Extent of Study (km^2)") + 
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = 35, vjust = 0.9, hjust = 1)) 
-print(spat_extent_plot)
+```{r spat_extent_bootCI_plot, fig.cap=spat_extent_cap}
+spat_boot_df <- data.frame(matrix(nrow = length(data_types), 
+                                  ncol = 4))
+colnames(spat_boot_df) <- c("data_type", "mean", 
+                             "l_95ci", "u_95ci")
+
+# fill response variable counts data frame using the list of bootstrap results
+for(i in 1:length(data_types)) {
+  spat_boot_df[i, "data_type"] <- names(data_types)[i]
+  spat_boot_df[i, "mean"] <- spat_ext_data_type_CIs[[i]]$ci_obj$t0
+  spat_boot_df[i, "l_95ci"] <- spat_ext_data_type_CIs[[i]]$ci_obj$bca[4]
+  spat_boot_df[i, "u_95ci"] <- spat_ext_data_type_CIs[[i]]$ci_obj$bca[5]
+}
+
+# plot mean spatial extent of studies using each data type, with 95% CIs
+print(ggplot(data = spat_boot_df, 
+             aes(x = factor(data_type, 
+                            levels = c("sampling.effort",
+                                       "non.detection", 
+                                       "organized.scheme",
+                                       "multiple.datasets"), 
+                            labels = c("sampling effort",
+                                       "non-detection", 
+                                       "organized scheme",
+                                       "multiple datasets")), 
+                 y = mean)) + 
+        geom_point() + 
+        geom_linerange(aes(x = factor(data_type, 
+                            levels = c("sampling.effort",
+                                       "non.detection", 
+                                       "organized.scheme",
+                                       "multiple.datasets"), 
+                            labels = c("sampling effort",
+                                       "non-detection", 
+                                       "organized scheme",
+                                       "multiple datasets")), 
+                           ymin = l_95ci, 
+                           ymax = u_95ci)) + 
+        xlab("") + 
+        ylab("Mean spatial extent\nof Studies (km^2)") + 
+        theme_bw() + 
+        theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1), 
+              strip.background = element_blank(), strip.placement = "outside"))
+      # theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)))
 ```
+
 
 
 ## What is the most popular study question paradigm?
@@ -1091,7 +1101,7 @@ print(ggplot(data = meth_df,
 
 ## What data types are used for each type of ecological study question?
 
-The use of data types differed significantly between study questions (*p* = `r round(dt_pd_interaction_test$"Pr(>Chi)"[2], 2)` for chi-squared likelihood ratio test of a null hypothesis that a Poisson regression independence model with main effects for data type and ecological study focus (but no interaction term) model fit the data as well as a saturated model.  In the independence model, two cells had residuals with an absolute value bigger than two (Fig. 4) - the cell for the number of studies investigating abundance using multiple biological datasets (residual = -3.7), and the cell for the number of studies investigating species distributions using multiple biological records datasets (residual = 3).  Residuals were mostly positive for combinations of structured data types and study questions about abundance, and negative for combinations of structured data types and species distribution study questions (Fig. 4).  This suggests that abundance studies use structured data types more often than would be expected if data type and study question were not related, and distribution studies use structured data types less often than would be expected if study question and data type were not related. 
+The use of data types differed significantly between study questions (*p* = `r round(dt_pd_interaction_test$"Pr(>Chi)"[2], 3)` for a chi-squared likelihood ratio test of a null hypothesis that a Poisson regression independence model with main effects for data type and ecological study focus (but no interaction term) model fit the data as well as a saturated model.  In the independence model, two cells had deviance residuals with an absolute value bigger than two (Fig. 4) - the cell for the number of studies investigating abundance using multiple biological datasets (residual = -3.5), and the cell for the number of studies investigating species distributions using multiple biological records datasets (residual = 2.8).  Residuals were generally positive for combinations of structured data types and study questions about abundance, and negative for combinations of structured data types and species distribution study questions (Fig. 4).  This suggests that abundance studies use structured data types more often than would be expected if data type and study question were not related, and distribution studies use structured data types less often than would be expected if study question and data type were not related. 
 
 ```{r data_type_study_question_cap}
 data_type_study_question_cap <- figs(name = "data_type_study_question_cap", 
@@ -1189,12 +1199,10 @@ ggplot(data = perm_resids_long,
                       levels = c("multiple datasets integrated for analysis", 
                                  "sampling effort known", 
                                  "non detection",
-                                 "visit specific covariates",
                                  "organized data collection scheme"), 
                       labels = c("multiple\ndatasets", 
                                  "sampling effort", 
                                  "non-detection", 
-                                 "visit-specific\ncovariates",
                                  "organized\nscheme")))) + 
   geom_tile(aes(fill = residual)) + 
   xlab("Analysis Approach") + 
@@ -1218,6 +1226,26 @@ ggplot(data = perm_resids_long,
 ## Authors and Data Providing Institutions
 
 Coder agreement was low when determining whether a study had an author associated with the data providing institution (Krippendorff's alpha = 0.58).  Therefore we did not analyze the association between authors and data providers statistically.  In the Discussion we addressed some possible reasons that this determination was difficult for the coders to agree on.  
+
+## Proximate data sources
+
+## Institutions of first and last authors
+
+## Spatial sampling bias corrected for
+
+## Studies focusing on alien species
+
+## Cross validation
+
+## Rare data types
+
+## Country of study
+
+## Uncommon uses of biological records
+[biological records as a predictor variable or in a facilitative role]
+
+## Taxonomic groups studied
+
 
 
 # Discussion
@@ -1757,26 +1785,22 @@ ggplot(dt_pd_df,
          levels = c("sampling.effort.known", 
                     "non.detection", 
                     "organized.data.collection.scheme", 
-                    "multiple.datasets.integrated.for.analysis",
-                    "visit.specific.covariates"), 
+                    "multiple.datasets.integrated.for.analysis"), 
          labels = c("sampling effort", 
                     "non detection", 
                     "organized scheme", 
-                    "multiple datasets", 
-                    "visit-specific covariates")), 
+                    "multiple datasets")), 
          y = n, 
          fill = factor(
            data_type,  
            levels = c("sampling.effort.known", 
                       "non.detection", 
                       "organized.data.collection.scheme",
-                      "multiple.datasets.integrated.for.analysis",
-                      "visit.specific.covariates"), 
+                      "multiple.datasets.integrated.for.analysis"), 
            labels = c("sampling effort", 
                       "non detection", 
                       "organized scheme", 
-                      "multiple datasets", 
-                      "visit-specific covariates")))) + 
+                      "multiple datasets")))) + 
   geom_bar(position = position_dodge(preserve = "single"), stat = "identity") + 
   facet_wrap( ~ factor(study_focus, levels = c("abundance", 
                                                "distribution",
