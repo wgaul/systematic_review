@@ -230,12 +230,7 @@ kripp_all_dbl_coded <- lapply(dbl_coded_list, FUN = do_kripp.alpha,
 
 ## Temporal and spatial extent of studies
 
-```{r correlation_cap}
-correlation_cap <- figs(name = "correlation_cap", 
-                        "Correlation of the binary data type predictor variables.")
-```
-
-We expected the temporal extent covered by studies to be shorter for studies using more structured or "rich" data types compared to studies using less structured data.  We tested whether the temporal extent of studies differed based on the data type by fitting a linear regression with natural-log transformed time (in years) as the response variable.  We used five binary predictor variables indicating whether the study used at least some data that had the following characteristics or information: known sampling effort; explicit non-detection data; data came from an organized monitoring scheme; visit-specific covariates; multiple different biological records datasets integrated for analyses.  Although some of the predictor variables may be correlated (`r figs("correlation_cap", display = "cite")`), we kept all variables in the regression model because we were interested in the effect of each additional type of information *after accounting for other information types*.  For example, we were interested in the additional effect of having non-detection data after adjusting for whether the data came from an organized monitoring scheme.  We assessed collinearity of predictor variables using variance inflation factors in order to determine if collinearity is likely to cause additional uncertainty in the the coefficient estimates for the effect of each data type (Fox 2016). Because the data types are not mutually exclusive, each data type category is treated as an individual binary variable, rather than treating each data type as a factor level of a categorical variable.  
+We expected the temporal extent covered by studies to be shorter for studies using more structured or "rich" data types compared to studies using less structured data.  We tested whether the temporal extent of studies differed based on the data type by fitting a linear regression with natural-log transformed time (in years) as the response variable.  We used five binary predictor variables indicating whether the study used at least some data that had the following characteristics or information: known sampling effort; explicit non-detection data; data came from an organized monitoring scheme; visit-specific covariates; multiple different biological records datasets integrated for analyses.  Although some of the predictor variables may be correlated (Fig. S??), we kept all variables in the regression model because we were interested in the effect of each additional type of information *after accounting for other information types*.  For example, we were interested in the additional effect of having non-detection data after adjusting for whether the data came from an organized monitoring scheme.  We assessed collinearity of predictor variables using variance inflation factors in order to determine if collinearity is likely to cause additional uncertainty in the the coefficient estimates for the effect of each data type (Fox 2016). Because the data types are not mutually exclusive, each data type category is treated as an individual binary variable, rather than treating each data type as a factor level of a categorical variable.  
 
 We assessed the significance of data types for predicting temporal extent by using a likelihood ratio test to compare a model containing main effects (but no interactions) for all data types to an intercept only model.  We then assessed the significance of each individual data type by comparing the model with all main effects to a reduced model in which the variable representing the data type being tested had been removed.
 
@@ -746,11 +741,6 @@ for(i in 1:nrow(perm_p_vals)) {
 To answer the question of who chooses to use biological records data, we used bootstrap confidence intervals to describe the proportion of studies that have an author associated with the institution that provided the data. 
 
 # Results
-
-```{r kripp_sum_cap}
-kripp_sum_cap <- figs(name = "kripp_sum_cap", 
-                      paste0("Reader agreement measured using Krippendorff's alpha, for variables for which the sample size is large enough to estimate Krippendorff's alpha.  Dashed and dotted horizontal lines show Krippendorff's alpha values of 0.8 and 0.67, which are recommended preferred and minimum values at which variables can be relied upon for analysis."))
-```
 
 ## Search results 
 
@@ -1299,6 +1289,10 @@ $H2_a$: The data types "non-detection", "survey effort known", "abundance", and 
 ## Model assumption checking
 
 ### Coding Reliability
+```{r kripp_sum_cap}
+kripp_sum_cap <- figs(name = "kripp_sum_cap", 
+                      paste0("Reader agreement measured using Krippendorff's alpha, for variables for which the sample size is large enough to estimate Krippendorff's alpha.  Dashed and dotted horizontal lines show Krippendorff's alpha values of 0.8 and 0.67, which are recommended preferred and minimum values at which variables can be relied upon for analysis."))
+```
 
 ```{r plot_kripp_for_adequate_sample_size, fig.cap=kripp_sum_cap}
 # plot krippendorf's alpha values for only variables that have adequate sample size
@@ -1348,6 +1342,12 @@ kable(m_time_full_anova)
 ```
 
 The following plots are for assessing assumptions for a linear regression of the form `log(number of years) ~ data type`.  Natural-log transformation of the number of years that studies cover improved normality (`r figs(name = "temp_norm_box_cap", display = "cite")`, `r figs(name = "temp_norm_ridge_cap", display = "cite")`).  
+
+
+```{r correlation_cap}
+correlation_cap <- figs(name = "correlation_cap", 
+                        "Correlation of the binary data type predictor variables.")
+```
 
 ```{r time_assess_correlation_predictors, fig.height=8, fig.width = 8, fig.cap=correlation_cap}
 ### assess correlation between data type predictors ----------------------
