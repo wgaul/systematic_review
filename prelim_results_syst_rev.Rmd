@@ -1218,12 +1218,46 @@ ggplot(data = perm_resids_long,
 Coder agreement was low when determining whether a study had an author associated with the data providing institution (Krippendorff's alpha = 0.58).  Therefore we did not analyze the association between authors and data providers statistically.  In the Discussion we addressed some possible reasons that this determination was difficult for the coders to agree on.  
 
 ## Proximate data sources
+```{r, prox_src_tab_cap}
+prox_src_tab_cap <- tabs(name = "prox_src_tab_cap", 
+                                   "Proximate data providers used by five or more studies in this review.")
+```
+
+```{r proximate_data_sources}
+# extract proximate data sources
+prox_src <- wg$proximate.data.source
+prox_src <- str_split(prox_src, ";", simplify = TRUE)
+
+prox_src_df <- data.frame(table(prox_src)[order(table(prox_src), decreasing = T)])
+rownames(prox_src_df) <- NULL 
+prox_src_df <- prox_src_df[which(as.character(prox_src_df$prox_src) != "" & 
+                                   as.character(prox_src_df$prox_src) != "many" & 
+                                   as.character(prox_src_df$prox_src) != "others"), ]
+
+# how many studies used data provided one of the top 10 proximate data providers?
+used_top_10_providers <- grepl(paste(prox_src_df$prox_src[1:10], collapse = "|"), 
+                               wg$proximate.data.source)
+# table(used_top_10_providers)
+```
+
+Studies in this review obtained their data from at least `r nrow(prox_src_df)` different proximate data sources.  The number of studies using each data source was strongly right-skewed, with many data sources that were used by only one study, and relatively few data sources that were used by many studies (`r tabs("prox_src_tab_cap", display = "cite")`, Tab. S??).  Among the most frequently used data sources were both national and international data aggregators (e.g. the UK-focused National Biodiversity Network, the Irish National Biodiversity Data Centre, and the Global Biodiversity Information Facility) and individual organizations that manage both the initial collection and the subsequent presentation of data (e.g. the British Trust for Ornithology and the UK Butterfly Monitoring Scheme, `r tabs("prox_src_tab_cap", display = "cite")`).  Of the `r nrow(wg)` studies in this review, `r length(which(used_top_10_providers == T))` (`r round((length(which(used_top_10_providers == T)) / length(used_top_10_providers)) * 100, digits = 1)`%) obtained at least some of their data from one of the ten most commonly used proximate data providers (`r tabs("prox_src_tab_cap", display = "cite")`).
+
+Many of the data sources that provided data for only one study in this review were "traditional" data sources such as local records centres, taxon-specific monitoring schemes, or natural history museums.  But there were also a few non-traditional data sources used by studies in this review.  At least one study in this review used data from each of Google Images (Leighton et al. 2016), Flickr (Jeawak et al. 2017; Petrusková et al. 2015), YouTube (Petrusková et al. 2015), Vimeo (Petrusková et al. 2015), and SoundCloud, an audio sharing platform that contains music, podcasts, and other audio content (Petrusková et al. 2015), and 
+
+`r tabs("prox_src_tab_cap", display = "full")`
+
+```{r}
+kable(prox_src_df[1:10, ], row.names = FALSE, 
+      col.names = c("Proximate Data Source", "Number of Studies"))
+```
+
 
 ## Institutions of first and last authors
 
 ## Spatial sampling bias corrected for
 
 ## Studies focusing on alien species
+
 
 ## Cross validation
 
@@ -1276,6 +1310,8 @@ I may have done a poor job explaining the difference between studies about commu
 [In a review of ecological and environmental citizen science projects, Pocock et al. [-@Pocock2017] distinguished between 'mass participation' projects that tended to have lower data quality, less detailed data, but cover larger geographic areas, and 'systematic monitoring' projects that tended to collect more complex and possible higher-quality data (e.g. counts instead of presence/absence observations) but covered smaller geographic areas.]
 
 ["There was no evidence that citizen science studies investigate a different organismal scale (community vs. species) compared to the urban ecology literature" in a systematic review @Wei2016. ]
+
+We only found one study in this review that used data from the bird song audio archive site xeno-canto, which was surprising because xeno-canto is more explicitly oriented towards collecting and providing biological sounds, unlike more general media sharing websites like soundcloud and vimeo.  It is possible that our search terms failed to return studies that used data from xeno-canto if those studies were framed more as studies of bird vocalizations rather than as studies of biological records.  Nevertheless, data from sites like xeno-canto share much in common with other biological records datasets in which basic "what, where, when" information about species is augmented with additional information.  The opportunistic nature of data in xeno-canto means that analyses using those data likely face challenges similar to those faced by analyses of other opportunistic or semi-structured biological records datasets.  
 
 ### old questions to drop or keep?
 
@@ -1984,6 +2020,17 @@ ggplot(data = dt_an_df,
         axis.text.y = element_text(angle=45)) + 
   labs(fill = "Deviance\nresiduals") + 
   ggtitle("Residuals from Poisson\nindependence model")
+```
+
+```{r, prox_src_tab_cap_all}
+prox_src_tab_cap_all <- tabs(name = "prox_src_tab_cap_all", 
+                                   "Proximate data sources used studies in this review, and the number of studies that used each data source.")
+```
+
+`r tabs("prox_src_tab_cap_all", display = "full")`
+
+```{r}
+kable(prox_src_df, col.names = c("Proximate Data Source", "Number of Studies"))
 ```
 
 # Appendix 2 - Instructions for Coders
