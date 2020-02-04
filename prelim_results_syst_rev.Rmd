@@ -152,7 +152,7 @@ For most analyses, we grouped the data types "physical specimen", "photo", "audi
 For statistical analyses, we included data type variables in models based on *a-priori* expectations about the variables' influence on data analysis methods and based on expectations about different levels of complexity and effort involved in collecting, recording, and storing the data.  The data type variables we kept in models were: what, where, when only; sampling effort known; abundance; non-detection; organized monitoring scheme; visit-specific covariates; multiple datasets integrated for analysis; life stage information; and voucher specimen. 
 
 ### Study Questions
-We described the main focus(es) of each study in terms of whether the study was asking questions about individual species, ecological communities, or about methodology. We also identified whether studies analyzed each of the following biological or ecological responses: species richness; species turnover (beta-diversity); species distributions; abundance; phenology.
+We described the main focus(es) of each study in terms of whether the study was asking questions about individual species, ecological communities, or about methodology. We also identified whether studies analyzed each of the following biological or ecological responses: species richness; species turnover (beta-diversity); species distributions; abundance; phenology.  We recorded the taxonomic group that was the focus of each study, and subsequently aggregated taxa into classes using the GBIF taxonomic backbone (GBIF 2019). 
 
 ### Analysis approach
 We classified the broad analysis approach used by each study into one of three categories: inference; prediction; or description.  For each study, we evaluated the analysis approach only for analyses that used biological records data.
@@ -445,7 +445,7 @@ proportion_individual <- get_boot_CI(wg$individual.species.question,
 
 ## Ecological focus
 
-We assessed which ecological or biological phenomena were used as the response variable in analyses using biological records.  We coded each study based on whether it used the following response variables: species distribution; species abundance; phenology, species richness (*alpha*-diversity or the number of species present); species turnover (*beta*-diversity or any measure that incorporated species identity and/or abundance in addition to the number of species); or temporal trends.  A study could use more than one of these response variables if it contained more than one analysis using biological records, or if it studied temporal trends in one of the other response variables (e.g. change in species distribution over time). After coding, we created an "other" response variable category which was coded as "TRUE" for studies that did not use any of the other biological or ecological response variables that we searched for during coding.  We used bias-corrected accelerated bootstrap confidence intervals with 10,000 bootstrap replicates [@Efron1993] to estimate 95% confidence intervals around the number of studies investigating each response variable. We determined statistical significance of differences in the number of studies investigating each type of response by assessing whether the 95% bootstrap confidence intervals overlapped.  
+We assessed which ecological or biological phenomena were used as the response variable in analyses using biological records.  We coded each study based on whether it used the following response variables: species distribution; species abundance; phenology, species richness (*alpha*-diversity or the number of species present); species turnover (*beta*-diversity or any measure that incorporated species identity and/or abundance in addition to the number of species); or temporal trends.  A study could use more than one of these response variables if it contained more than one analysis using biological records, or if it studied temporal trends in one of the other response variables (e.g. change in species distribution over time). After coding, we created an "other" response variable category which was coded as "TRUE" for studies that did not use any of the other biological or ecological response variables that we searched for during coding.  We used bias-corrected accelerated bootstrap confidence intervals with 10,000 bootstrap replicates [@Efron1993] to estimate 95% confidence intervals around the number of studies investigating each response variable. We determined statistical significance of differences in the number of studies investigating each type of response by assessing whether the 95% bootstrap confidence intervals overlapped.  To assess which taxonomic groups were studied using biological records, we tabulated the taxonomic number of studies investigating different taxonomic groups (kingdom, phylum, class, or order depending on the group).
 
 ```{r make_other_response_variable_columns}
 # make columns indicating which studies analyze something that does not fit
@@ -961,7 +961,7 @@ resp_var_plot_cap <- figs(name = "resp_var_plot_cap",
                      "The proportion of studies analyzing different ecological responses.  Points show proportion of studies, vertical lines show 95% bootstrap confidence intervals.  Some studies performed multiple analyses and used multiple different response variables, so proportions in this plot add up to more than one.")
 ```
 
-Over half the studies in this review analyzed species distribution (proportion of studies = `r round(resp_var_list$dist$boot_obj$t0, digits = 2)`, 95% bootstrap CI [`r round(resp_var_list$dist$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$dist$ci_obj$bca[5], digits = 2)`]) and/or temporal trends (proportion of studies = `r round(resp_var_list$temp_trends$boot_obj$t0, digits = 2)`, 95% bootstrap CI [`r round(resp_var_list$temp_trends$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$temp_trends$ci_obj$bca[5], digits = 2)`]) as a response variable (Fig. 2, Tab. S?).  The proportion of studies analyzing species distributions and/or temporal trends was significantly higher than the proportion analyzing any other response variable based on non-overlapping 95% bootstrap confidence intervals (Fig. 2, Tab. S?).  The third most common response variable for studies in this review was abundance (proportion of studies = `r round(resp_var_list$abund$boot_obj$t0, digits = 2)`, 95% bootstrap CI [`r round(resp_var_list$abund$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$abund$ci_obj$bca[5], digits = 2)`]), but the proportion of studies analyzing abundance was not significantly different from the proportion analyzing species richness (proportion of studies = `r round(resp_var_list$sp_rich$boot_obj$t0, digits = 2)`, 95% bootstrap CI [`r round(resp_var_list$sp_rich$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$sp_rich$ci_obj$bca[5], digits = 2)`]) or phenology (proportion of studies = `r round(resp_var_list$phen$boot_obj$t0, digits = 2)`, 95% bootstrap CI [`r round(resp_var_list$phen$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$phen$ci_obj$bca[5], digits = 2)`]).  Too few studies were classified as using "diversity" as a response variable to estimate coder agreement using Krippendorff's alpha.  Therefore, we did not evaluate the diversity response variable category on its own, but studies that had been coded as using diversity and no other response variables are included in the "other" response variable category.  
+Over half the studies in this review analyzed species distribution (proportion of studies = `r round(resp_var_list$dist$boot_obj$t0, digits = 2)`, 95% bootstrap CI [`r round(resp_var_list$dist$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$dist$ci_obj$bca[5], digits = 2)`]) and/or temporal trends (proportion of studies = `r round(resp_var_list$temp_trends$boot_obj$t0, digits = 2)`, 95% bootstrap CI [`r round(resp_var_list$temp_trends$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$temp_trends$ci_obj$bca[5], digits = 2)`]) as a response variable (Fig. 2, Tab. S?).  The proportion of studies analyzing species distributions and/or temporal trends was significantly higher than the proportion analyzing any other response variable based on non-overlapping 95% bootstrap confidence intervals (Fig. 2, Tab. S?).  The third most common response variable for studies in this review was abundance (proportion of studies = `r round(resp_var_list$abund$boot_obj$t0, digits = 2)`, 95% bootstrap CI [`r round(resp_var_list$abund$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$abund$ci_obj$bca[5], digits = 2)`]), but the proportion of studies analyzing abundance was not significantly different from the proportion analyzing species richness (proportion of studies = `r round(resp_var_list$sp_rich$boot_obj$t0, digits = 2)`, 95% bootstrap CI [`r round(resp_var_list$sp_rich$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$sp_rich$ci_obj$bca[5], digits = 2)`]) or phenology (proportion of studies = `r round(resp_var_list$phen$boot_obj$t0, digits = 2)`, 95% bootstrap CI [`r round(resp_var_list$phen$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$phen$ci_obj$bca[5], digits = 2)`]).  Too few studies were classified as using "diversity" as a response variable to estimate coder agreement using Krippendorff's alpha.  Therefore, we did not evaluate the diversity response variable category on its own, but studies that had been coded as using diversity and no other response variables are included in the "other" response variable category.  The proportion of studies that focused on alien species was too low for us to estimate coder agreement using Krippendorff's alpha (proportion of studies = `r round(length(which(wg$alien.species.focus == T)) / nrow(wg), digits = 2)`).  
 
 ```{r make_response_variable_df}
 resp_count_df <- data.frame(matrix(nrow = length(resp_var_list), 
@@ -1035,6 +1035,14 @@ print(ggplot(data = resp_count_df,
               strip.background = element_blank(), strip.placement = "outside"))
       # theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)))
 ```
+
+```{r taxa}
+classes <- wg$class_gbif_backbone
+
+```
+
+
+Taxa from ?? ?kingdoms? were investigated by studies in this review (Tab. ??).  ?? (Class ??) was the most commonly studied class (?? studies).  
 
 ## Development of methodology across different study questions
 
@@ -1212,11 +1220,6 @@ ggplot(data = perm_resids_long,
 ```
 
 
-
-## Authors and Data Providing Institutions
-
-Coder agreement was low when determining whether a study had an author associated with the data providing institution (Krippendorff's alpha = 0.58).  Therefore we did not analyze the association between authors and data providers statistically.  In the Discussion we addressed some possible reasons that this determination was difficult for the coders to agree on.  
-
 ## Proximate data sources
 ```{r, prox_src_tab_cap}
 prox_src_tab_cap <- tabs(name = "prox_src_tab_cap", 
@@ -1251,15 +1254,11 @@ kable(prox_src_df[1:10, ], row.names = FALSE,
       col.names = c("Proximate Data Source", "Number of Studies"))
 ```
 
-
-## Institutions of first and last authors
-
-## Spatial sampling bias corrected for
-
-## Studies focusing on alien species
-
+## Authors and Data Providing Institutions
+Coder agreement was low when determining whether a study had an author associated with the data providing institution (Krippendorff's alpha = 0.58).  Therefore we did not analyze the association between authors and data providers statistically.  In the Discussion we addressed some possible reasons that this determination was difficult for the coders to agree on.  
 
 ## Cross validation
+We coded whether studies tested statistical models using cross-validation and/or independent test datasets, but the percent of studies that did those things was too low for us to estimate the reliability of our codings using Krippendorff's alpha (proportion of studies that tested using cross-validation = `r round(length(which(wg$cross.validation == T)) / nrow(wg), digits = 2)`, proportion of studies that tested using independently collected test data = `r round(length(which(wg$testing.using.independent.dataset == T)) / nrow(wg), digits = 2)`).  
 
 ## Rare data types
 
@@ -1268,7 +1267,7 @@ kable(prox_src_df[1:10, ], row.names = FALSE,
 ## Uncommon uses of biological records
 [biological records as a predictor variable or in a facilitative role]
 
-## Taxonomic groups studied
+
 
 
 
@@ -1312,6 +1311,10 @@ I may have done a poor job explaining the difference between studies about commu
 ["There was no evidence that citizen science studies investigate a different organismal scale (community vs. species) compared to the urban ecology literature" in a systematic review @Wei2016. ]
 
 We only found one study in this review that used data from the bird song audio archive site xeno-canto, which was surprising because xeno-canto is more explicitly oriented towards collecting and providing biological sounds, unlike more general media sharing websites like soundcloud and vimeo.  It is possible that our search terms failed to return studies that used data from xeno-canto if those studies were framed more as studies of bird vocalizations rather than as studies of biological records.  Nevertheless, data from sites like xeno-canto share much in common with other biological records datasets in which basic "what, where, when" information about species is augmented with additional information.  The opportunistic nature of data in xeno-canto means that analyses using those data likely face challenges similar to those faced by analyses of other opportunistic or semi-structured biological records datasets.  
+
+We were not able to estimate the reliability of our codings about whether studies tested their statistical models using cross-validation and/or independently collected test data, because there were too few studies testing with those approaches.  However, the rarity of testing using cross-validation and/or independent data is an interesting results, even if we cannot analyze it robustly because of uncertainty about our coding reliability.  Testing statistical models using the same data that was used for model trianing is known to give overly optimistic measures of model performance (cite).  It is concerning that studies using biological records data seem to be either failing to test on independent data or failing to clearly report that they tested on independent data.  The opportunistic nature of biological records datasets means that the data may not represent a random sample from the population of interest in a study.  As such, it seems particularly important that conclusion drawn from models trained with biological records data are tested on independent or semi-independent data (e.g. using cross-validation).  Even if the independent test dataset has biases similar to the training data, it at least provides a minimum standard for determining whether results can be extrapolated beyond the peculiarities of the training data.  ??Cross-validation is commonly used to assess prediction performance in machine learning, and there are packages that implement cross-validation specifically for species distribution modelling.  Cross-validation can also potentially be used with more traditional statistical methods (e.g. linear regressions) to test how well fitted models agree with data that were not used in model fitting.??
+
+
 
 ### old questions to drop or keep?
 
@@ -2032,6 +2035,9 @@ prox_src_tab_cap_all <- tabs(name = "prox_src_tab_cap_all",
 ```{r}
 kable(prox_src_df, col.names = c("Proximate Data Source", "Number of Studies"))
 ```
+
+### Taxonomic groups studied
+The instructions for coders (Appendix 2) did not adequately explain how to code this column.  For example, for a study about a single bird species *Turdus merula*, the instructions for the "taxonomic group" column did not specify whether to record "Turdis merula", "bird", or "Turdus merula; bird".  All of those types of variants were used throughout the coding, making the results for this column uninterpretable and un-repeatable. A future review should provide more explicit instructions to coders about what level the taxonomic group should be coded at (e.g. record the Class of organisms studied).  
 
 # Appendix 2 - Instructions for Coders
 [ Attach pdf of Instructions for Coders ]

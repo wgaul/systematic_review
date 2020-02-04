@@ -74,6 +74,14 @@ for(i in 1:length(dfs)) {
     # of the last sapply into a single vector which can be assigned to the
     # column.  
     
+    # many
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "multiple.*", 
+             replacement = "many"), 
+      FUN = paste, collapse = ";"))
+    
     # NBN
     dfs[[i]][, j] <- unlist(sapply(
       sapply(strsplit(dfs[[i]][, j], split = ";"), 
@@ -121,7 +129,7 @@ for(i in 1:length(dfs)) {
     dfs[[i]][, j] <- unlist(sapply(
       sapply(strsplit(dfs[[i]][, j], split = ";"), 
              FUN = gsub, 
-             pattern = "BRC|Biological Records Centre|.* CEH .*|.*Centre for Ecology & Hy.*|.*Centre for Ecology and Hy.*", 
+             pattern = "BRC|biological records centre|Biological Records Centre|.* CEH .*|.*Centre for Ecology & Hy.*|.*Centre for Ecology and Hy.*", 
              replacement = "Centre for Ecology and Hydrology"), 
       FUN = paste, collapse = ";"))
     # UKBMS
@@ -135,7 +143,7 @@ for(i in 1:length(dfs)) {
     dfs[[i]][, j] <- unlist(sapply(
       sapply(strsplit(dfs[[i]][, j], split = ";"), 
              FUN = gsub, 
-             pattern = ".*Butterflies.*new Milleni.*", 
+             pattern = ".*Butterflies.*new Millen.*", 
              replacement = "Butterflies for the New Millenium",
              ignore.case = T),
       FUN = paste, collapse = ";"))
@@ -153,6 +161,62 @@ for(i in 1:length(dfs)) {
              FUN = gsub, 
              pattern = "BWARS|Bees.*Wasps.*Ants.*Record.*", 
              replacement = "Bees, Wasps and Ants Recording Society",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # BMIG
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "BMIG", 
+             replacement = "British Myriapod and Isopod Group",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # UK Phenology Network
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "UK phenology network", 
+             replacement = "UK Phenology Network",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Conker Tree Science
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "Conker Tree Science project", 
+             replacement = "Conker Tree Science",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # atlases (general)
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "atlases", 
+             replacement = "atlas",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # survey run by authors
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "survey sent by authors", 
+             replacement = "survey run by authors",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # publications
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "Stace et al. 2015|literature|Price et al 1979|previous publications|previous studies|published records", 
+             replacement = "publications",
+             ignore.case = T),
+      FUN = paste, collapse = ";"))
+    # Greenspace Information for Greater London
+    dfs[[i]][, j] <- unlist(sapply(
+      sapply(strsplit(dfs[[i]][, j], split = ";"), 
+             FUN = gsub, 
+             pattern = "Greesnspace Information for Greater London .*", 
+             replacement = "Greenspace Information for Greater London",
              ignore.case = T),
       FUN = paste, collapse = ";"))
     
@@ -564,5 +628,24 @@ wg$temp_extent[grepl("Change and causes of.*flora of Ireland.*",
 wg$temp_extent[grepl("Garden and landscape-scale.*moths.*", 
                      wg$title)] <- 36/52 # 36 weeks
 ### end calculate temporal extent ---------------------------------------------
+
+### clean taxon names and spellings ------------------------------------------
+## My instructions for how to record the taxonomic group were poor, so that this
+## coding is not repeatable.  e.g. I did not specify whether a study of a single
+## bird species Turdus merula should be recorded as "Turdus merula", "bird", or
+## "Turdus merula; bird".  As such, this is a mess and nobody could repeat this.
+## So I will not interpret it as of 4 Feb 2020.
+# wg$taxonomic.group <- str_to_lower(wg$taxonomic.group)
+# wg$taxonomic.group <- gsub("bids|bird|birds", "birds", wg$taxonomic.group)
+# wg$taxonomic.group <- gsub("butterflies|buttrfly", "butterfly", wg$taxonomic.group)
+# wg$taxonomic.group <- gsub("soldier-beetles", "soldier beetles", wg$taxonomic.group)
+# wg$taxonomic.group <- gsub("long-horn beetles", "long-horned beetles", wg$taxonomic.group)
+# wg$taxonomic.group <- gsub("orthopter|orthoptera", "orthoptera", wg$taxonomic.group)
+# wg$taxonomic.group <- gsub("alga|algae|algea", "algae", wg$taxonomic.group)
+# wg$taxonomic.group <- gsub("beete", "beetle", wg$taxonomic.group)
+# wg$taxonomic.group <- gsub("carabird|carabid beetle|carabidae", "carabid", wg$taxonomic.group)
+
+
+### end clean taxon names ----------------------------------------------------
 
 rm(wg_not_desc, dfs)
