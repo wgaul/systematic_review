@@ -445,7 +445,7 @@ proportion_individual <- get_boot_CI(wg$individual.species.question,
 
 ## Ecological focus
 
-We assessed which ecological or biological phenomena were used as the response variable in analyses using biological records.  We coded each study based on whether it used the following response variables: species distribution; species abundance; phenology, species richness (*alpha*-diversity or the number of species present); species turnover (*beta*-diversity or any measure that incorporated species identity and/or abundance in addition to the number of species); or temporal trends.  A study could use more than one of these response variables if it contained more than one analysis using biological records, or if it studied temporal trends in one of the other response variables (e.g. change in species distribution over time). After coding, we created an "other" response variable category which was coded as "TRUE" for studies that did not use any of the other biological or ecological response variables that we searched for during coding.  We used bias-corrected accelerated bootstrap confidence intervals with 10,000 bootstrap replicates [@Efron1993] to estimate 95% confidence intervals around the number of studies investigating each response variable. We determined statistical significance of differences in the number of studies investigating each type of response by assessing whether the 95% bootstrap confidence intervals overlapped.  To assess which taxonomic groups were studied using biological records, we tabulated the taxonomic number of studies investigating different taxonomic groups (kingdom, phylum, class, or order depending on the group).
+We assessed which ecological or biological phenomena were used as the response variable in analyses using biological records.  We coded each study based on whether it used the following response variables: species distribution; species abundance; phenology, species richness (*alpha*-diversity or the number of species present); species turnover (*beta*-diversity or any measure that incorporated species identity and/or abundance in addition to the number of species); or temporal trends.  A study could use more than one of these response variables if it contained more than one analysis using biological records, or if it studied temporal trends in one of the other response variables (e.g. change in species distribution over time). After coding, we created an "other" response variable category which was coded as "TRUE" for studies that did not use any of the other biological or ecological response variables that we searched for during coding.  We used bias-corrected accelerated bootstrap confidence intervals with 10,000 bootstrap replicates [@Efron1993] to estimate 95% confidence intervals around the number of studies investigating each response variable. We determined statistical significance of differences in the number of studies investigating each type of response by assessing whether the 95% bootstrap confidence intervals overlapped.
 
 ```{r make_other_response_variable_columns}
 # make columns indicating which studies analyze something that does not fit
@@ -528,14 +528,6 @@ method_chisq <- anova(method_mod_null, method_mod, test = "Chisq")
 ## What data types are used for each study question? 
 
 We asked whether different types of biological records data are used to study different types of questions.  We fit Poisson regression models of the counts (number of studies) for each combination of data type and ecological study focus, fitting both a saturated model and an independence model with only main effects.  We tested whether there was an interaction between data type and study question using a Chi-squared likelihood ratio test to compare the saturated and independence models.  We explored deviations from a model of independence by examining the deviance residuals from the fitted independence model.  
-
-$H_a$: Analyses of different ecological study questions use different types of biological records data.
-
-$H_0$: Analyses of different ecological study questions do not use different types of biological records data.
-
-The response variable was the cell counts in the contingency table in section 2.5 (Table 5 I think).  I think an assumption of the Poisson regression is that the cell counts are independent, meaning that the count in one cell doesn’t go up or down with the count in another cell. So I need to asses if there is any dependence between the levels of each categorical variable. For example, does the count in the “sampling effort x community” cell go up in correlation with the count in the “abundance x community” cell? Could I use some kind of permutation approach to test for independence of cell counts? **Dina, how should I check to make sure cell counts are independent?** I could perhaps do this using a permutation procedure to look for non-random patterns in the data types.  For each pair of data type variables, I could a table in which each study is a row and there is a column for each of the two data type variables being assessed, and a 1 or a 0 for whether the study had the data type.  I could then take the row sums and look at the distribution of row sums of 0 (studies using neither of the two data types being tested), 1 (studies using only 1 of the two data types), and 2 (studies using both of the two data types).  I could then randomly permute one of the two columns, breaking any associations between the two data types, and take row sums again, getting a distribution of row sums under the null hypothesis.   
-
-**Dina, how should I check other model assumptions for the Poisson regression?**
 
 
 ```{r data_type_paradigm_df_prepare}
@@ -812,7 +804,6 @@ samp_adequate$variable <- gsub("\\.", " ", samp_adequate$variable)
 kable(samp_adequate[order(samp_adequate$kripp_alpha, decreasing = T), -c(2, 4)], 
       col.names = c("Variable", "Krippendorff's alpha"),
       digits = 2)
-rm(samp_adequate)
 ```
 
 ## Temporal and spatial extent of studies
@@ -1036,14 +1027,6 @@ print(ggplot(data = resp_count_df,
       # theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)))
 ```
 
-```{r taxa}
-classes <- wg$class_gbif_backbone
-
-```
-
-
-Taxa from ?? ?kingdoms? were investigated by studies in this review (Tab. ??).  ?? (Class ??) was the most commonly studied class (?? studies).  
-
 ## Development of methodology across different study questions
 
 ```{r method_study_focus_cap}
@@ -1144,6 +1127,7 @@ ggplot(data = dt_pd_df,
   labs(fill = "Deviance\nresiduals") 
 ```
 
+Some types of additional data that can be associated with biological records were used too infrequently for us to evaluate the reliability of our codings.  Types of data insed infrequently included photos (`r round((length(which(wg$data.type...photo == T)) / nrow(wg)) * 100, digits = 1)` % of studies), videos (`r round((length(which(wg$data.type...video == T)) / nrow(wg)) * 100, digits = 1)` % of studies), vouchers specimens (`r round((length(which(wg$data.type...voucher.of.some.kind.necessary.for.analysis == T)) / nrow(wg)) * 100, digits = 1)` % of studies), audio recordings (`r round((length(which(wg$data.type...audio == T)) / nrow(wg)) * 100, digits = 1)` % of studies), and life stage (e.g. phenology) information (`r round((length(which(wg$data.type...life.stage == T)) / nrow(wg)) * 100, digits = 1)` % of studies.  The coding reliability was too low for us to interpret whether studies used abundance data (Krippendorff's *alpha* = `r round(samp_adequate$kripp_alpha[samp_adequate$variable == "data type - abundance"], digits = 2)`) or only "what, where, when" data (Krippendorff's *alpha* = `r round(samp_adequate$kripp_alpha[samp_adequate$variable == "data type - what where when only"], digits = 2)`).
 
 ## Analysis approach & data type
 
@@ -1314,7 +1298,9 @@ We only found one study in this review that used data from the bird song audio a
 
 We were not able to estimate the reliability of our codings about whether studies tested their statistical models using cross-validation and/or independently collected test data, because there were too few studies testing with those approaches.  However, the rarity of testing using cross-validation and/or independent data is an interesting results, even if we cannot analyze it robustly because of uncertainty about our coding reliability.  Testing statistical models using the same data that was used for model trianing is known to give overly optimistic measures of model performance (cite).  It is concerning that studies using biological records data seem to be either failing to test on independent data or failing to clearly report that they tested on independent data.  The opportunistic nature of biological records datasets means that the data may not represent a random sample from the population of interest in a study.  As such, it seems particularly important that conclusion drawn from models trained with biological records data are tested on independent or semi-independent data (e.g. using cross-validation).  Even if the independent test dataset has biases similar to the training data, it at least provides a minimum standard for determining whether results can be extrapolated beyond the peculiarities of the training data.  ??Cross-validation is commonly used to assess prediction performance in machine learning, and there are packages that implement cross-validation specifically for species distribution modelling.  Cross-validation can also potentially be used with more traditional statistical methods (e.g. linear regressions) to test how well fitted models agree with data that were not used in model fitting.??
 
+Digital record submission and storage has increased the ease with which vouchers of specimens can be stored and accessed.  Digital photos, audio recordings, and videos can all be used as digital voucher specimens to both confirm the taxonomic identity of species recorded and to provide additional information that may be of interest to reserachers.  Sites that collate recordings of bird songs (e.g. xeno-canto and the Macaulay Library of Natural Sounds) now hold ??hundreds of thousands?? of recordings of British and Irish birds, and eBird, one of the worlds largest platforms for collecting biological records, now allows observers to upload photos, audio recordings, and videos?? with species checklists. Given the large and rapidly growing archive of digital voucher specimens (??number and growth of eBird audio or video files??) and the relatively infrequent use of these data in studies in this review, the analysis of the digital vouchers associated with biological records may be a rich area for new research (cite some studies that do this).  The challenges associated with studying e.g. the distribution of bird song dialects (??cite??) or the distributions of morphological characteristics (??cite??) using biological records with digital vouchers are likely similar to the challenges (and the solutions to those challenges) associated with studying species occurrence distributions using more traditional "what, where, when" biological records.  It is possible that our search terms did not retrieve studies that used biological records with digital vouchers if those studies did not include words like "biological records" or "citizen science".  
 
+Biological records data were used as both response and predictor variables in studies in this review.  By far the most common way to use biological records was as a response (`length(which(wg$biological.records.as.response.variable == T))` of `nrow(wg)` studies), for example when using environmental predictor variables to estimate the probability of occurrence (measured with biological records) of a species in species distribution modelling (?cite a study?). However, biological records were used as a predictor in multiple studies. For example, the recorded presence of wild mammals and seabirds was used as one of many predictors to estimate the spatial distribution of air pollutant emissions (ammonia, methan, and nitrous oxide) (Tomlinson, Carnell, Tang, Sutton & Dragosits 2017).
 
 ### old questions to drop or keep?
 
