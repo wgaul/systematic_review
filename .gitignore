@@ -3,3 +3,9 @@
 *.RData
 old
 .Rproj.user
+
+# image files
+*.jpg
+*.jpeg
+*.svg
+

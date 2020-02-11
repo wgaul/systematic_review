@@ -3,10 +3,10 @@ title: "Biological Records Systematic Review - Preliminary Methods and Results"
 date: 18 Jan 2020
 csl: ecology.csl
 output:
-  pdf_document: default
   word_document:
     toc: true
     toc_depth: 4
+  pdf_document: default
   fig_caption: yes
   html_document:
     number_sections: true
@@ -891,35 +891,36 @@ for(i in 1:length(data_types)) {
 }
 
 # plot mean spatial extent of studies using each data type, with 95% CIs
-print(ggplot(data = spat_boot_df, 
-             aes(x = factor(data_type, 
-                            levels = c("sampling.effort",
-                                       "non.detection", 
-                                       "organized.scheme",
-                                       "multiple.datasets"), 
-                            labels = c("sampling effort",
-                                       "non-detection", 
-                                       "organized scheme",
-                                       "multiple datasets")), 
-                 y = mean)) + 
-        geom_point() + 
-        geom_linerange(aes(x = factor(data_type, 
-                            levels = c("sampling.effort",
-                                       "non.detection", 
-                                       "organized.scheme",
-                                       "multiple.datasets"), 
-                            labels = c("sampling effort",
-                                       "non-detection", 
-                                       "organized scheme",
-                                       "multiple datasets")), 
-                           ymin = l_95ci, 
-                           ymax = u_95ci)) + 
-        xlab("") + 
-        ylab("Mean spatial extent\nof Studies (km^2)") + 
-        theme_bw() + 
-        theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1), 
-              strip.background = element_blank(), strip.placement = "outside"))
-      # theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)))
+spat_extent_plot <- ggplot(data = spat_boot_df, 
+                           aes(x = factor(data_type, 
+                                          levels = c("sampling.effort",
+                                                     "non.detection", 
+                                                     "organized.scheme",
+                                                     "multiple.datasets"), 
+                                          labels = c("sampling effort",
+                                                     "non-detection", 
+                                                     "organized scheme",
+                                                     "multiple datasets")), 
+                               y = mean)) + 
+  geom_point() + 
+  geom_linerange(aes(x = factor(data_type, 
+                                levels = c("sampling.effort",
+                                           "non.detection", 
+                                           "organized.scheme",
+                                           "multiple.datasets"), 
+                                labels = c("sampling effort",
+                                           "non-detection", 
+                                           "organized scheme",
+                                           "multiple datasets")), 
+                     ymin = l_95ci, 
+                     ymax = u_95ci)) + 
+  xlab("") + 
+  ylab("Mean spatial extent\nof Studies (km^2)") + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1), 
+        strip.background = element_blank(), strip.placement = "outside")
+# theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)))
+print(spat_extent_plot)
 ```
 
 
@@ -975,44 +976,45 @@ resp_count_df$response_variable <- gsub(".*temp_.*", "temporal trends",
 
 ```{r resp_var_by_paradigm_plot, fig.cap=resp_var_plot_cap}
 # plot proportion of studies using each response variable, with 95% CIs
-print(ggplot(data = resp_count_df, 
-             aes(x = factor(response_variable, 
-                            levels = c("abundance",
-                                       "species distribution", 
-                                       "phenology",
-                                       "species richness",
-                                       "temporal trends",
-                                       "other"), 
-                            labels = c("abundance",
-                                       "species\ndistribution", 
-                                       "phenology",
-                                       "species\nrichness",
-                                       "temporal\ntrends",
-                                       "other")), 
-                 y = prop_studies)) + 
-        geom_point() + 
-        geom_linerange(aes(x = factor(response_variable, 
-                            levels = c("abundance",
-                                       "species distribution", 
-                                       "phenology",
-                                       "species richness",
-                                       "temporal trends",
-                                       "other"), 
-                            labels = c("abundance",
-                                       "species\ndistribution", 
-                                       "phenology",
-                                       "species\nrichness",
-                                       "temporal\ntrends",
-                                       "other")), 
-                           ymin = l_95ci, 
-                           ymax = u_95ci)) + 
-        xlab("") + 
-        ylab("Proportion of Studies") + 
-        ylim(c(0, 1)) + 
-        theme_bw() + 
-        theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1), 
-              strip.background = element_blank(), strip.placement = "outside"))
-      # theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)))
+response_var_plot <- ggplot(data = resp_count_df, 
+                            aes(x = factor(response_variable, 
+                                           levels = c("abundance",
+                                                      "species distribution", 
+                                                      "phenology",
+                                                      "species richness",
+                                                      "temporal trends",
+                                                      "other"), 
+                                           labels = c("abundance",
+                                                      "species\ndistribution", 
+                                                      "phenology",
+                                                      "species\nrichness",
+                                                      "temporal\ntrends",
+                                                      "other")), 
+                                y = prop_studies)) + 
+  geom_point() + 
+  geom_linerange(aes(x = factor(response_variable, 
+                                levels = c("abundance",
+                                           "species distribution", 
+                                           "phenology",
+                                           "species richness",
+                                           "temporal trends",
+                                           "other"), 
+                                labels = c("abundance",
+                                           "species\ndistribution", 
+                                           "phenology",
+                                           "species\nrichness",
+                                           "temporal\ntrends",
+                                           "other")), 
+                     ymin = l_95ci, 
+                     ymax = u_95ci)) + 
+  xlab("") + 
+  ylab("Proportion of Studies") + 
+  ylim(c(0, 1)) + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1), 
+        strip.background = element_blank(), strip.placement = "outside")
+# theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)))
+print(response_var_plot)
 ```
 
 ## Development of methodology across different study questions
@@ -1041,30 +1043,32 @@ for(i in 1:nrow(meth_df)) {
 }
 
 # make graph
-print(ggplot(data = meth_df, 
-             aes(x = factor(variable, 
-                            levels = c("abundance", "distribution", 
-                                       "phenology", "richness",
-                                       "time", "other"), 
-                            labels = c("abundance", "species\ndistribution", 
-                                       "phenology", "species\nrichness",
-                                       "temporal\ntrends", "other")), 
-                 y = coef_estimate)) + 
-        geom_point() + 
-        geom_linerange(aes(x = factor(variable, 
-                            levels = c("abundance", "distribution", 
-                                       "phenology", "richness",
-                                       "time", "other"), 
-                            labels = c("abundance", "species\ndistribution", 
-                                       "phenology", "species\nrichness",
-                                       "temporal\ntrends", "other")), 
-                           ymin = l_bound, 
-                           ymax = h_bound)) + 
-        xlab("Study question") + 
-        ylab("Coefficient estimate") + 
-        theme_bw() + 
-        ylim(-2, 2) +
-        theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)))
+methodology_plot <- ggplot(data = meth_df, 
+                           aes(x = factor(
+                             variable, 
+                             levels = c("abundance", "distribution", 
+                                        "phenology", "richness",
+                                        "time", "other"), 
+                             labels = c("abundance", "species\ndistribution", 
+                                        "phenology", "species\nrichness",
+                                        "temporal\ntrends", "other")), 
+                             y = coef_estimate)) + 
+  geom_point() + 
+  geom_linerange(aes(x = factor(variable, 
+                                levels = c("abundance", "distribution", 
+                                           "phenology", "richness",
+                                           "time", "other"), 
+                                labels = c("abundance", "species\ndistribution", 
+                                           "phenology", "species\nrichness",
+                                           "temporal\ntrends", "other")), 
+                     ymin = l_bound, 
+                     ymax = h_bound)) + 
+  xlab("Study question") + 
+  ylab("Coefficient estimate") + 
+  theme_bw() + 
+  ylim(-2, 2) +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
+print(methodology_plot)
 ```
 
 
@@ -1079,30 +1083,30 @@ data_type_study_question_cap <- figs(name = "data_type_study_question_cap",
 
 
 ```{r data_type_study_question_graph, fig.cap=data_type_study_question_cap}
-ggplot(data = dt_pd_df, 
-       aes(x = factor(study_focus, 
-                      levels = c("abundance", "distribution", "phenology", 
-                                 "species.richness", "trends.over.time", 
-                                 "other_focus"), 
-                      labels = c("abundance", "species\ndistribution", 
-                                 "phenology", 
-                                 "species\nrichness", "trends\nover\ntime", 
-                                 "other")), 
-           y = factor(data_type,
-                      levels = c("multiple.datasets.integrated.for.analysis", 
-                                 "sampling.effort.known", 
-                                 "non.detection",
-                                 "visit.specific.covariates",
-                                 "organized.data.collection.scheme"), 
-                      labels = c("multiple\ndatasets", 
-                                 "sampling effort", 
-                                 "non-detection", 
-                                 "visit-specific\ncovariates",
-                                 "organized\nscheme")))) + 
+data_type_study_question_plot <- ggplot(
+  data = dt_pd_df, 
+  aes(x = factor(study_focus, 
+                 levels = c("abundance", "distribution", "phenology", 
+                            "species.richness", "trends.over.time", 
+                            "other_focus"), 
+                 labels = c("abundance", "species\ndistribution", 
+                            "phenology", 
+                            "species\nrichness", "trends\nover\ntime", 
+                            "other")), 
+      y = factor(data_type,
+                 levels = c("multiple.datasets.integrated.for.analysis", 
+                            "sampling.effort.known", 
+                            "non.detection",
+                            "visit.specific.covariates",
+                            "organized.data.collection.scheme"), 
+                 labels = c("multiple\ndatasets", 
+                            "sampling effort", 
+                            "non-detection", 
+                            "visit-specific\ncovariates",
+                            "organized\nscheme")))) + 
   geom_tile(aes(fill = resids)) + 
   xlab("Study Question") + 
   ylab("Data Type") + 
-  geom_text(aes(label = round(resids, digits = 1))) + # write the values
   scale_fill_gradient2(low = "#3366ff", mid = "white", high = "#ff751a") + 
   theme(panel.grid.major.x=element_blank(), #no gridlines
         panel.grid.minor.x=element_blank(), 
@@ -1111,8 +1115,10 @@ ggplot(data = dt_pd_df,
         panel.background=element_rect(fill="white"), # background=white
         axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
         axis.text.y = element_text(angle=45)) + 
-    # ggtitle("Residuals from Poisson\nindependence model\nData Type by Study Question") + 
+  # ggtitle("Residuals from Poisson\nindependence model\nData Type by Study Question") + 
   labs(fill = "Deviance\nresiduals") 
+print(data_type_study_question_plot + 
+        geom_text(aes(label = round(resids, digits = 1)))) # write the values
 ```
 
 Some types of additional data that can be associated with biological records were used too infrequently for us to evaluate the reliability of our codings.  Types of data insed infrequently included photos (`r round((length(which(wg$data.type...photo == T)) / nrow(wg)) * 100, digits = 1)` % of studies), videos (`r round((length(which(wg$data.type...video == T)) / nrow(wg)) * 100, digits = 1)` % of studies), vouchers specimens (`r round((length(which(wg$data.type...voucher.of.some.kind.necessary.for.analysis == T)) / nrow(wg)) * 100, digits = 1)` % of studies), audio recordings (`r round((length(which(wg$data.type...audio == T)) / nrow(wg)) * 100, digits = 1)` % of studies), and life stage (e.g. phenology) information (`r round((length(which(wg$data.type...life.stage == T)) / nrow(wg)) * 100, digits = 1)` % of studies.  The coding reliability was too low for us to interpret whether studies used abundance data (Krippendorff's *alpha* = `r round(samp_adequate$kripp_alpha[samp_adequate$variable == "data type - abundance"], digits = 2)`) or only "what, where, when" data (Krippendorff's *alpha* = `r round(samp_adequate$kripp_alpha[samp_adequate$variable == "data type - what where when only"], digits = 2)`).
@@ -1146,7 +1152,7 @@ if(diag_present) {
 ```{r data_type_analysis_method_perm_cap}
 data_type_analysis_method_perm_cap <- figs(
   name = "data_type_analysis_method_perm_cap", 
-  "Residuals from a permutation test of independence between data type and analysis method show that more structured types of data (non-detection, sampling effort, and data from organized monitoring schemes) are analysed more frequently with statistical inference and less frequently with purely descriptive methods than would be expected if data type and analysis method were not related.  When multiple different biological records datasets were integretad for a one study, that study was more likely to use purely descriptive analyses and less likely to use statistical inference than would be expected if there was no relationship between data type and analysis approach. The data types used for predictive analyses did not differ strongly from what would be expected if there was no relationship between data type and analysis approach.  Residuals for each cell were calculated as the difference between the observed number of studies in each cell and the median of the number of studies in the same cell in 10,000 permuted datasets.  Values in each grid cell are presented as: residual (permutation significance level).  Colors indicate direction and size of residuals.")
+  "Residuals from a permutation test of independence between data type and analysis method show that more structured types of data (non-detection, sampling effort, and data from organized monitoring schemes) are analysed more frequently with statistical inference and less frequently with purely descriptive methods than would be expected if data type and analysis method were not related.  When multiple different biological records datasets were integretad for a one study, that study was more likely to use purely descriptive analyses and less likely to use statistical inference than would be expected if there was no relationship between data type and analysis approach. The data types used for predictive analyses did not differ strongly from what would be expected if there was no relationship between data type and analysis approach.  Residuals for each cell were calculated as the difference between the observed number of studies in each cell and the mean of the number of studies in the same cell in 10,000 permuted datasets.  Values in each grid cell are presented as: residual (permutation significance level).  Colors indicate direction and size of residuals.")
 ```
 
 ```{r print_data_type_analysis_method_heatmap_table_permutation, fig.cap=data_type_analysis_method_perm_cap}
@@ -1160,25 +1166,24 @@ perm_resids_long <- gather(perm_resids, key = "analysis_approach",
 perm_resids_long <- left_join(perm_resids_long, perm_p_vals_long, 
                               by = c("data_type", "analysis_approach"))
 
-ggplot(data = perm_resids_long,        
-       aes(x = factor(analysis_approach, 
-                      levels = c("descriptive only", "inference", "prediction"), 
-                      labels = c("descriptive\nonly", 
-                                 "inference", "prediction")), 
-           y = factor(data_type,
-                      levels = c("multiple datasets integrated for analysis", 
-                                 "sampling effort known", 
-                                 "non detection",
-                                 "organized data collection scheme"), 
-                      labels = c("multiple\ndatasets", 
-                                 "sampling effort", 
-                                 "non-detection", 
-                                 "organized\nscheme")))) + 
+data_type_analysis_approach_plot <- ggplot(
+  data = perm_resids_long,        
+  aes(x = factor(analysis_approach, 
+                 levels = c("descriptive.only", "inference", "prediction"), 
+                 labels = c("descriptive\nonly", 
+                            "inference", "prediction")), 
+      y = factor(data_type,
+                 levels = c("multiple datasets integrated for analysis", 
+                            "sampling effort known", 
+                            "non detection",
+                            "organized data collection scheme"), 
+                 labels = c("multiple\ndatasets", 
+                            "sampling effort", 
+                            "non-detection", 
+                            "organized\nscheme")))) + 
   geom_tile(aes(fill = residual)) + 
   xlab("Analysis Approach") + 
-  ylab("Data Type") + 
-  geom_text(aes(label = paste0(round(residual, digits = 1), " (", 
-                               round(significance, digits = 2), ")"))) + # write the values
+  ylab("Data Type") + # write the values
   scale_fill_gradient2(low = "#3366ff", mid = "white", high = "#ff751a") + 
   theme(panel.grid.major.x=element_blank(), #no gridlines
         panel.grid.minor.x=element_blank(), 
@@ -1189,6 +1194,9 @@ ggplot(data = perm_resids_long,
         axis.text.y = element_text(angle=45)) +  
   # ggtitle("Residuals (significance level)\nfrom permutation test") + 
   labs(fill = "observed -\nexpected\ncounts")
+print(data_type_analysis_approach_plot + 
+  geom_text(aes(label = paste0(round(residual, digits = 1), " (", 
+                               round(significance, digits = 2), ")"))))
 ```
 
 
@@ -1217,7 +1225,7 @@ used_top_10_providers <- grepl(paste(prox_src_df$prox_src[1:10], collapse = "|")
 
 Studies in this review obtained their data from at least `r nrow(prox_src_df)` different proximate data sources.  The number of studies using each data source was strongly right-skewed, with many data sources that were used by only one study, and relatively few data sources that were used by many studies (`r tabs("prox_src_tab_cap", display = "cite")`, Tab. S??).  Among the most frequently used data sources were both national and international data aggregators (e.g. the UK-focused National Biodiversity Network, the Irish National Biodiversity Data Centre, and the Global Biodiversity Information Facility) and individual organizations that manage both the initial collection and the subsequent presentation of data (e.g. the British Trust for Ornithology and the UK Butterfly Monitoring Scheme, `r tabs("prox_src_tab_cap", display = "cite")`).  Of the `r nrow(wg)` studies in this review, `r length(which(used_top_10_providers == T))` (`r round((length(which(used_top_10_providers == T)) / length(used_top_10_providers)) * 100, digits = 1)`%) obtained at least some of their data from one of the ten most commonly used proximate data providers (`r tabs("prox_src_tab_cap", display = "cite")`).
 
-Many of the data sources that provided data for only one study in this review were "traditional" data sources such as local records centres, taxon-specific monitoring schemes, or natural history museums.  But there were also a few non-traditional data sources used by studies in this review.  At least one study in this review used data from each of Google Images (Leighton et al. 2016), Flickr (Jeawak et al. 2017; Petrusková et al. 2015), YouTube (Petrusková et al. 2015), Vimeo (Petrusková et al. 2015), and SoundCloud, an audio sharing platform that contains music, podcasts, and other audio content (Petrusková et al. 2015), and 
+Many of the data sources that provided data for only one study in this review were "traditional" data sources such as local records centres, taxon-specific monitoring schemes, or natural history museums.  But there were also a few non-traditional data sources used by studies in this review.  At least one study in this review used data from each of Google Images (Leighton et al. 2016), Flickr (Jeawak et al. 2017; Petrusková et al. 2015), YouTube (Petrusková et al. 2015), Vimeo (Petrusková et al. 2015), and SoundCloud, an audio sharing platform that contains music, podcasts, and other audio content (Petrusková et al. 2015).
 
 `r tabs("prox_src_tab_cap", display = "full")`
 
@@ -1294,7 +1302,7 @@ We were not able to estimate the reliability of our codings about whether studie
 
 Digital record submission and storage has increased the ease with which vouchers of specimens can be stored and accessed.  Digital photos, audio recordings, and videos can all be used as digital voucher specimens to both confirm the taxonomic identity of species recorded and to provide additional information that may be of interest to reserachers.  Sites that collate recordings of bird songs (e.g. xeno-canto and the Macaulay Library of Natural Sounds) now hold ??hundreds of thousands?? of recordings of British and Irish birds, and eBird, one of the worlds largest platforms for collecting biological records, now allows observers to upload photos, audio recordings, and videos?? with species checklists. Given the large and rapidly growing archive of digital voucher specimens (??number and growth of eBird audio or video files??) and the relatively infrequent use of these data in studies in this review, the analysis of the digital vouchers associated with biological records may be a rich area for new research (cite some studies that do this).  The challenges associated with studying e.g. the distribution of bird song dialects (??cite??) or the distributions of morphological characteristics (??cite??) using biological records with digital vouchers are likely similar to the challenges (and the solutions to those challenges) associated with studying species occurrence distributions using more traditional "what, where, when" biological records.  It is possible that our search terms did not retrieve studies that used biological records with digital vouchers if those studies did not include words like "biological records" or "citizen science".  
 
-Biological records data were used as both response and predictor variables in studies in this review.  By far the most common way to use biological records was as a response (`length(which(wg$biological.records.as.response.variable == T))` of `nrow(wg)` studies), for example when using environmental predictor variables to estimate the probability of occurrence (measured with biological records) of a species in species distribution modelling (?cite a study?). However, biological records were used as a predictor in multiple studies. For example, the recorded presence of wild mammals and seabirds was used as one of many predictors to estimate the spatial distribution of air pollutant emissions (ammonia, methan, and nitrous oxide) (Tomlinson, Carnell, Tang, Sutton & Dragosits 2017).
+Biological records data were used as both response and predictor variables in studies in this review.  By far the most common way to use biological records was as a response (`r length(which(wg$biological.records.as.response.variable == T))` of `r nrow(wg)` studies), for example when using environmental predictor variables to estimate the probability of occurrence (measured with biological records) of a species in species distribution modelling (?cite a study?). However, biological records were used as a predictor in multiple studies. For example, the recorded presence of wild mammals and seabirds was used as one of many predictors to estimate the spatial distribution of air pollutant emissions (ammonia, methan, and nitrous oxide) (Tomlinson, Carnell, Tang, Sutton & Dragosits 2017).
 
 ### old questions to drop or keep?
 
@@ -1310,13 +1318,13 @@ $H2_a$: The data types "non-detection", "survey effort known", "abundance", and 
 ### Coding Reliability
 ```{r kripp_sum_cap}
 kripp_sum_cap <- figs(name = "kripp_sum_cap", 
-                      paste0("Reader agreement measured using Krippendorff's alpha, for variables for which the sample size is large enough to estimate Krippendorff's alpha.  Dashed and dotted horizontal lines show Krippendorff's alpha values of 0.8 and 0.67, which are recommended preferred and minimum values at which variables can be relied upon for analysis."))
+                      paste0("Reader agreement measured using Krippendorff's alpha, for variables for which the sample size was large enough to estimate Krippendorff's alpha.  Dashed and dotted horizontal lines show Krippendorff's alpha values of 0.8 and 0.67, which are recommended preferred and minimum values at which variables can be relied upon for analysis."))
 ```
 
 ```{r plot_kripp_for_adequate_sample_size, fig.cap=kripp_sum_cap}
 # plot krippendorf's alpha values for only variables that have adequate sample size
-ggplot(data = prob_of_values[which(prob_of_values$n_40_adequate == T), ], 
-       aes(y = kripp_alpha)) +
+krip_plot <- ggplot(data = prob_of_values[which(prob_of_values$n_40_adequate == T), ], 
+                    aes(y = kripp_alpha)) +
   geom_boxplot() + 
   geom_point(aes(x = 0)) + 
   geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
@@ -1326,6 +1334,7 @@ ggplot(data = prob_of_values[which(prob_of_values$n_40_adequate == T), ],
   xlab("") +
   theme_bw() + 
   theme(axis.text.x = element_blank())
+print(krip_plot)
 ```
 
 ```{r _print_kripp_sample_adequate_table}
@@ -1342,13 +1351,16 @@ er$start.year[wg_dbl_cd$start.year == "unknown"]
 
 both_numeric <- which(!is.na(as.numeric(wg_dbl_cd$start.year)) & 
                         !is.na(as.numeric(er$start.year)))
-plot(as.numeric(wg_dbl_cd$start.year[both_numeric]) ~ 
-       as.numeric(er$start.year[both_numeric]), 
-     xlab = "start year determined by coder two", 
-     ylab = "start year determined by coder one")
+sy_df <- data.frame(wgyr <- as.numeric(wg_dbl_cd$start.year[both_numeric]), 
+                    eryr <- as.numeric(er$start.year[both_numeric]))
+start_year_cor_plot <- ggplot(data = sy_df, aes(x = wgyr, y = eryr)) + 
+  geom_point(size = 3) + theme_bw() + 
+  xlab("Start year determined by coder one") + 
+  ylab("Start year determined by coder two")
+print(start_year_cor_plot)
 # correlation is good enough.  Two very different studies, but others match.
 cor(as.numeric(wg_dbl_cd$start.year[both_numeric]),  
-       as.numeric(er$start.year[both_numeric]), 
+    as.numeric(er$start.year[both_numeric]), 
     method = "spearman") 
 ```
 
@@ -1382,18 +1394,20 @@ for(i in 1:ncol(dt_df)) {
 }
 
 if(diag_present) {
-  print(ggpairs(dt_df, columns = 1:ncol(dt_df), 
-              upper = list(discrete = "blank"),
-              lower = list(discrete = "ratio"), 
-              diag = list(discrete = "barDiag"), 
-              columnLabels = c("organized scheme", 
-                               "sampling effort",
-                               "non detection",
-                               "multiple datasets", 
-                               "visit specific covariates"), 
-              labeller = label_wrap_gen(width = 10)) + 
-        ggtitle("Correlation of data type predictor variables") + 
-        theme(axis.text.x = element_text(angle = 50, hjust = 1)))
+  data_type_pairs_plot <- ggpairs(dt_df, columns = 1:ncol(dt_df), 
+                                  upper = list(discrete = "blank"),
+                                  lower = list(discrete = "ratio"), 
+                                  diag = list(discrete = "barDiag"), 
+                                  columnLabels = c("organized scheme", 
+                                                   "sampling effort",
+                                                   "non detection",
+                                                   "multiple datasets", 
+                                                   "visit specific covariates"), 
+                                  labeller = label_wrap_gen(width = 10)) + 
+    ggtitle("Correlation of data type predictor variables") + 
+    theme(axis.text.x = element_text(angle = 50, hjust = 1), 
+          axis.text.y = element_text(angle = 50, hjust = 1))
+  print(data_type_pairs_plot)
 }
 ```
 
@@ -1458,7 +1472,9 @@ Diagnostics for main effects model log_years ~ all 5 data types (no interactions
 ```{r temp_extent_lm_diags_print, fig.height=4, fig.width=4}
 if(diag_present) {
   print("Diagnostics for main effects model log_years ~ all 5 data types (no interactions)")
+  par(mfrow = c(2, 2))
   plot(time_lm_full, ask = FALSE)
+  par(mfrow = c(1, 1))
   # hist(time_resids, 
   #      main = "standardized residuals of full model for temporal extent", 
   #      xlab = "standardized residuals")
@@ -1608,19 +1624,31 @@ if(diag_present) {
 
 ```{r print_pearson_resids_plot, fig.cap=pearson_resids_cap}
 if(diag_present) {
-  hist(method_diags$Pr, main = "Pearson residuals for methodology\nby study focus logistic regression")
+  method_glm_Pr_plot <- ggplot(data = method_diags, aes(x = Pr)) + 
+    geom_histogram() + theme_bw() +
+    xlab("Pearson residuals")
+  print(method_glm_Pr_plot + 
+          ggtitle("Pearson residuals for methodology\nby study focus logistic regression"))
 }
 ```
 
 ```{r deviance_resids_methodology_plot, fig.cap=deviance_resids_cap}
 if(diag_present) {
-  hist(method_diags$dr, main = "Deviance residuals for methodology\nby study focus logistic regression")
+    method_glm_dr_plot <- ggplot(data = method_diags, aes(x = dr)) + 
+    geom_histogram() + theme_bw() +
+    xlab("Deviance residuals")
+  print(method_glm_dr_plot + 
+          ggtitle("Deviance residuals for methodology\nby study focus logistic regression"))
 }
 ```
 
 ```{r leverage_methodology_plot, fig.cap=leverage_cap}
 if(diag_present) {
-  hist(method_diags$h, main = "Leverage for methodology\nby study focus logistic regression")
+  method_glm_lev_plot <- ggplot(data = method_diags, aes(x = h)) + 
+    geom_histogram() + theme_bw() +
+    xlab("Leverage")
+  print(method_glm_lev_plot + 
+          ggtitle("Leverage for methodology\nby study focus logistic regression"))
 }
 ```
 
@@ -1702,7 +1730,7 @@ method_boot_df$response_variable <- gsub(".*temp.*", "temporal trends",
 
 ```{r method_boot_plot}
 # plot proportion of studies using each response variable, with 95% CIs
-print(ggplot(data = method_boot_df, 
+prop_responses_boot_plot <- ggplot(data = method_boot_df, 
              aes(x = factor(response_variable, 
                             levels = c("species distribution", 
                                        "phenology", 
@@ -1711,7 +1739,7 @@ print(ggplot(data = method_boot_df,
                                        "temporal trends", 
                                        "other")), 
                  y = prop_studies)) + 
-        geom_point() + 
+        geom_point(size = 3) + 
         geom_linerange(aes(x = factor(response_variable, 
                             levels = c("species distribution", 
                                        "phenology", 
@@ -1720,14 +1748,14 @@ print(ggplot(data = method_boot_df,
                                        "temporal trends", 
                                        "other")), 
                            ymin = l_95ci, 
-                           ymax = u_95ci)) + 
+                           ymax = u_95ci), size = 1.1) + 
         xlab("") + 
-        ylab("Proportion of Studies") + 
+        ylab("Proportion of Studies\nthat were methodological") + 
         ylim(c(0, 1)) + 
         theme_bw() + 
         theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1), 
-              strip.background = element_blank(), strip.placement = "outside"))
-      # theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)))
+              strip.background = element_blank(), strip.placement = "outside")
+print(prop_responses_boot_plot)
 ```
 
 ### What data types are used for each type of ecological study question?
@@ -2046,16 +2074,137 @@ ggsave("Fig1.svg", temp_extent_plot +
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "svg")
+ggsave("Fig2.svg", spat_extent_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+ggsave("Fig3.svg", response_var_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+ggsave("Fig4.svg", methodology_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+ggsave("Fig5.svg", data_type_study_question_plot + 
+         theme(text = element_text(size = t_size_save), 
+        legend.key.height = grid::unit(1.5, "cm")) + 
+  geom_text(aes(label = round(resids, digits = 1)), 
+            size = t_size_save/3), # write the values
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+ggsave("Fig6.svg", data_type_analysis_approach_plot + 
+         theme(text = element_text(size = t_size_save), 
+        legend.key.height = grid::unit(1.5, "cm")) + 
+  geom_text(aes(label = paste0(round(residual, digits = 1), " (", 
+                               round(significance, digits = 2), ")")), 
+            size = t_size_save/3), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
 
 
 ggsave("Fig1.jpg", temp_extent_plot + 
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "jpg")
-
+ggsave("Fig2.jpg", spat_extent_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+ggsave("Fig3.jpg", response_var_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+ggsave("Fig4.jpg", methodology_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+ggsave("Fig5.jpg", data_type_study_question_plot + 
+         theme(text = element_text(size = t_size_save), 
+               legend.key.height = grid::unit(1.5, "cm")) + 
+         geom_text(aes(label = round(resids, digits = 1)), 
+                   size = t_size_save/3), # write the values, 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+ggsave("Fig6.jpg", data_type_analysis_approach_plot + 
+         theme(text = element_text(size = t_size_save), 
+               legend.key.height = grid::unit(1.5, "cm")) + 
+  geom_text(aes(label = paste0(round(residual, digits = 1), " (", 
+                               round(significance, digits = 2), ")")), 
+            size = t_size_save/3), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
 ```
 
 ```{r save_plots_appendices}
+ggsave("FigS1.1.svg", krip_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+ggsave("FigS1.2.svg", start_year_cor_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+ggsave("FigS1.3.svg", data_type_pairs_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+svg("FigS1.4.svg")
+par(mfrow = c(2, 2)) 
+plot(time_lm_full, ask = FALSE) 
+par(mfrow = c(1, 1))
+dev.off()
+ggsave("FigS1.5.svg", method_glm_Pr_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+ggsave("FigS1.6.svg", method_glm_dr_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+ggsave("FigS1.7.svg", method_glm_lev_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+ggsave("FigS1.7.svg", prop_responses_boot_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+
+
+ggsave("FigS1.1.jpg", krip_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+ggsave("FigS1.2.jpg", start_year_cor_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+ggsave("FigS1.3.jpg", data_type_pairs_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+jpeg("FigS1.4.jpg")
+par(mfrow = c(2, 2)) 
+plot(time_lm_full, ask = FALSE) 
+par(mfrow = c(1, 1))
+dev.off()
+ggsave("FigS1.5.jpg", method_glm_Pr_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+ggsave("FigS1.6.jpg", method_glm_dr_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+ggsave("FigS1.7.jpg", method_glm_lev_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+ggsave("FigS1.8.jpg", prop_responses_boot_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
 
 
 ```
