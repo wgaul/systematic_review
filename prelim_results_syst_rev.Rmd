@@ -515,8 +515,7 @@ method_chisq <- anova(method_mod_null, method_mod, test = "Chisq")
 
 ## What data types are used for each study question? 
 
-We asked whether different types of biological records data are used to study different types of questions.  We fit Poisson regression models of the number of studies with each combination of data type and biological or ecological study focus, fitting both a saturated model and an independence model with only main effects.  We tested whether there was an interaction between data type and study question using a Chi-squared likelihood ratio test to compare the saturated and independence models.  We explored deviations from the independence model by examining the deviance residuals from the fitted independence model.  
-
+We asked whether different types of biological records data are used to study different types of questions.  We used random permutations to test the null hypothesis of no difference in the types of data used to study different biological or ecological questions.  The data type categories we tested based on *a-priori* expectations of importance were: sampling effort; non-detection; organized monitoring scheme; and multiple datasets integrated for analysis.  In the ranom permutation test, we broke the association between data type and study question by randomly shuffling the study question rows of our original data.  We preserved associations between study questions by preserving the rows (and therefore associations) within the study question variables, and we preserved associations between data types by preserving the rows (and therefore associations) within the data type variables (Fig. S??).  We performed 10,000 permutations.  To test for an overall interaction between data type and study question, we calculated a chi-squared test statistic for each permuted dataset and for the observed dataset, and calculated the significance level as the proportion of chi-squared statistic values from the permuted datasets that were higher than the chi-squared statistic for the observed dataset.  To determine which combinations of data type and study question were found more or less often than expected by chance, we counted the number of studies using each combination of study question and data type for the permuted datasets and for the observed data.  We calculated residuals (deviations from the expectation under the null hypothesis) for each cell of the contingency table by subtracting the mean count for each cell in the permuted data contingency tables from the observed cell count for the same cells. We calculated permutation significance levels for each cell by finding the proportion of the cell counts from the permuted datasets that were more extreme than the observed count for each cell.  Small permutation significance levels for a cell indicate that the observed number of studies in that cell was unlikely if there was no relationship between that data type and study question.
 
 ```{r data_type_paradigm_df_prepare}
 # make data frame with counts of data type by study paradigm
@@ -581,9 +580,93 @@ dt_pd_df$resids <- residuals(dt_pd_mod_ind, type = "deviance")
 # dt_pd_df[abs(dt_pd_df$resids) > 1, ] 
 ```
 
+```{r data_type_study_question_randomization}
+# randomly re-shuffle study questions (but keep them associated with each
+# other in the same way), and keep data types associated with each other.
+# This will give H_0 counts for each cell.
+rand_array <- array(NA, c(4, 6, n_perm))
+
+for(i in 1:n_perm-1) {
+  ind <- sample(1:nrow(wg), replace = F)
+  # make data frame of data types
+  df_dat <- wg[, grepl(
+    ".*multiple.dat.*|.*non.det.*|.*organized.*|.*sampling.eff.*", colnames(wg))]
+  # make data frame of study questions
+  df_qs <- wg[, grepl(".*respo.*distribution|.*respons.*phenology|.*response.*abundance|response.*species.richness|trends.*time|other_focus", 
+                      colnames(wg))]
+  # permute analysis methods
+  df_qs <- df_qs[ind, ]
+  dat <- cbind(df_dat, df_qs)
+  
+  dat <- gather(dat, key = "data_type", value = "dt_val", 
+               data.structure...organized.data.collection.scheme:
+                 data.structure...multiple.datasets.integrated.for.analysis) %>%
+    filter(dt_val == TRUE) %>%
+    gather(key = "study_question", value = "an_val", 
+           response.variable...species.richness:
+             other_focus) %>%
+    filter(an_val == TRUE) %>%
+    count(study_question, data_type) %>%
+    complete(study_question, data_type, fill = list(n = 0))
+  
+  # clean character strings
+  dat$data_type <- gsub("data.structure...", "", dat$data_type)
+  dat$study_question <- gsub("response.variable...", "", dat$study_question)
+  
+  # spread for easy visualisation of 2-way table
+  dat <- spread(dat, key = study_question, value = n)
+  dat$data_type <- gsub("\\.", " ", dat$data_type) 
+  rand_array[, , i] <- as.matrix(dat[, 2:7])
+}
+
+# add observed values as one permutation
+rand_array[, , n_perm] <- as.matrix(dt_pd_df_wide[, 2:ncol(dt_pd_df_wide)])
+
+
+# get permutation chi-squared p-value to test for overall interaction
+# See Manley (2007) p. 313
+chis_perm_study_question <- c()
+for(k in 1:n_perm) {
+  chis_perm_study_question[k] <- chisq.test(rand_array[, , k])$statistic
+}
+chis_perm_study_question_fun <- ecdf(chis_perm_study_question)
+# calculate permutation p-value for observed chi-squared test statistic
+chis_perm_study_question_pvalue <- 1 - 
+  chis_perm_study_question_fun(chisq.test(dt_pd_df_wide[, 2:4])$statistic)
+
+# make empty template df to hold cell p-values later
+perm_sq_p_vals <- dt_pd_df_wide
+perm_sq_p_vals[, 2:ncol(perm_sq_p_vals)] <- NA # clear counts
+# make empty template df to hold residuals later
+perm_sq_resids <- dt_pd_df_wide
+perm_sq_resids[, 2:ncol(perm_sq_resids)] <- NA # clear counts 
+# make template df to hold expected counts later
+perm_sq_exp_counts <- dt_pd_df_wide
+perm_sq_exp_counts[, 2:ncol(perm_sq_exp_counts)] <- NA # clear counts
+
+for(i in 1:nrow(perm_sq_p_vals)) {
+  for(j in 1:(ncol(perm_sq_p_vals) - 1)) {
+    emp_dist <- ecdf(rand_array[i, j, ])
+    # calculate empirical p-value
+    perm_sq_p_vals[i, j + 1] <- emp_dist(dt_pd_df_wide[i, j + 1])
+    # make this a 2-tailed p-value
+    if(perm_sq_p_vals[i, j + 1] > 0.5) {
+      perm_sq_p_vals[i, j + 1] <- 1 - perm_sq_p_vals[i, j + 1]
+    }
+    # Double the proportion to make it roughly two-tailed (i.e. the proportion
+    # of values more extreme than the observed value)
+    perm_sq_p_vals[i, j + 1] <- 2 * perm_sq_p_vals[i, j + 1] 
+    # calculate residual
+    perm_sq_resids[i, j + 1] <- dt_pd_df_wide[i, j + 1] - mean(rand_array[i, j, ])
+    # get expected counts
+    perm_sq_exp_counts[i, j + 1] <- mean(rand_array[i, j, ])
+  }
+}
+```
+
 ## Analysis approach & data type
 
-To investigate whether characteristics of the biological records data affected the analysis approach, we used random permutations to test the null hypothesis of no difference in the types of data used with different analysis approaches.  We identified the analysis approach of each study as inference, prediction, or descriptive analyses only.  The data type categories we tested based on *a-priori* expectations of importance were: sampling effort; non-detection; organized monitoring scheme; and multiple datasets integrated for analysis.  In the ranom permutation test, we broke the association between data type and analysis approach by randomly shuffling the analysis approach results.  We preserved associations between analysis approaches by preserving the rows (and therefore associations) within the analysis approach variables, and we preserved associations between data types by preserving the rows (and therefore associations) within the data type variables (Fig. S??).  We performed 10,000 permutations.  To test for an overall interaction between data type and analysis approach, we calculated a chi-squared test statistic for each permuted dataset and for the observed dataset, and calculated the significance level as the proportion of chi-squared statistic values from the randomized datasets that were higher than the chi-squared statistic for the observed dataset.  To determine which combinations of data type and analysis approach were found more or less often than expected by chance, we counted the number of studies using each combination of analysis approach and data type for the permuted datasets and for the observed data.  We calculated residuals (deviations from the expectation under the null hypothesis) for each cell of the contingency table by subtracting the mean count for each cell in the permuted data contingency tables from the observed cell count for the same cells. We calculated permutation significance levels for each cell by finding the proportion of the cell counts from the permuted datasets that were more extreme than the observed count for each cell.  Small permutation significance levels for a cell indicate that the observed number of studies in that cell was unlikely if there was no relationship between that data type and that analysis approach.
+To investigate whether characteristics of the biological records data affected the analysis approach, we used random permutations to test the null hypothesis of no difference in the types of data used with different analysis approaches.  We identified the analysis approach of each study as inference, prediction, or descriptive analyses only.  The data type categories we tested based on *a-priori* expectations of importance were: sampling effort; non-detection; organized monitoring scheme; and multiple datasets integrated for analysis.  The permutation procedure and associated residual and test statistic calculations were similar to those used for the analysis of the relationship between data type and study questions (Section ??).  
 
 
 ```{r data_type_analysis_approach_df}
@@ -1074,18 +1157,28 @@ print(methodology_plot)
 
 ## What data types are used for each type of ecological study question?
 
-The use of data types differed significantly between study questions (*p* = `r round(dt_pd_interaction_test$"Pr(>Chi)"[2], 3)` for a chi-squared likelihood ratio test of a null hypothesis that a Poisson regression independence model with main effects for data type and ecological study focus (but no interaction term) model fit the data as well as a saturated model.  In the independence model, two cells had deviance residuals with an absolute value bigger than two (Fig. 4) - the cell for the number of studies investigating abundance using multiple biological datasets (residual = -3.5), and the cell for the number of studies investigating species distributions using multiple biological records datasets (residual = 2.8).  Residuals were generally positive for combinations of structured data types and study questions about abundance, and negative for combinations of structured data types and species distribution study questions (Fig. 4).  This suggests that abundance studies use structured data types more often than would be expected if data type and study question were not related, and distribution studies use structured data types less often than would be expected if study question and data type were not related. 
+The permutation test suggested that data type and study question were not independent (permutation-based significance level of the chi-squared test statistic for the observed data = `r chis_perm_study_question_pvalue` with `r n_perm` permutations).  Permutation test residuals and significance levels for each combination of data type and study question showed that residuals were generally large, positive, and significantly different from zero for combinations of structured data types and studies of species abundances, suggesting that those data types were used more frequently for abundance studies than would be expected if there were no relationship between data type and analysis approach. Residuals were large, negative, and highly significantly different from zero for combinations of more structured data types and studies of species distributions (Fig. 4?), suggesting that those rich data types are used for distribution studies less often than would be expected if there was no relationship between data type and analysis approach. The absolute value of residuals and significance levels for combinations of all data types with studies of phenology, species richness and "other" study questions generally indicated that the use of data types for those study questions did not differ strongly from what would be expected if there were no relationship between data type and study question.  The residuals and significance levels suggested that multiple datasets were used less often for abundance studies and more often for distribution studies (and perhaps for studies of "other" questions) than would be expected if there was no relationship between data type and study question.  Both the absolute magnitude of residuals and the significance levels suggested that the observed use of multiple datasets for abundance and distribution questions differed less strongly from the null expectation than did combinations of structured data types with those study questions.  
 
-```{r data_type_study_question_cap}
-data_type_study_question_cap <- figs(name = "data_type_study_question_cap", 
-                               "Deviance residuals from a Poisson regression model of independence between data type and study question.  The direction and size of the residuals indicated deviations from what would be expected if there were no relationship between data type and study question.  Large negative residuals indicate that there were fewer studies with that combination of data type and study question than would be expected if there were no relationship between data type and study question.  Large positive residuals indicate that there were more studies with that combination of data type and study question than would be expected if there were no relationship between data type and study question.")
+```{r data_type_study_question_perm_cap}
+data_type_study_question_perm_cap <- figs(name = "data_type_study_question_perm_cap", 
+                               "Residuals from a permutation test of independence between data type and biological or ecological study question show that more structured types of data (non-detection, sampling effort, and data from organized monitoring schemes) are used more frequently to study species abundances and less frequently to study species distributions than would be expected if data type and study question were not related.  When multiple different biological records datasets were integretad for a one study, that study was more likely to study species distributions and less likely to study abundance than would be expected if there was no relationship between data type and analysis approach. The data types used for studies of phenology and species richness did not differ strongly from what would be expected if there was no relationship between data type and analysis approach.  Residuals for each cell were calculated as the difference between the observed number of studies in each cell and the mean of the number of studies in the same cell in 10,000 permuted datasets.  Values in each grid cell are presented as: residual (permutation significance level).  Small values of permutation significance level indicate that the value in that cell would be unlikely if there were no relationship between data type and study question.  Colors indicate direction and size of residuals.")
 ```
 
 
-```{r data_type_study_question_graph, fig.cap=data_type_study_question_cap}
-data_type_study_question_plot <- ggplot(
-  data = dt_pd_df, 
-  aes(x = factor(study_focus, 
+```{r print_data_type_study_question_heatmap_table_permutation, fig.cap=data_type_study_question_perm_cap}
+# get permutation significance levels
+perm_sq_p_vals_long <- gather(perm_sq_p_vals, key = "study_question", 
+                           value = "significance", 2:ncol(perm_sq_p_vals))
+# get permutation residuals
+perm_sq_resids_long <- gather(perm_sq_resids, key = "study_question", 
+                           value = "residual", 2:ncol(perm_sq_resids))
+# add significance levels to residuals data frame
+perm_sq_resids_long <- left_join(perm_sq_resids_long, perm_sq_p_vals_long, 
+                              by = c("data_type", "study_question"))
+
+data_type_study_question_perm_plot <- ggplot(
+  data = perm_sq_resids_long,        
+  aes(x = factor(study_question, 
                  levels = c("abundance", "distribution", "phenology", 
                             "species.richness", "trends.over.time", 
                             "other_focus"), 
@@ -1097,28 +1190,27 @@ data_type_study_question_plot <- ggplot(
                  levels = c("multiple.datasets.integrated.for.analysis", 
                             "sampling.effort.known", 
                             "non.detection",
-                            "visit.specific.covariates",
                             "organized.data.collection.scheme"), 
                  labels = c("multiple\ndatasets", 
                             "sampling effort", 
                             "non-detection", 
-                            "visit-specific\ncovariates",
                             "organized\nscheme")))) + 
-  geom_tile(aes(fill = resids)) + 
+  geom_tile(aes(fill = residual)) + 
   xlab("Study Question") + 
-  ylab("Data Type") + 
+  ylab("Data Type") + # write the values
   scale_fill_gradient2(low = "#3366ff", mid = "white", high = "#ff751a") + 
   theme(panel.grid.major.x=element_blank(), #no gridlines
         panel.grid.minor.x=element_blank(), 
         panel.grid.major.y=element_blank(), 
         panel.grid.minor.y=element_blank(),
         panel.background=element_rect(fill="white"), # background=white
-        axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
-        axis.text.y = element_text(angle=45)) + 
-  # ggtitle("Residuals from Poisson\nindependence model\nData Type by Study Question") + 
-  labs(fill = "Deviance\nresiduals") 
-print(data_type_study_question_plot + 
-        geom_text(aes(label = round(resids, digits = 1)))) # write the values
+        axis.text.x = element_text(angle=35, hjust = 1, vjust=1),
+        axis.text.y = element_text(angle=45)) +  
+  # ggtitle("Residuals (significance level)\nfrom permutation test") + 
+  labs(fill = "observed -\nexpected\ncounts")
+print(data_type_study_question_perm_plot + 
+  geom_text(aes(label = paste0(round(residual, digits = 1), " (", 
+                               round(significance, digits = 2), ")"))))
 ```
 
 Some types of additional data that can be associated with biological records were used too infrequently for us to evaluate the reliability of our codings.  Types of data insed infrequently included photos (`r round((length(which(wg$data.type...photo == T)) / nrow(wg)) * 100, digits = 1)` % of studies), videos (`r round((length(which(wg$data.type...video == T)) / nrow(wg)) * 100, digits = 1)` % of studies), vouchers specimens (`r round((length(which(wg$data.type...voucher.of.some.kind.necessary.for.analysis == T)) / nrow(wg)) * 100, digits = 1)` % of studies), audio recordings (`r round((length(which(wg$data.type...audio == T)) / nrow(wg)) * 100, digits = 1)` % of studies), and life stage (e.g. phenology) information (`r round((length(which(wg$data.type...life.stage == T)) / nrow(wg)) * 100, digits = 1)` % of studies.  The coding reliability was too low for us to interpret whether studies used abundance data (Krippendorff's *alpha* = `r round(samp_adequate$kripp_alpha[samp_adequate$variable == "data type - abundance"], digits = 2)`) or only "what, where, when" data (Krippendorff's *alpha* = `r round(samp_adequate$kripp_alpha[samp_adequate$variable == "data type - what where when only"], digits = 2)`).
@@ -1130,7 +1222,7 @@ data_type_analysis_tab_cap <- tabs(name = "data_type_analysis_tab_cap",
                                    "Table of counts of studies using each data type and analysis approach.")
 ```
 
-There was strong evidence that data type and analysis approach are not independent (permutation-based significance level of the chi-squared test statistic for the observed data = `r chis_perm_pvalue` with `r n_perm` permutations).  Permutation test residuals and significance levels for each combination of data type and analysis method show that residuals are generally large, negative, and highly significantly different from zero for combinations of more structured data types and descriptive-only analyses (Fig. 5), suggesting that those rich data types are analyzed descriptively less often than would be expected if there was no relationship between data type and analysis approach.  Residuals are generally large, positive, and significantly different from zero for combinations of structured data types and inferential analyses, suggesting that those data types are analyzed with inferential methods more frequently than would be expected if there were no relationship between data type and analysis approach.  The absolute value of residuals for combinations of data with visit-specific covariates and both descriptive-only and inferential studies are small and not significantly different from zero, despite visit-specific covariates being a relatively rich and structured additional type of data to have associated with biological records.  The absolute value of residuals and significance levels for combinations of all data types with predictive analysis methods generally indicated that the use of data types in predictive analyses did not differ strongly from what would be expected if there were no relationship between data type and analysis approach.  The residuals and significance levels for the cells associated with multiple data sets being used in an analysis suggest that multiple datasets are used less often for inference and more often for descriptive-only analyses than would be expected if there was no relationship between data type and analysis approach, though both the absolute magnitude of the residuals and the significance levels suggested that the observed use of multiple datasets for those two analysis approaches differed less strongly from the null expectation than did the use of data with non-detection and/or sampling effort information and data from organized monitoring schemes.  
+There was strong evidence that data type and analysis approach are not independent (permutation-based significance level of the chi-squared test statistic for the observed data = `r chis_perm_pvalue` with `r n_perm` permutations).  Permutation test residuals and significance levels for each combination of data type and analysis method show that residuals are generally large, negative, and highly significantly different from zero for combinations of more structured data types and descriptive-only analyses (Fig. 5), suggesting that those rich data types are analyzed descriptively less often than would be expected if there was no relationship between data type and analysis approach.  Residuals are generally large, positive, and significantly different from zero for combinations of structured data types and inferential analyses, suggesting that those data types are analyzed with inferential methods more frequently than would be expected if there were no relationship between data type and analysis approach.  The absolute value of residuals and significance levels for combinations of all data types with predictive analysis methods generally indicated that the use of data types in predictive analyses did not differ strongly from what would be expected if there were no relationship between data type and analysis approach.  The residuals and significance levels for the cells associated with multiple data sets being used in an analysis suggest that multiple datasets are used less often for inference and more often for descriptive-only analyses than would be expected if there was no relationship between data type and analysis approach, though both the absolute magnitude of the residuals and the significance levels suggested that the observed use of multiple datasets for those two analysis approaches differed less strongly from the null expectation than did the use of data with non-detection and/or sampling effort information and data from organized monitoring schemes.  
 
 `r if(diag_present) tabs("data_type_analysis_tab_cap", display = "full")`
 
@@ -1760,6 +1852,54 @@ print(prop_responses_boot_plot)
 
 ### What data types are used for each type of ecological study question?
 
+We asked whether different types of biological records data are used to study different types of questions.  We initially fit Poisson regression models of the number of studies with each combination of data type and biological or ecological study focus, fitting both a saturated model and an independence model with only main effects.  The Poisson independence model (no interatctions) was overdispersed (ratio of residual deviance to residual degrees of freedom = `r round(dt_pd_mod_ind$deviance/dt_pd_mod_ind$df.residual, digits = 2)`), so in the main text we opted to use a random permutation test which made no assumptions about the distribution of the data or residuals.  Here, we report the results and model residuals from the Poisson independence model (Fig. S??), which showed the same general pattern in the direction and size of residuals as the randomization test (Fig. ??), though there were some differences in relative sizes of residuals between the permutation and Poisson approaches.  Overall, the consistent pattern in the direction of residuals suggested that the interpretation of the results was robust to using different statistical tests. 
+ 
+The use of data types differed significantly between study questions (*p* = `r round(dt_pd_interaction_test$"Pr(>Chi)"[2], 3)` for a chi-squared likelihood ratio test of a null hypothesis that a Poisson regression independence model with main effects for data type and ecological study focus (but no interaction term) model fit the data as well as a saturated model.  In the independence model, two cells had deviance residuals with an absolute value bigger than two (Fig. 4) - the cell for the number of studies investigating abundance using multiple biological datasets (residual = -3.5), and the cell for the number of studies investigating species distributions using multiple biological records datasets (residual = 2.8).  The residuals for those two cells were not as big in the permutation test reported in the main text, but the direction of the residuals was the same.  Deviance residuals from the Poisson model were generally positive for combinations of structured data types and study questions about abundance, and negative for combinations of structured data types and species distribution study questions (Fig. S??). This was in aggreement with the permutation test (Fig ??) and suggested that abundance studies use structured data types more often than would be expected if data type and study question were not related, and distribution studies used structured data types less often than would be expected if study question and data type were not related.
+
+```{r data_type_study_question_cap}
+data_type_study_question_cap <- figs(name = "data_type_study_question_cap", 
+                               "Deviance residuals from a Poisson regression model of independence between data type and study question.  The direction and size of the residuals indicated deviations from what would be expected if there were no relationship between data type and study question.  Large negative residuals indicate that there were fewer studies with that combination of data type and study question than would be expected if there were no relationship between data type and study question.  Large positive residuals indicate that there were more studies with that combination of data type and study question than would be expected if there were no relationship between data type and study question.")
+```
+
+```{r data_type_study_question_graph, fig.cap=data_type_study_question_cap}
+data_type_study_question_pois_plot <- ggplot(
+  data = dt_pd_df, 
+  aes(x = factor(study_focus, 
+                 levels = c("abundance", "distribution", "phenology", 
+                            "species.richness", "trends.over.time", 
+                            "other_focus"), 
+                 labels = c("abundance", "species\ndistribution", 
+                            "phenology", 
+                            "species\nrichness", "trends\nover\ntime", 
+                            "other")), 
+      y = factor(data_type,
+                 levels = c("multiple.datasets.integrated.for.analysis", 
+                            "sampling.effort.known", 
+                            "non.detection",
+                            "visit.specific.covariates",
+                            "organized.data.collection.scheme"), 
+                 labels = c("multiple\ndatasets", 
+                            "sampling effort", 
+                            "non-detection", 
+                            "visit-specific\ncovariates",
+                            "organized\nscheme")))) + 
+  geom_tile(aes(fill = resids)) + 
+  xlab("Study Question") + 
+  ylab("Data Type") + 
+  scale_fill_gradient2(low = "#3366ff", mid = "white", high = "#ff751a") + 
+  theme(panel.grid.major.x=element_blank(), #no gridlines
+        panel.grid.minor.x=element_blank(), 
+        panel.grid.major.y=element_blank(), 
+        panel.grid.minor.y=element_blank(),
+        panel.background=element_rect(fill="white"), # background=white
+        axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
+        axis.text.y = element_text(angle=45)) + 
+  # ggtitle("Residuals from Poisson\nindependence model\nData Type by Study Question") + 
+  labs(fill = "Deviance\nresiduals") 
+print(data_type_study_question_pois_plot + 
+        geom_text(aes(label = round(resids, digits = 1)))) # write the values
+```
+
 ```{r data_type_parad_table_cap}
 data_type_parad_table_cap <- tabs(name = "data_type_parad_table_cap", 
                                   "Table of counts for data type by study question paradigm.")
@@ -1796,14 +1936,18 @@ dt_pd_interaction_test
 # following this: https://newonlinecourses.science.psu.edu/stat504/node/169/
 
 # plot predicted v. observed for independence model
-plot(dt_pd_df$predicted ~ dt_pd_df$n) # actually looks decent
-abline(0, 1)
+dt_pd_poisson_pred_obs_plot <- ggplot(data = dt_pd_df, aes(x = n, y = predicted)) + 
+  geom_point(size = 3) + 
+  geom_abline(slope = 1) + 
+  xlab("observed") + theme_bw()
+print(dt_pd_poisson_pred_obs_plot) # actually looks decent
 
 # for independence model:
 summary(dt_pd_mod_ind)
-37.545/20 # a bit bigger than one, but not huge.
+# resid dev / resid df - a bit bigger than one, but not huge.
+dt_pd_mod_ind$deviance/dt_pd_mod_ind$df.residual 
 1-pchisq(dt_pd_mod_ind$deviance, dt_pd_mod_ind$df.residual) 
-# p = 0.01.  So reject null hypothesis that model is correctly specified.  
+# p = 0.007.  So reject null hypothesis that model is correctly specified.  
 # However, http://thestatsgeek.com/2014/04/26/deviance-goodness-of-fit-test-for-poisson-regression/
 # warns that this test can often wrongly indicate that the model is incorrectly
 # specified.  But that seems to be more of a problem when expected means are low.
@@ -1875,9 +2019,9 @@ ggplot(dt_pd_df,
 
 ### Analysis approach & data type
 
-To investigate whether the data type affects the analysis approach, we initially used a Poisson regression to model the relationship between three different analysis approaches (inference, prediction, and description) and data type.  The Poisson independence model (no interatctions) was overdispersed, so in the main text we opted to use a random permutation test which made no assumptions about the distribution of the data or residuals.  Here, we report the results and model residuals from the Poisson independence model (Fig. S??), which showed the same pattern as the randomization test (Fig. ??), suggesting that the interpretation of the results is robust to using different statistical tests, and the overdispersion in the independence model is not severe enough to make the model uninformative. 
+To investigate whether the data type affects the analysis approach, we initially used a Poisson regression to model the relationship between three different analysis approaches (inference, prediction, and description) and data type.  The Poisson independence model (no interatctions) was overdispersed (ratio of residual deviance to residual degrees of freedom = `r round(dt_an_mod_ind$deviance/dt_an_mod_ind$df.residual, digits = 2)`), so in the main text we opted to use a random permutation test which made no assumptions about the distribution of the data or residuals.  Here, we report the results and model residuals from the Poisson independence model (Fig. S??), which showed the same pattern as the permutation test (Fig. 6), suggesting that the interpretation of the results is robust to using different statistical tests, and the overdispersion in the independence model is not severe enough to make the model uninformative. 
 
-A Chi-squared likelihood ratio test comparing the saturated Poisson regression model  to a reduced model with only main effects for analysis approach and data type rejected the null hypothesis that the reduced model is as good as the full model (*p* = `r round(dt_an_mod_independence_test$'Pr(>Chi)'[2], 2)`), suggesting that the data type does influence or constrain the analysis approach.  
+A Chi-squared likelihood ratio test comparing the saturated Poisson regression model  to a reduced model with only main effects for analysis approach and data type rejected the null hypothesis that the reduced model is as good as the full model (*p* = `r round(dt_an_mod_independence_test$'Pr(>Chi)'[2], 3)`), suggesting that the data type does influence or constrain the analysis approach.  
 
 ```{r data_type_analysis_cap}
 data_type_analysis_cap <- figs(name = "data_type_analysis_cap", 
@@ -1954,9 +2098,9 @@ abline(0, 1)
 
 # for independence model:
 summary(dt_an_mod_ind)
-22.655/8 # resid dev / df - A lot bigger than 1.  Overdispersed
+dt_an_mod_ind$deviance/dt_an_mod_ind$df.residual # resid dev / df - Over 3. Overdispersed
 1-pchisq(dt_an_mod_ind$deviance, dt_an_mod_ind$df.residual) # (same as chisq test above)
-# p = 0.003.  So reject null hypothesis that model is correctly specified.  
+# p = 0.002.  So reject null hypothesis that model is correctly specified.  
 # However, http://thestatsgeek.com/2014/04/26/deviance-goodness-of-fit-test-for-poisson-regression/
 # warns that this test can often wrongly indicate that the model is incorrectly
 # specified.  But that seems to be more of a problem when expected means are low.
@@ -2001,26 +2145,26 @@ dt_an_qp_independence_test <- try(anova(dt_an_qp_ind, dt_an_qp_full,
 ```
 
 ```{r print_data_type_analysis_method_heatmap_table_poisson}
-ggplot(data = dt_an_df, 
-       aes(x = factor(analysis_approach, 
-                      levels = c("descriptive.only", "inference", "prediction"), 
-                      labels = c("descriptive\nonly", 
-                                 "inference", "prediction")), 
-           y = factor(data_type,
-                      levels = c("multiple.datasets.integrated.for.analysis", 
-                                 "sampling.effort.known", 
-                                 "non.detection",
-                                 "visit.specific.covariates",
-                                 "organized.data.collection.scheme"), 
-                      labels = c("multiple\ndatasets", 
-                                 "sampling effort", 
-                                 "non detection", 
-                                 "visit-specific\ncovariates",
-                                 "organized\nscheme")))) + 
+dt_an_pois_heatmap <- ggplot(
+  data = dt_an_df, 
+  aes(x = factor(analysis_approach, 
+                 levels = c("descriptive.only", "inference", "prediction"), 
+                 labels = c("descriptive\nonly", 
+                            "inference", "prediction")), 
+      y = factor(data_type,
+                 levels = c("multiple.datasets.integrated.for.analysis", 
+                            "sampling.effort.known", 
+                            "non.detection",
+                            "visit.specific.covariates",
+                            "organized.data.collection.scheme"), 
+                 labels = c("multiple\ndatasets", 
+                            "sampling effort", 
+                            "non detection", 
+                            "visit-specific\ncovariates",
+                            "organized\nscheme")))) + 
   geom_tile(aes(fill = resids)) + 
   xlab("Analysis Approach") + 
   ylab("Data Type") + 
-  geom_text(aes(label = round(resids, digits = 1))) + # write the values
   scale_fill_gradient2(low = "blue", mid = "white", high = "orange") + 
   theme(panel.grid.major.x=element_blank(), #no gridlines
         panel.grid.minor.x=element_blank(), 
@@ -2029,8 +2173,9 @@ ggplot(data = dt_an_df,
         panel.background=element_rect(fill="white"), # background=white
         axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
         axis.text.y = element_text(angle=45)) + 
-  labs(fill = "Deviance\nresiduals") + 
-  ggtitle("Residuals from Poisson\nindependence model")
+  labs(fill = "Deviance\nresiduals")
+print(dt_an_pois_heatmap + 
+  geom_text(aes(label = round(resids, digits = 1))))
 ```
 
 ```{r, prox_src_tab_cap_all}
@@ -2086,10 +2231,11 @@ ggsave("Fig4.svg", methodology_plot +
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "svg")
-ggsave("Fig5.svg", data_type_study_question_plot + 
+ggsave("Fig5.svg", data_type_study_question_perm_plot + 
          theme(text = element_text(size = t_size_save), 
         legend.key.height = grid::unit(1.5, "cm")) + 
-  geom_text(aes(label = round(resids, digits = 1)), 
+  geom_text(aes(label = paste0(round(residual, digits = 1), "\n(", 
+                               round(significance, digits = 2), ")")), 
             size = t_size_save/3), # write the values
        width = 25, height = 25, units = "cm", 
        device = "svg")
@@ -2119,11 +2265,12 @@ ggsave("Fig4.jpg", methodology_plot +
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "jpg")
-ggsave("Fig5.jpg", data_type_study_question_plot + 
+ggsave("Fig5.jpg", data_type_study_question_perm_plot + 
          theme(text = element_text(size = t_size_save), 
                legend.key.height = grid::unit(1.5, "cm")) + 
-         geom_text(aes(label = round(resids, digits = 1)), 
-                   size = t_size_save/3), # write the values, 
+         geom_text(aes(label = paste0(round(residual, digits = 1), "\n(", 
+                               round(significance, digits = 2), ")")), 
+                   size = t_size_save/4), # write the values, 
        width = 25, height = 25, units = "cm", 
        device = "jpg")
 ggsave("Fig6.jpg", data_type_analysis_approach_plot + 
@@ -2135,6 +2282,7 @@ ggsave("Fig6.jpg", data_type_analysis_approach_plot +
        width = 25, height = 25, units = "cm", 
        device = "jpg")
 ```
+
 
 ```{r save_plots_appendices}
 ggsave("FigS1.1.svg", krip_plot + 
@@ -2166,10 +2314,24 @@ ggsave("FigS1.7.svg", method_glm_lev_plot +
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "svg")
-ggsave("FigS1.7.svg", prop_responses_boot_plot + 
+ggsave("FigS1.8.svg", prop_responses_boot_plot + 
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "svg")
+ggsave("FigS1.9.svg", data_type_study_question_pois_plot + 
+         theme(text = element_text(size = t_size_save), 
+               legend.key.height = unit(1.1, "cm")) + 
+        geom_text(aes(label = round(resids, digits = 1)), size = t_size_save/3), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+ggsave("FigS1.10.svg", dt_an_pois_heatmap + 
+         theme(text = element_text(size = t_size_save), 
+               legend.key.height = unit(1.1, "cm")) + 
+        geom_text(aes(label = round(resids, digits = 1)), size = t_size_save/3), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+
+
 
 
 ggsave("FigS1.1.jpg", krip_plot + 
@@ -2203,6 +2365,18 @@ ggsave("FigS1.7.jpg", method_glm_lev_plot +
        device = "jpg")
 ggsave("FigS1.8.jpg", prop_responses_boot_plot + 
          theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+ggsave("FigS1.9.jpg", data_type_study_question_pois_plot + 
+         theme(text = element_text(size = t_size_save), 
+               legend.key.height = unit(1.1, "cm")) + 
+        geom_text(aes(label = round(resids, digits = 1)), size = t_size_save/3), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+ggsave("FigS1.10.jpg", dt_an_pois_heatmap + 
+         theme(text = element_text(size = t_size_save), 
+               legend.key.height = unit(1.1, "cm")) + 
+        geom_text(aes(label = round(resids, digits = 1)), size = t_size_save/3), 
        width = 25, height = 25, units = "cm", 
        device = "jpg")
 
