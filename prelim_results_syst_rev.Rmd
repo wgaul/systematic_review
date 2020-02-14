@@ -513,6 +513,25 @@ method_mod_null <- glm(factor(as.character(methodology.development.or.analysis),
 method_chisq <- anova(method_mod_null, method_mod, test = "Chisq")
 ```
 
+```{r proportion_methodological_boot}
+prop_method <- length(which(wg$methodology.development.or.analysis == TRUE)) / 
+  nrow(wg)
+
+# define function to pass to boot
+prop_T <- function(x, index) {
+  # ARGS: 
+  # x: vector of TRUE/FALSE values, for which the proportion TRUE will be calculated
+  # index - required by boot
+  x <- x[index]
+  length(which(x == TRUE)) / length(x)
+}
+
+prop_method_CI <- get_boot_CI(wg$methodology.development.or.analysis, 
+                              fun_to_use = prop_T, n_perm = n_perm)
+# prop_method_CI$boot_obj$t0
+# prop_method_CI$ci_obj
+```
+
 ## What data types are used for each study question? 
 
 We asked whether different types of biological records data are used to study different types of questions.  We used random permutations to test the null hypothesis of no difference in the types of data used to study different biological or ecological questions.  The data type categories we tested based on *a-priori* expectations of importance were: sampling effort; non-detection; organized monitoring scheme; and multiple datasets integrated for analysis.  In the ranom permutation test, we broke the association between data type and study question by randomly shuffling the study question rows of our original data.  We preserved associations between study questions by preserving the rows (and therefore associations) within the study question variables, and we preserved associations between data types by preserving the rows (and therefore associations) within the data type variables (Fig. S??).  We performed 10,000 permutations.  To test for an overall interaction between data type and study question, we calculated a chi-squared test statistic for each permuted dataset and for the observed dataset, and calculated the significance level as the proportion of chi-squared statistic values from the permuted datasets that were higher than the chi-squared statistic for the observed dataset.  To determine which combinations of data type and study question were found more or less often than expected by chance, we counted the number of studies using each combination of study question and data type for the permuted datasets and for the observed data.  We calculated residuals (deviations from the expectation under the null hypothesis) for each cell of the contingency table by subtracting the mean count for each cell in the permuted data contingency tables from the observed cell count for the same cells. We calculated permutation significance levels for each cell by finding the proportion of the cell counts from the permuted datasets that were more extreme than the observed count for each cell.  Small permutation significance levels for a cell indicate that the observed number of studies in that cell was unlikely if there was no relationship between that data type and study question.
@@ -1107,7 +1126,7 @@ method_study_focus_cap <- figs(name = "method_study_focus_cap",
                                "The coefficient estimates (black circles) from a logistic regression testing whether the probability of a study developing or testing methodology depended on the biological or ecological response variable.  We found no difference in the probability of studies addressing methodological questions based on the biological or ecological response being studied.  All confidence intervals (vertical lines) for regression coefficients overlapped zero.")
 ```
 
-The overall model predicting the probability of a study addressing a methodological question based on the ecological focus of the study was not significant (intercept-only model residual deviance = `r round(method_chisq$'Resid. Dev'[1], digits = 1)`, full model residual deviance = `r round(method_chisq$'Resid. Dev'[2], digits = 1)`, Chi-squared test *p* = `r round(anova(method_mod, method_mod_null, test = "Chisq")[2, 5], 2)`, Fig. 3).  
+The overall model predicting the probability of a study addressing a methodological question based on the ecological focus of the study was not significant (intercept-only model residual deviance = `r round(method_chisq$'Resid. Dev'[1], digits = 1)`, full model residual deviance = `r round(method_chisq$'Resid. Dev'[2], digits = 1)`, Chi-squared test *p* = `r round(anova(method_mod, method_mod_null, test = "Chisq")[2, 5], 2)`, Fig. 3).  The proportion of studies that were methodological was `r round(prop_method_CI$boot_obj$t0, digits = 2)` (95% bootstrap CI [`r round(prop_method_CI$ci_obj$bca[[4]], digits = 2)`, `r round(prop_method_CI$ci_obj$bca[[5]], digits = 2)`]).
 
 ```{r plot_method_study_focus_coefficients, fig.cap=method_study_focus_cap}
 meth_df <- data.frame(matrix(nrow = 6, ncol = 4))
@@ -1213,7 +1232,7 @@ print(data_type_study_question_perm_plot +
                                round(significance, digits = 2), ")"))))
 ```
 
-Some types of additional data that can be associated with biological records were used too infrequently for us to evaluate the reliability of our codings.  Types of data insed infrequently included photos (`r round((length(which(wg$data.type...photo == T)) / nrow(wg)) * 100, digits = 1)` % of studies), videos (`r round((length(which(wg$data.type...video == T)) / nrow(wg)) * 100, digits = 1)` % of studies), vouchers specimens (`r round((length(which(wg$data.type...voucher.of.some.kind.necessary.for.analysis == T)) / nrow(wg)) * 100, digits = 1)` % of studies), audio recordings (`r round((length(which(wg$data.type...audio == T)) / nrow(wg)) * 100, digits = 1)` % of studies), and life stage (e.g. phenology) information (`r round((length(which(wg$data.type...life.stage == T)) / nrow(wg)) * 100, digits = 1)` % of studies.  The coding reliability was too low for us to interpret whether studies used abundance data (Krippendorff's *alpha* = `r round(samp_adequate$kripp_alpha[samp_adequate$variable == "data type - abundance"], digits = 2)`) or only "what, where, when" data (Krippendorff's *alpha* = `r round(samp_adequate$kripp_alpha[samp_adequate$variable == "data type - what where when only"], digits = 2)`).
+Some types of additional data that can be associated with biological records were used too infrequently for us to evaluate the reliability of our codings.  Types of data used infrequently included photos (`r round((length(which(wg$data.type...photo == T)) / nrow(wg)) * 100, digits = 1)` % of studies), videos (`r round((length(which(wg$data.type...video == T)) / nrow(wg)) * 100, digits = 1)` % of studies), vouchers specimens (`r round((length(which(wg$data.type...voucher.of.some.kind.necessary.for.analysis == T)) / nrow(wg)) * 100, digits = 1)` % of studies), audio recordings (`r round((length(which(wg$data.type...audio == T)) / nrow(wg)) * 100, digits = 1)` % of studies), and life stage (e.g. phenology) information (`r round((length(which(wg$data.type...life.stage == T)) / nrow(wg)) * 100, digits = 1)` % of studies.  The coding reliability was too low for us to interpret whether studies used abundance data (Krippendorff's *alpha* = `r round(samp_adequate$kripp_alpha[samp_adequate$variable == "data type - abundance"], digits = 2)`) or only "what, where, when" data (Krippendorff's *alpha* = `r round(samp_adequate$kripp_alpha[samp_adequate$variable == "data type - what where when only"], digits = 2)`).
 
 ## Analysis approach & data type
 
@@ -1332,6 +1351,19 @@ Coder agreement was low when determining whether a study had an author associate
 ## Cross validation
 We coded whether studies tested statistical models using cross-validation and/or independent test datasets, but the percent of studies that did those things was too low for us to estimate the reliability of our codings using Krippendorff's alpha (proportion of studies that tested using cross-validation = `r round(length(which(wg$cross.validation == T)) / nrow(wg), digits = 2)`, proportion of studies that tested using independently collected test data = `r round(length(which(wg$testing.using.independent.dataset == T)) / nrow(wg), digits = 2)`).  
 
+```{r dist_cv}
+# of the distribution studies, how many used cross-validation?
+dist_studs <- wg[wg$response.variable...distribution == T, ]
+dist_cv <- length(which(dist_studs$cross.validation == T))
+dist_ind <- length(which(dist_studs$testing.using.independent.dataset == T))
+# make data frame of studies that did "good" testing, i.e. CV or independent data or both
+dist_cv_ind <- dist_studs[dist_studs$testing.using.independent.dataset == T | 
+                              dist_studs$cross.validation == T, ]
+# table(dist_cv_ind$cross.validation, dist_cv_ind$testing.using.independent.dataset)
+```
+
+Of the species distribution studies, `r nrow(dist_cv_ind)` of `r nrow(dist_studs)` (`r round((nrow(dist_cv_ind)/nrow(dist_studs))*100, digits = 0)`%) used cross-validation or tested on independent data (or both).  
+
 ## Rare data types
 
 ## Country of study
@@ -1344,6 +1376,12 @@ We coded whether studies tested statistical models using cross-validation and/or
 
 
 # Discussion
+```{r multiple_datasets_by_question}
+# Do all questions have at least a few studies that use multiple data sets?
+
+```
+
+
 By far the most common use of British and Irish biological records found by this review was for studying species distributions.  For this and all other study questions, the proportion of studies that were methodological (developing or testing new methods) was relatively low (??%, section ??), suggesting that, by and large, the research community views existing methods for analyzing biological records as adequate and ready to apply to study biological and ecological questions. We did find evidence that the type of data constrains the analysis approach (Fig ??), with researchers apparently avoiding using statistical inference when they used multiple different biological datasets (or perhaps avoiding using multiple different datasets when they did statistical inference), and using inference more commonly when the data came from organized monitoring schemes, or contained survey effort information or explicit non-detection data.  This suggests that integrating multiple different biological records datasets for a single study comes at a cost of data quality, or perhaps a cost in terms of the ease with which data from multiple different sources can be integrated into a single model.  However, studies using multiple different datasets covered greater temporal extents (Fig ??).  Studies of species distributions were also more likely to use multiple different biological records datasets than studies of other questions (Fig ??), suggesting that researchers felt that using multiple different datasets added important information to distribution studies, or perhaps that integrating data from multiple sources into a single model is easier for distribution models than for models used for some other study questions.  
 
 It is possible that intensive methodlological work may result in a suite of tools and methods for applying a particular type of data to a particular problem. The more frequent use of multiple different biological records datasets for distribution studies compared to studies of other questions could be the result of a previous period of methodological development that focused on applying diverse data to distribution models. Our review would not be able to identify such a situation.  However, we did expect to find that methodological work was more active for some types of questions, probably questions for which biological records have been less commonly used but for which there is potential for important contributions from biological records.  However, we did not detect any difference in the probability of a study addressing a methodological question based on the biological or ecological focus of the study (Fig ??).  There may be opportunities for more methodological work to "unlock" different types of biological records to study questions for which they are currently used less frequently, for example developing methods for using multiple different biological records datasets for abundance studies (Fig. 5).
@@ -1600,7 +1638,7 @@ kable(resp_count_df, col.names = c("response variable",
       digits = 2)
 ```
 
-### Develoment of methodology across different study questions
+### Development of methodology across different study questions
 
 ```{r method_assumptions}
 if(diag_present) {
@@ -1852,9 +1890,9 @@ print(prop_responses_boot_plot)
 
 ### What data types are used for each type of ecological study question?
 
-We asked whether different types of biological records data are used to study different types of questions.  We initially fit Poisson regression models of the number of studies with each combination of data type and biological or ecological study focus, fitting both a saturated model and an independence model with only main effects.  The Poisson independence model (no interatctions) was overdispersed (ratio of residual deviance to residual degrees of freedom = `r round(dt_pd_mod_ind$deviance/dt_pd_mod_ind$df.residual, digits = 2)`), so in the main text we opted to use a random permutation test which made no assumptions about the distribution of the data or residuals.  Here, we report the results and model residuals from the Poisson independence model (Fig. S??), which showed the same general pattern in the direction and size of residuals as the randomization test (Fig. ??), though there were some differences in relative sizes of residuals between the permutation and Poisson approaches.  Overall, the consistent pattern in the direction of residuals suggested that the interpretation of the results was robust to using different statistical tests. 
+To determine whether different types of biological records data were used to study different types of questions, we initially fit Poisson regression models of the number of studies with each combination of data type and biological or ecological study focus, fitting both a saturated model and an independence model with only main effects.  The Poisson independence model (no interatctions) was overdispersed (ratio of residual deviance to residual degrees of freedom = `r round(dt_pd_mod_ind$deviance/dt_pd_mod_ind$df.residual, digits = 2)`), so in the main text we opted to use a random permutation test which made no assumptions about the distribution of the data or residuals.  Here, we report the results and model residuals from the Poisson independence model (Fig. S??), which showed the same general pattern in the direction and size of residuals as the randomization test (Fig. ??), though there were some differences in relative sizes of residuals between the permutation and Poisson approaches.  Overall, the consistent pattern in the direction of residuals suggested that the interpretation of the results was robust to using different statistical tests. 
  
-The use of data types differed significantly between study questions (*p* = `r round(dt_pd_interaction_test$"Pr(>Chi)"[2], 3)` for a chi-squared likelihood ratio test of a null hypothesis that a Poisson regression independence model with main effects for data type and ecological study focus (but no interaction term) model fit the data as well as a saturated model.  In the independence model, two cells had deviance residuals with an absolute value bigger than two (Fig. 4) - the cell for the number of studies investigating abundance using multiple biological datasets (residual = -3.5), and the cell for the number of studies investigating species distributions using multiple biological records datasets (residual = 2.8).  The residuals for those two cells were not as big in the permutation test reported in the main text, but the direction of the residuals was the same.  Deviance residuals from the Poisson model were generally positive for combinations of structured data types and study questions about abundance, and negative for combinations of structured data types and species distribution study questions (Fig. S??). This was in aggreement with the permutation test (Fig ??) and suggested that abundance studies use structured data types more often than would be expected if data type and study question were not related, and distribution studies used structured data types less often than would be expected if study question and data type were not related.
+The use of data types differed significantly between study questions (*p* = `r round(dt_pd_interaction_test$"Pr(>Chi)"[2], 3)` for a chi-squared likelihood ratio test of a null hypothesis that a Poisson regression independence model with main effects for data type and ecological study focus (but no interaction term) model fit the data as well as a saturated model.  In the independence model, two cells had deviance residuals with an absolute value bigger than two (Fig. 4) - the cell for the number of studies investigating abundance using multiple biological datasets (residual = -3.5), and the cell for the number of studies investigating species distributions using multiple biological records datasets (residual = 2.8).  The residuals for those two cells were not as big in the permutation test reported in the main text, but the direction of the residuals was the same.  Deviance residuals from the Poisson model were generally positive for combinations of structured data types and study questions about abundance, and negative for combinations of structured data types and species distribution study questions (Fig. S??). This was in agreement with the permutation test (Fig ??) and suggested that abundance studies use structured data types more often than would be expected if data type and study question were not related, and distribution studies used structured data types less often than would be expected if study question and data type were not related.
 
 ```{r data_type_study_question_cap}
 data_type_study_question_cap <- figs(name = "data_type_study_question_cap", 
