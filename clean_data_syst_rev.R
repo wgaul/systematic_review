@@ -2,16 +2,16 @@
 ## Clean systematic review data
 ## 
 ## inputs:  * master_eligibility_results.csv - a csv with eligibility coding
-##          * wg_systematic_review_coding.csv - wg's coding of articles
+##          * wg_systematic_review_coding.csv - 1st reader's coding of studies
+##          * ellie_systematic_review_coding_04.csv - 2nd reader's coding of a subset of studies
 ## 
 ## outputs: * elig - the original eligibility scoring
-##          * wg - wg's coding of articles.  
-##              This is the object to use for analyses
+##          * wg - wg's coding of articles.  This is the object to use for analyses
 ## 
 ## 
 ## author: Willson Gaul wgaul@hotmail.com
 ## created: 27 Aug 2018
-## last modified: 14 Jan 2020
+## last modified: 19 Feb 2020
 ###########################################
 
 library(tidyverse)
@@ -19,9 +19,9 @@ library(tidyverse)
 source("combine_search_results.R")
 
 # read in data
-elig <- read_csv("./data/master_eligibility_results.csv")
-wg <- read_csv("./data/wg_systematic_review_coding.csv")
-er <- read_csv("./data/ellie_systematic_review_coding_04.csv")
+elig <- read_csv("master_eligibility_results.csv")
+wg <- read_csv("wg_systematic_review_coding.csv")
+er <- read_csv("ellie_systematic_review_coding_04.csv")
 
 
 ## remove columns which are used as visual separators with no data ------------

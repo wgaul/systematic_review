@@ -1,6 +1,7 @@
 # R specific files
 *.nb.html
 *.RData
+*.Rproj
 old
 .Rproj.user
 
@@ -9,3 +10,11 @@ old
 *.jpeg
 *.svg
 
+# document files 
+*.odt
+*.docx
+*.odp
+
+# data files
+*.csv
+*.tsv

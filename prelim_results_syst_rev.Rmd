@@ -1,84 +1,25 @@
 ---
-title: "Biological Records Systematic Review - Preliminary Methods and Results"
-date: 18 Jan 2020
-csl: ecology.csl
+title: "What have biological records ever done for us?  A systematic scoping review - Code for plots and quantitative results"
+date: 19 Feb 2020
 output:
+  html_document:
+    number_sections: true
+    df_print: kable
   word_document:
     toc: true
     toc_depth: 4
   pdf_document: default
   fig_caption: yes
-  html_document:
-    number_sections: true
-    df_print: kable
 ---
 
 <div style="line-height: 2em;">
-
-# Preliminary structure of analysis and results
-This document states the questions I plan to ask and shows methods, figures, tables and results text that I expect to use to answer each question in the biological records systematic review. Specific results and interpretations will change when I code the rest of the articles.
-
-# Questions for Dina
-
-Do I need to use the author, institution of the author, or source of the data in some way to account for possible pseudo-replication?  For example, the UK Butterfly Monitoring Scheme data is used in multiple studies.  Is it appropriate to count each of those uses as an independent data point in analyses of e.g temporal extent of studies?  I think it might be ok, because many studies (about a third) seem to integrate multiple datasets, so that many of the things I test might not depend only on a single dataset.  Thoughts?
-
-Do I need some sort of multiple comparison correction for doing multiple tests with the same dataset?
-
-
-TODO:
-
-- auto-generate table of contents
-
-- add cross-validation to all model evaluation?
-
-- Methods
-    - *Study eligibiligy* [DONE]
-    - Article coding
-        - Data Type
-        - Study Questions
-        - *Analysis approach* [DONE]
-        - *Agreement* [DONE]
-    - *Temporal Extent* [DONE]
-    - Analysis of study questions
-        - *Most common paradigms* [DONE]
-        - Development of methodology across different types of study questions
-        - Type of data used across study question paradigms
-    - Analysis approach & data type
-    - Authors and Data Providing Institutions
-- Results - Statistical
-    - Search results
-        - n returned, n not returned by multiple searche methods (represents incompleteness of search), eligibility, n vars coded, n studies coded, n double coded
-    - Reader agreement
-    - *Temporal extent* [DONE]
-    - Authors and Data Providing Institutions
-    - Study Question
-        - *Paradigm* [DONE]
-        - Data type by question paradigm (add stats)
-    - Analysis approach & data type
-- Results - Descriptive
-    - Spatial extent
-    - *Specific focus* [DONE]
-    - Author associated with data provider
-    - Spatial bias correction
-    - Taxonomic group
-    - Role of biological records
-    - Prediction performance measure
-    - Tabulate analysis methods
-- Discussion
-    - Article coding
-        - Agreement
-    - Temporal extent
-    - Study question
-    - Analysis approach & data type
-    - Bio recs as predictors, facilitative roles (horizon scanning)
- 
-
 
 ```{r, echo=F}
 knitr::opts_chunk$set(echo=F, message=F, warning=T, cache=F)
 ```
 
 ```{r, load_data, cache = F, results='hide', warning = F}
+devtools::install_github("wgaul/wgutil") # install the wgutil package from github
 library(wgutil)
 library(Hmisc)
 library(boot)
@@ -107,12 +48,11 @@ set.seed(18012020) # 18 Jan 2020
 source("./clean_data_syst_rev.R")
 ```
 
-```{r numberingPrep}
-# make functions for adding numbered captions to figures 
-figs <- captioner(prefix = "Fig.") 
-tabs <- captioner(prefix = "Table")
-```
+Willson Gaul, Dinara Sadykova, Ellie Roark, Hannah J. White, Lupe León-Sánchez, Paul Caplat, Mark C. Emmerson, Jon M. Yearsley
 
+This R markdown document contains code that produces the plots, tables, and quantitative results reported in Gaul et al. (2020).  The actual text of the methods and results is not identical to the text of the published paper, but the numbers produced by the R code in this document are the same as those in the final paper.  
+
+In order to run, this document must be saved in a directory containing the scripts "clean_data_syst_rev.R" and "combine_search_results.R" and a sub-directory called "data" that has the files "master_eligibility_results.csv", "wg_systematic_review_coding.csv", and "ellie_systematic_review_coding_04.csv", plus another sub-directory called "search_results" that contains csv files with results from multiple different search engines (see the "combine_search_results.R" script for names of all the search results data files that are expected).  
 
 # Methods
 
@@ -132,10 +72,7 @@ get_boot_CI <- function(x, fun_to_use, n_perm) {
 n_perm <- 10000 
 ```
 
-
-**See Hao et al as a template for how to write syst. rev. methods.**
-
-We did a systematic review of original research published since 2014 that used biological records from Ireland and/or the United Kingdom (UK).  We generated a list of relevant articles from Web of Science, Scopus, ProQuest, Global Biodiversity Information Facility (GBIF) website, and GoogleScholar via Publish or Perish software (@Harzing2007) (see Appendix 2 for search terms).  One researcher evaluated each study for inclusion eligibility and coded information for variables describing characteristics of each study.  A second reader coded information for a subset of 20% of the studies.  Agreement between the two readers was evaluated using Krippendorff's alpha (Krippendorff 2004).  Coded variables that did not meet minimum standards for reader agreement were not used in subsequent analyses.  Analyses were conducted in R version 3.5 (@RCoreTeam2015).
+We did a systematic review of original research published since 2014 that used biological records from Ireland and/or the United Kingdom (UK).  We generated a list of relevant articles from Web of Science, Scopus, ProQuest, Global Biodiversity Information Facility (GBIF) website, and GoogleScholar via Publish or Perish software (see Appendix 2 for search terms).  One researcher evaluated each study for inclusion eligibility and coded information for variables describing characteristics of each study.  A second reader coded information for a subset of 20% of the studies.  Agreement between the two readers was evaluated using Krippendorff's alpha (Krippendorff 2004).  Coded variables that did not meet minimum standards for reader agreement were not used in subsequent analyses.  Analyses were conducted in R version 3.5.
 
 ## Study eligibility
 Studies were deemed eligible if they presented original research (no reviews or idea papers) published in the English language, used opportunistic biological records data collected with non-standardized or semi-standardized designs, included (but were not necessarily limited to) data from Ireland or the UK, and the full text of the study was available through the University College Dublin library, Google Scholar, Google search results, or ResearchGate.  Grey literature was included and therefore peer review was not required.  Studies using semi-standardized data collection schemes (e.g. UK Butterfly Monitoring Scheme) were included as long as data collection included some opportunistic elements (e.g. sampling locations chosen opportunistically).  Publications of data (e.g. atlases or data papers) were not considered eligible unless they included analysis of the data.  Only studies using a sample size of greater than 20 biological records were included; this sample size was chosen arbitrarily, mainly to exclude studies in which re-examination of museum specimens resulted in a taxonomic identification revision for one or a few specimens.  Studies using museum data were considered eligible when the museum data used was similar in format to biological records data (e.g. “what, where, when” data); studies that used museum specimens only for taxonomic, genetic or morphology studies were excluded.  Studies using only fossil records were not included.  Studies using data from phenology networks were included; for the purposes of this review such data were considered biological records data with associated additional data (e.g. flowering status of plants).  Studies for which all data was collected by the study authors were not considered biological records data for the purposes of this review and were excluded.  The minimum required information in the data was a taxonomic name, a location, and date (“what, where, when”); additional information was permissible.  
@@ -157,7 +94,7 @@ We classified the broad analysis approach used by each study into one of three c
 We determined the temporal extent covered by studies by determining the start and end dates of the study.  We determined the spatial extent of the study (in km^2) by recording the spatial extent reported in the study if a quantitative spatial extent was reported, or, when spatial extents were reported only qualitatively, by using the spatial areas of political units (e.g. countries) or geographic regions reported in Google search results (www.google.com), Wikipedia (en.wikipedia.org), or from Eakins and Sharman (2010).
 
 ### Coding reliability
-We used Krippendorff's *alpha* [@Krippendorff2004] to evaluate the agreement between two readers for each of `r ncol(er)-6` variables that were coded by two people.  Krippendorff's alpha measures agreement between multiple coders while accounting for agrement by chance.  We calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package [@irr2012].  Rule-of-thumb guidelines suggest that Krippendorff's alpha values below 0.67 indicate poor agreement such that the data cannot be trusted for analysis; values between 0.67 and 0.8 suggest that the data are moderately reliable and may be suitable for only tentative interpretation, and values above 0.8 indicate that the data are reliable.  In order to estimate reliability using Krippendorff's alpha, there must be sufficient variation in the variable being coded.  The amount of data needed to estimate alpha for a categorical variable depends on the probability of the least common class for that variable. Krippendorff [@Krippendorff2004] provides guidelines about the number of coded cases needed to estimate the value of Krippendorff's alpha given the probability of the least common class for a variable.  We examined Krippendorff's alpha values only for variables for which the least common class had a probability of 0.14 or higher, which should allow us to identify with a confidence level of 0.1 those variables for which Krippendorff's alpha is above 0.667 [@Krippendorff2004].  We removed from subsequent statistical analyses all variables with Krippendorff's alpha values below 0.67.  We also did not perform statistical analyses on variables for which we did not have enough codings to estimate Krippendorff's alpha, but we did present descriptive results for these variables because the rare classes of these variables are of interest from a horizon-scanning perspective. 
+We used Krippendorff's *alpha* to evaluate the agreement between two readers for each of `r ncol(er)-6` variables that were coded by two people.  Krippendorff's alpha measures agreement between multiple coders while accounting for agrement by chance.  We calculated Krippendorff's *alpha* using the `kripp.alpha` function in the `irr` package.  Rule-of-thumb guidelines suggest that Krippendorff's alpha values below 0.67 indicate poor agreement such that the data cannot be trusted for analysis; values between 0.67 and 0.8 suggest that the data are moderately reliable and may be suitable for only tentative interpretation, and values above 0.8 indicate that the data are reliable.  In order to estimate reliability using Krippendorff's alpha, there must be sufficient variation in the variable being coded.  The amount of data needed to estimate alpha for a categorical variable depends on the probability of the least common class for that variable. Krippendorff provides guidelines about the number of coded cases needed to estimate the value of Krippendorff's alpha given the probability of the least common class for a variable.  We examined Krippendorff's alpha values only for variables for which the least common class had a probability of 0.14 or higher, which should allow us to identify with a confidence level of 0.1 those variables for which Krippendorff's alpha is above 0.667.  We removed from subsequent statistical analyses all variables with Krippendorff's alpha values below 0.67.  We also did not perform statistical analyses on variables for which we did not have enough codings to estimate Krippendorff's alpha, but we did present descriptive results for these variables because the rare classes of these variables are of interest from a horizon-scanning perspective. 
 
 ```{r inter_coder_agreement_subset_dfs, warning=TRUE}
 ## ellie's results ----------------------------------------------------
@@ -413,7 +350,7 @@ temp_extent_preds$pred_years_lowerCI <- exp(temp_extent_preds$pred_log_y_lowerCI
 
 ## What is the most popular study question paradigm for studies using biological records?
 
-We categorized study questions into two broad question paradigms: individual species questions and community questions [Appendix 2].  We estimated the proportion of studies that focused on each of the two broad study question paradigms, and used bias-corrected accelerated bootstrap confidence intervals [@Efron1993] to estimate 95% confidence intervals around the point estimates of the proportions.  
+We categorized study questions into two broad question paradigms: individual species questions and community questions [Appendix 2].  We estimated the proportion of studies that focused on each of the two broad study question paradigms, and used bias-corrected accelerated bootstrap confidence intervals to estimate 95% confidence intervals around the point estimates of the proportions.  
 
 ```{r paradigm_bootstrap}
 proportion_fun <- function(x, indices) {
@@ -437,7 +374,7 @@ proportion_individual <- get_boot_CI(wg$individual.species.question,
 
 ## Ecological focus
 
-We assessed which ecological or biological phenomena were used as the response variable in analyses using biological records.  We coded each study based on whether it used the following response variables: species distribution; species abundance; phenology, species richness (*alpha*-diversity or the number of species present); species turnover (*beta*-diversity or any measure that incorporated species identity and/or abundance in addition to the number of species); or temporal trends.  A study could use more than one of these response variables if it contained more than one analysis using biological records, or if it studied temporal trends in one of the other response variables (e.g. change in species distribution over time). After coding, we created an "other" response variable category which was coded as "TRUE" for studies that did not use any of the other biological or ecological response variables that we searched for during coding.  We used bias-corrected accelerated bootstrap confidence intervals with 10,000 bootstrap replicates [@Efron1993] to estimate 95% confidence intervals around the number of studies investigating each response variable. We determined statistical significance of differences in the number of studies investigating each type of response by assessing whether the 95% bootstrap confidence intervals overlapped.
+We assessed which ecological or biological phenomena were used as the response variable in analyses using biological records.  We coded each study based on whether it used the following response variables: species distribution; species abundance; phenology, species richness (*alpha*-diversity or the number of species present); species turnover (*beta*-diversity or any measure that incorporated species identity and/or abundance in addition to the number of species); or temporal trends.  A study could use more than one of these response variables if it contained more than one analysis using biological records, or if it studied temporal trends in one of the other response variables (e.g. change in species distribution over time). After coding, we created an "other" response variable category which was coded as "TRUE" for studies that did not use any of the other biological or ecological response variables that we searched for during coding.  We used bias-corrected accelerated bootstrap confidence intervals with 10,000 bootstrap replicates to estimate 95% confidence intervals around the number of studies investigating each response variable. We determined statistical significance of differences in the number of studies investigating each type of response by assessing whether the 95% bootstrap confidence intervals overlapped.
 
 ```{r make_other_response_variable_columns}
 # make columns indicating which studies analyze something that does not fit
@@ -482,7 +419,7 @@ resp_var_list_counts <- lapply(
 
 ## Development of methodology across different study questions
 
-We asked whether methodological development is more active for some types of ecological questions than for others.  To test for differences in the proportion of methodology studies across the different biological and ecological study focuses, we used logistic regression with six binary predictor variables indicating the specific biological or ecological focus(es) of the study and a binary response variable indicating whether the study addressed a methodological question.  To evaluate whether assumptions were met for using logistic regression, we evaluated the number of samples per predictor variable, checked that all levels of predictor variables had more than five cases, checked for multicollinearity using the variance inflation factors [@Fox1992], performed a Hosmer-Lemeshow goodness of fit test, and identified influential points using Pearson and deviance residuals and leverage.  
+We asked whether methodological development is more active for some types of ecological questions than for others.  To test for differences in the proportion of methodology studies across the different biological and ecological study focuses, we used logistic regression with six binary predictor variables indicating the specific biological or ecological focus(es) of the study and a binary response variable indicating whether the study addressed a methodological question.  To evaluate whether assumptions were met for using logistic regression, we evaluated the number of samples per predictor variable, checked that all levels of predictor variables had more than five cases, checked for multicollinearity using the variance inflation factors, performed a Hosmer-Lemeshow goodness of fit test, and identified influential points using Pearson and deviance residuals and leverage.  
 
 ```{r methodology_by_study_focus_mod}
 # make an "other" response variable / study focus column on wg data frame
@@ -834,14 +771,6 @@ One reader coded all `r nrow(wg)` studies and a second reader independently code
 
 Most variables for which Krippendorff's *alpha* was estimated show that the coding is reliable enough to be used in analysis, at least for drawing tentative conclusions (Tab. 1, Fig. S1).  Many of the variables have Krippendorff's *alpha* values above the minimum required level of 0.67 but below the prefered level of 0.8, which indicates that they should be interpreted with caution.  The number of articles that have been evaluated by two readers was too small for reliable estimation of Krippendorff's alpha for some variables for which the smallest class is particularly uncommon (Tab. S1). 
 
-
-```{r kripp_samp_size_cap}
-kripp_samp_size_cap <- tabs(name = "kripp_samp_size_cap", 
-                            paste0("Coding reliability for systematic review variables coded by two people for ", nrow(er), " studies.  Krippendorff's alpha values above 0.8 suggest that coding reliability is high enough to interpret variables with confidence, while values below 0.8 but above 0.667 suggest that coding reliability is only moderate and variables should be interpreted with caution.  Krippendorff's alpha values below 0.667 suggest that coding is unreliable and the variable should not be interpreted.  Coding reliability was estimated for all variables for which the least common class had enough observations to allow us to estimate with a confidence level of 0.1 whether Krippendorff's alpha was higher than 0.667."))
-```
-
-`r if(diag_present) tabs("kripp_samp_size_cap", display = "full")`
-
 ```{r calculate_proportion_T}
 ## This calculates the probability of the smallest class for each variable, for 
 ## use in calculating minimum sample size needed for Kripp's alpha for that 
@@ -898,16 +827,6 @@ kable(samp_adequate[order(samp_adequate$kripp_alpha, decreasing = T), -c(2, 4)],
 
 ## Temporal and spatial extent of studies
 
-```{r temp_extent_cap}
-temp_extent_cap <- figs(name = "temp_extent_cap", 
-                        "The temporal extent covered by studies using different types biological records data.  A linear regression showed that the log of the temporal extent of studies (in years) was significantly different for studies using different types of data.  This plot shows the observed temporal extent of studies (not fitted values from the linear regression model). Note the log-transformed y-axis.")
-```
-
-```{r spat_extent_cap}
-spat_extent_cap <- figs(name = "spat_extent_cap", 
-                        "The spatial extent covered by studies was not significantly different for studies using different types biological records data.  Black cirles show the mean spatial extent of studies using each type of data and lines show 95% bootstrap CI around the mean.")
-```
-
 ```{r print_time_individual_predictor_significance}
 if(diag) {
   for(i in 1:length(indiv_mods_time)) { 
@@ -923,7 +842,7 @@ We did not detect a significant effect of sampling effort data ($F_{1,196}$ = `r
 
 The mean spatial extent was not different for studies using different types of data based on overlapping 95% bootstrap confidence intervals (Fig. 2).
 
-```{r time_extent_results_plot, fig.cap=temp_extent_cap}
+```{r time_extent_results_plot}
 temp_extent_plot <- ggplot(data = temp_extent, 
                            aes(y = temp_extent, 
                                x = factor(data_type, 
@@ -978,7 +897,7 @@ ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + #, color = sig
         text = element_text(size = t_size)) 
 ```
 
-```{r spat_extent_bootCI_plot, fig.cap=spat_extent_cap}
+```{r spat_extent_bootCI_plot}
 spat_boot_df <- data.frame(matrix(nrow = length(data_types), 
                                   ncol = 4))
 colnames(spat_boot_df) <- c("data_type", "mean", 
@@ -1004,7 +923,7 @@ spat_extent_plot <- ggplot(data = spat_boot_df,
                                                      "organized scheme",
                                                      "multiple datasets")), 
                                y = mean)) + 
-  geom_point() + 
+  geom_point(size = 3) + 
   geom_linerange(aes(x = factor(data_type, 
                                 levels = c("sampling.effort",
                                            "non.detection", 
@@ -1015,9 +934,10 @@ spat_extent_plot <- ggplot(data = spat_boot_df,
                                            "organized scheme",
                                            "multiple datasets")), 
                      ymin = l_95ci, 
-                     ymax = u_95ci)) + 
+                     ymax = u_95ci), 
+                     size = 1.1) + 
   xlab("") + 
-  ylab("Mean spatial extent\nof Studies (km^2)") + 
+  ylab(expression("Spatial extent of Studies (km"^{2}*")")) + 
   theme_bw() + 
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1), 
         strip.background = element_blank(), strip.placement = "outside")
@@ -1032,16 +952,6 @@ print(spat_extent_plot)
 The proportion of studies asking questions about individual species was `r round(proportion_individual$boot_obj$t0, digits = 2)` (95% boostrap CI [`r round(proportion_individual$ci_obj$bca[4], digits = 2)`, `r round(proportion_individual$ci_obj$bca[5], digits = 2)`]).  Coder agreement was low when determining whether studies were asking questions about communities (Krippendorff's alpha = 0.65, Tab. 1), which prevented us from interpreting that variable, and therefore prevented a comparison between the proportion of studies that were focused on individual species and the proportion of studies that focused on communities.  
 
 ## Ecological focus
-
-```{r resp_var_tab_cap}
-resp_var_tab_cap <- tabs(name = "resp_var_tab_cap", 
-                         "The number of studies (with lower and upper 95% bootstrap confidence intervals) focusing on each type of ecological or biological response.")
-```
-
-```{r resp_var_plot_cap}
-resp_var_plot_cap <- figs(name = "resp_var_plot_cap", 
-                     "The proportion of studies analyzing different ecological responses.  Points show proportion of studies, vertical lines show 95% bootstrap confidence intervals.  Some studies performed multiple analyses and used multiple different response variables, so proportions in this plot add up to more than one.")
-```
 
 Over half the studies in this review analyzed species distribution (proportion of studies = `r round(resp_var_list$dist$boot_obj$t0, digits = 2)`, 95% bootstrap CI [`r round(resp_var_list$dist$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$dist$ci_obj$bca[5], digits = 2)`]) and/or temporal trends (proportion of studies = `r round(resp_var_list$temp_trends$boot_obj$t0, digits = 2)`, 95% bootstrap CI [`r round(resp_var_list$temp_trends$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$temp_trends$ci_obj$bca[5], digits = 2)`]) as a response variable (Fig. 2, Tab. S?).  The proportion of studies analyzing species distributions and/or temporal trends was significantly higher than the proportion analyzing any other response variable based on non-overlapping 95% bootstrap confidence intervals (Fig. 2, Tab. S?).  The third most common response variable for studies in this review was abundance (proportion of studies = `r round(resp_var_list$abund$boot_obj$t0, digits = 2)`, 95% bootstrap CI [`r round(resp_var_list$abund$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$abund$ci_obj$bca[5], digits = 2)`]), but the proportion of studies analyzing abundance was not significantly different from the proportion analyzing species richness (proportion of studies = `r round(resp_var_list$sp_rich$boot_obj$t0, digits = 2)`, 95% bootstrap CI [`r round(resp_var_list$sp_rich$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$sp_rich$ci_obj$bca[5], digits = 2)`]) or phenology (proportion of studies = `r round(resp_var_list$phen$boot_obj$t0, digits = 2)`, 95% bootstrap CI [`r round(resp_var_list$phen$ci_obj$bca[4], digits = 2)`, `r round(resp_var_list$phen$ci_obj$bca[5], digits = 2)`]).  Too few studies were classified as using "diversity" as a response variable to estimate coder agreement using Krippendorff's alpha.  Therefore, we did not evaluate the diversity response variable category on its own, but studies that had been coded as using diversity and no other response variables are included in the "other" response variable category.  The proportion of studies that focused on alien species was too low for us to estimate coder agreement using Krippendorff's alpha (proportion of studies = `r round(length(which(wg$alien.species.focus == T)) / nrow(wg), digits = 2)`).  
 
@@ -1076,7 +986,7 @@ resp_count_df$response_variable <- gsub(".*temp_.*", "temporal trends",
 ```
 
 
-```{r resp_var_by_paradigm_plot, fig.cap=resp_var_plot_cap}
+```{r resp_var_by_paradigm_plot}
 # plot proportion of studies using each response variable, with 95% CIs
 response_var_plot <- ggplot(data = resp_count_df, 
                             aes(x = factor(response_variable, 
@@ -1093,7 +1003,7 @@ response_var_plot <- ggplot(data = resp_count_df,
                                                       "temporal\ntrends",
                                                       "other")), 
                                 y = prop_studies)) + 
-  geom_point() + 
+  geom_point(size = 3) + 
   geom_linerange(aes(x = factor(response_variable, 
                                 levels = c("abundance",
                                            "species distribution", 
@@ -1108,7 +1018,8 @@ response_var_plot <- ggplot(data = resp_count_df,
                                            "temporal\ntrends",
                                            "other")), 
                      ymin = l_95ci, 
-                     ymax = u_95ci)) + 
+                     ymax = u_95ci), 
+                     size = 1.1) + 
   xlab("") + 
   ylab("Proportion of Studies") + 
   ylim(c(0, 1)) + 
@@ -1121,14 +1032,9 @@ print(response_var_plot)
 
 ## Development of methodology across different study questions
 
-```{r method_study_focus_cap}
-method_study_focus_cap <- figs(name = "method_study_focus_cap", 
-                               "The coefficient estimates (black circles) from a logistic regression testing whether the probability of a study developing or testing methodology depended on the biological or ecological response variable.  We found no difference in the probability of studies addressing methodological questions based on the biological or ecological response being studied.  All confidence intervals (vertical lines) for regression coefficients overlapped zero.")
-```
-
 The overall model predicting the probability of a study addressing a methodological question based on the ecological focus of the study was not significant (intercept-only model residual deviance = `r round(method_chisq$'Resid. Dev'[1], digits = 1)`, full model residual deviance = `r round(method_chisq$'Resid. Dev'[2], digits = 1)`, Chi-squared test *p* = `r round(anova(method_mod, method_mod_null, test = "Chisq")[2, 5], 2)`, Fig. 3).  The proportion of studies that were methodological was `r round(prop_method_CI$boot_obj$t0, digits = 2)` (95% bootstrap CI [`r round(prop_method_CI$ci_obj$bca[[4]], digits = 2)`, `r round(prop_method_CI$ci_obj$bca[[5]], digits = 2)`]).
 
-```{r plot_method_study_focus_coefficients, fig.cap=method_study_focus_cap}
+```{r plot_method_study_focus_coefficients}
 meth_df <- data.frame(matrix(nrow = 6, ncol = 4))
 colnames(meth_df) <- c("variable", "coef_estimate", "l_bound", "h_bound")
 meth_df$variable <- c("abundance", "distribution", "phenology", 
@@ -1155,7 +1061,7 @@ methodology_plot <- ggplot(data = meth_df,
                                         "phenology", "species\nrichness",
                                         "temporal\ntrends", "other")), 
                              y = coef_estimate)) + 
-  geom_point() + 
+  geom_point(size = 3) + 
   geom_linerange(aes(x = factor(variable, 
                                 levels = c("abundance", "distribution", 
                                            "phenology", "richness",
@@ -1164,7 +1070,8 @@ methodology_plot <- ggplot(data = meth_df,
                                            "phenology", "species\nrichness",
                                            "temporal\ntrends", "other")), 
                      ymin = l_bound, 
-                     ymax = h_bound)) + 
+                     ymax = h_bound), 
+                     size = 1.1) + 
   xlab("Study question") + 
   ylab("Coefficient estimate") + 
   theme_bw() + 
@@ -1178,13 +1085,8 @@ print(methodology_plot)
 
 The permutation test suggested that data type and study question were not independent (permutation-based significance level of the chi-squared test statistic for the observed data = `r chis_perm_study_question_pvalue` with `r n_perm` permutations).  Permutation test residuals and significance levels for each combination of data type and study question showed that residuals were generally large, positive, and significantly different from zero for combinations of structured data types and studies of species abundances, suggesting that those data types were used more frequently for abundance studies than would be expected if there were no relationship between data type and analysis approach. Residuals were large, negative, and highly significantly different from zero for combinations of more structured data types and studies of species distributions (Fig. 4?), suggesting that those rich data types are used for distribution studies less often than would be expected if there was no relationship between data type and analysis approach. The absolute value of residuals and significance levels for combinations of all data types with studies of phenology, species richness and "other" study questions generally indicated that the use of data types for those study questions did not differ strongly from what would be expected if there were no relationship between data type and study question.  The residuals and significance levels suggested that multiple datasets were used less often for abundance studies and more often for distribution studies (and perhaps for studies of "other" questions) than would be expected if there was no relationship between data type and study question.  Both the absolute magnitude of residuals and the significance levels suggested that the observed use of multiple datasets for abundance and distribution questions differed less strongly from the null expectation than did combinations of structured data types with those study questions.  
 
-```{r data_type_study_question_perm_cap}
-data_type_study_question_perm_cap <- figs(name = "data_type_study_question_perm_cap", 
-                               "Residuals from a permutation test of independence between data type and biological or ecological study question show that more structured types of data (non-detection, sampling effort, and data from organized monitoring schemes) are used more frequently to study species abundances and less frequently to study species distributions than would be expected if data type and study question were not related.  When multiple different biological records datasets were integretad for a one study, that study was more likely to study species distributions and less likely to study abundance than would be expected if there was no relationship between data type and analysis approach. The data types used for studies of phenology and species richness did not differ strongly from what would be expected if there was no relationship between data type and analysis approach.  Residuals for each cell were calculated as the difference between the observed number of studies in each cell and the mean of the number of studies in the same cell in 10,000 permuted datasets.  Values in each grid cell are presented as: residual (permutation significance level).  Small values of permutation significance level indicate that the value in that cell would be unlikely if there were no relationship between data type and study question.  Colors indicate direction and size of residuals.")
-```
 
-
-```{r print_data_type_study_question_heatmap_table_permutation, fig.cap=data_type_study_question_perm_cap}
+```{r print_data_type_study_question_heatmap_table_permutation}
 # get permutation significance levels
 perm_sq_p_vals_long <- gather(perm_sq_p_vals, key = "study_question", 
                            value = "significance", 2:ncol(perm_sq_p_vals))
@@ -1236,14 +1138,7 @@ Some types of additional data that can be associated with biological records wer
 
 ## Analysis approach & data type
 
-```{r data_type_analysis_tab_cap}
-data_type_analysis_tab_cap <- tabs(name = "data_type_analysis_tab_cap", 
-                                   "Table of counts of studies using each data type and analysis approach.")
-```
-
 There was strong evidence that data type and analysis approach are not independent (permutation-based significance level of the chi-squared test statistic for the observed data = `r chis_perm_pvalue` with `r n_perm` permutations).  Permutation test residuals and significance levels for each combination of data type and analysis method show that residuals are generally large, negative, and highly significantly different from zero for combinations of more structured data types and descriptive-only analyses (Fig. 5), suggesting that those rich data types are analyzed descriptively less often than would be expected if there was no relationship between data type and analysis approach.  Residuals are generally large, positive, and significantly different from zero for combinations of structured data types and inferential analyses, suggesting that those data types are analyzed with inferential methods more frequently than would be expected if there were no relationship between data type and analysis approach.  The absolute value of residuals and significance levels for combinations of all data types with predictive analysis methods generally indicated that the use of data types in predictive analyses did not differ strongly from what would be expected if there were no relationship between data type and analysis approach.  The residuals and significance levels for the cells associated with multiple data sets being used in an analysis suggest that multiple datasets are used less often for inference and more often for descriptive-only analyses than would be expected if there was no relationship between data type and analysis approach, though both the absolute magnitude of the residuals and the significance levels suggested that the observed use of multiple datasets for those two analysis approaches differed less strongly from the null expectation than did the use of data with non-detection and/or sampling effort information and data from organized monitoring schemes.  
-
-`r if(diag_present) tabs("data_type_analysis_tab_cap", display = "full")`
 
 ```{r print_data_type_analysis_approach_contingency_table}
 if(diag_present) {
@@ -1260,13 +1155,8 @@ if(diag_present) {
 }
 ```
 
-```{r data_type_analysis_method_perm_cap}
-data_type_analysis_method_perm_cap <- figs(
-  name = "data_type_analysis_method_perm_cap", 
-  "Residuals from a permutation test of independence between data type and analysis method show that more structured types of data (non-detection, sampling effort, and data from organized monitoring schemes) are analysed more frequently with statistical inference and less frequently with purely descriptive methods than would be expected if data type and analysis method were not related.  When multiple different biological records datasets were integretad for a one study, that study was more likely to use purely descriptive analyses and less likely to use statistical inference than would be expected if there was no relationship between data type and analysis approach. The data types used for predictive analyses did not differ strongly from what would be expected if there was no relationship between data type and analysis approach.  Residuals for each cell were calculated as the difference between the observed number of studies in each cell and the mean of the number of studies in the same cell in 10,000 permuted datasets.  Values in each grid cell are presented as: residual (permutation significance level).  Colors indicate direction and size of residuals.")
-```
 
-```{r print_data_type_analysis_method_heatmap_table_permutation, fig.cap=data_type_analysis_method_perm_cap}
+```{r print_data_type_analysis_method_heatmap_table_permutation}
 # get permutation significance levels
 perm_p_vals_long <- gather(perm_p_vals, key = "analysis_approach", 
                            value = "significance", 2:4)
@@ -1312,11 +1202,6 @@ print(data_type_analysis_approach_plot +
 
 
 ## Proximate data sources
-```{r, prox_src_tab_cap}
-prox_src_tab_cap <- tabs(name = "prox_src_tab_cap", 
-                                   "Proximate data providers used by five or more studies in this review.")
-```
-
 ```{r proximate_data_sources}
 # extract proximate data sources
 prox_src <- wg$proximate.data.source
@@ -1334,11 +1219,9 @@ used_top_10_providers <- grepl(paste(prox_src_df$prox_src[1:10], collapse = "|")
 # table(used_top_10_providers)
 ```
 
-Studies in this review obtained their data from at least `r nrow(prox_src_df)` different proximate data sources.  The number of studies using each data source was strongly right-skewed, with many data sources that were used by only one study, and relatively few data sources that were used by many studies (`r tabs("prox_src_tab_cap", display = "cite")`, Tab. S??).  Among the most frequently used data sources were both national and international data aggregators (e.g. the UK-focused National Biodiversity Network, the Irish National Biodiversity Data Centre, and the Global Biodiversity Information Facility) and individual organizations that manage both the initial collection and the subsequent presentation of data (e.g. the British Trust for Ornithology and the UK Butterfly Monitoring Scheme, `r tabs("prox_src_tab_cap", display = "cite")`).  Of the `r nrow(wg)` studies in this review, `r length(which(used_top_10_providers == T))` (`r round((length(which(used_top_10_providers == T)) / length(used_top_10_providers)) * 100, digits = 1)`%) obtained at least some of their data from one of the ten most commonly used proximate data providers (`r tabs("prox_src_tab_cap", display = "cite")`).
+Studies in this review obtained their data from at least `r nrow(prox_src_df)` different proximate data sources.  The number of studies using each data source was strongly right-skewed, with many data sources that were used by only one study, and relatively few data sources that were used by many studies.  Among the most frequently used data sources were both national and international data aggregators (e.g. the UK-focused National Biodiversity Network, the Irish National Biodiversity Data Centre, and the Global Biodiversity Information Facility) and individual organizations that manage both the initial collection and the subsequent presentation of data (e.g. the British Trust for Ornithology and the UK Butterfly Monitoring Scheme).  Of the `r nrow(wg)` studies in this review, `r length(which(used_top_10_providers == T))` (`r round((length(which(used_top_10_providers == T)) / length(used_top_10_providers)) * 100, digits = 1)`%) obtained at least some of their data from one of the ten most commonly used proximate data providers.
 
 Many of the data sources that provided data for only one study in this review were "traditional" data sources such as local records centres, taxon-specific monitoring schemes, or natural history museums.  But there were also a few non-traditional data sources used by studies in this review.  At least one study in this review used data from each of Google Images (Leighton et al. 2016), Flickr (Jeawak et al. 2017; Petrusková et al. 2015), YouTube (Petrusková et al. 2015), Vimeo (Petrusková et al. 2015), and SoundCloud, an audio sharing platform that contains music, podcasts, and other audio content (Petrusková et al. 2015).
-
-`r tabs("prox_src_tab_cap", display = "full")`
 
 ```{r}
 kable(prox_src_df[1:10, ], row.names = FALSE, 
@@ -1364,94 +1247,13 @@ dist_cv_ind <- dist_studs[dist_studs$testing.using.independent.dataset == T |
 
 Of the species distribution studies, `r nrow(dist_cv_ind)` of `r nrow(dist_studs)` (`r round((nrow(dist_cv_ind)/nrow(dist_studs))*100, digits = 0)`%) used cross-validation or tested on independent data (or both).  
 
-## Rare data types
-
-## Country of study
-
-## Uncommon uses of biological records
-[biological records as a predictor variable or in a facilitative role]
-
-
-
-
-
-# Discussion
-```{r multiple_datasets_by_question}
-# Do all questions have at least a few studies that use multiple data sets?
-
-```
-
-
-By far the most common use of British and Irish biological records found by this review was for studying species distributions.  For this and all other study questions, the proportion of studies that were methodological (developing or testing new methods) was relatively low (??%, section ??), suggesting that, by and large, the research community views existing methods for analyzing biological records as adequate and ready to apply to study biological and ecological questions. We did find evidence that the type of data constrains the analysis approach (Fig ??), with researchers apparently avoiding using statistical inference when they used multiple different biological datasets (or perhaps avoiding using multiple different datasets when they did statistical inference), and using inference more commonly when the data came from organized monitoring schemes, or contained survey effort information or explicit non-detection data.  This suggests that integrating multiple different biological records datasets for a single study comes at a cost of data quality, or perhaps a cost in terms of the ease with which data from multiple different sources can be integrated into a single model.  However, studies using multiple different datasets covered greater temporal extents (Fig ??).  Studies of species distributions were also more likely to use multiple different biological records datasets than studies of other questions (Fig ??), suggesting that researchers felt that using multiple different datasets added important information to distribution studies, or perhaps that integrating data from multiple sources into a single model is easier for distribution models than for models used for some other study questions.  
-
-It is possible that intensive methodlological work may result in a suite of tools and methods for applying a particular type of data to a particular problem. The more frequent use of multiple different biological records datasets for distribution studies compared to studies of other questions could be the result of a previous period of methodological development that focused on applying diverse data to distribution models. Our review would not be able to identify such a situation.  However, we did expect to find that methodological work was more active for some types of questions, probably questions for which biological records have been less commonly used but for which there is potential for important contributions from biological records.  However, we did not detect any difference in the probability of a study addressing a methodological question based on the biological or ecological focus of the study (Fig ??).  There may be opportunities for more methodological work to "unlock" different types of biological records to study questions for which they are currently used less frequently, for example developing methods for using multiple different biological records datasets for abundance studies (Fig. 5).
-
-Very few studies in our review used cross-validation or tested models on independent test data sets (Section ??).  This is suprising and concerning, given that the overall picture that emerged of the use of biological records is that existing methods and data seem to be viewed as "ready to use" by the reserach community (i.e. a large majority of studies are addressing biological or ecological questions rather than testing or developing methodology).  It is well known that tests of model performance are overly optimistic when data have spatial, temporal, or other correlation structures and model testing uses the same data that is used for model fitting (Roberts et al. 2017, El Gabbas??, Elith??, McGill?, others??).  Over half the studies in this review studied species distributions (Fig. 3), but of those, only ?? (??%) used cross-validation or tested using independent data. Thus, the sense that the research community has that biological records and existing methods can be successfully used for modelling species distributions may be based on a large body of work that is not accurately assessing the true performance of models (cite roberts or something else?? McGill??).  McGill?? found that tests over-estimated AUC by ?? when using random compared to spatial block cross validation.  Solutions to the problem of testing models, including spatial block cross-validation and testing on independent datasets (Elith et al. ??) are now widely documented and are available in software packages (cite blockCV).  It is imperative that future studies of species distributions using biological records (or any data, for that matter), test models against independently collected data or using spatial block cross-validation.  For species distribution modeling, the results of this review suggest one possible solution: multiple different biological records datasets are used more commonly for distribution studies than for other study questions - perhaps one or a few of these different datsets could be withheld from model fitting and used only for model testing.  All opportunistically collected biological records data will contain some biases and gaps, but those biases and gaps are likely to be at least slightly different from one dataset to another.  So using different datasets biological records datasets for model fitting and testing, combined with spatial block cross-validation, offers the possibility of testing the ability of models to generalize to data in new spatial locations and data collected using at least somewhat different methods, perhaps by different people.  This approach is possible for birds in the British Isles, for which biological records data are available from both semi-structured (e.g. Garden Bird Survey) and unstructured (e.g. BirdTrack) schemes run by the British Trust for Ornithology and Birdwatch Ireland, and from eBird.  Similarly, for butterflies, data are available from both the Butterflies for the New Millenium project and from ??; one of those datasets could be used to fit models while the other could be used for model testing, as was done by ??cite a study that did this??.  
-
-
-## Reader Agreement
-
-The purpose of having a second researcher code a subset of articles was to address the question of whether my categories are clear enough that an independent researcher trying to do the same study would come up with the same conclusions. Poor agreement between the two readers for any given variable could be due to: 1) poor variable definitions or poor instructions about how to evaluate the variable; 2) true ambiguity in how a study should be coded; 3) insufficient knowledge or skill of the reader(s); 4) accidental error, perhaps due in part to skimming articles rather than reading them in their entirety.  
-
-Consider adding a step after the agreement calculation where I summarize studies for which there was a lot of disagreement overall - ie disagreement on many categories.  These may be particularly perplexing, novel, or creative studies.  
-
-One option to avoid ambiguity in coding is only coding and analyzing variables for which coding can be done based entirely or largely on character string matching.  This would provide greater reliability, but at the cost of less interesting, informative, and insightful analysis (Krippendorff 2004, Section 11.1).
-
-The goal of having two readers is to estimate how replicatable the analysis is.  If another researcher could code the articles in the same way I do, then it provides confidence that the analysis is revealing some sort of true characteristics of the literature.  
-
-## Who uses biological records?
-While the number of studies that used data provided by the instituion of one of the lead authors was higher than expected by chance, the majority of studies did not have a lead author associated with the data providing institution.  If the lead authors are primarily the people who concieve of and design a study, then these results suggest that, to answer their research questions, researchers frequently use data that they are not directly involved in curating, perhaps because they do not already have the data necessary to answer their question.  This suggests that data providing institutions perform an important data sharing role, and the majority of research that uses biological records data could not have been done solely using the data resources of the lead authors.  
-
-Most studies in this review did have at least one author associated with the data providing institution.  Co-authorship may be a prefered way for data providers to recieve credit for their role in the research pipeline, especially when the data form a "non-trivial" contribution to the study (@Roche2014, @Whitlock2011).  This could reflect [**do I have some reference about the messy nature of bio recs?**].
-
-While standards for citing datasets are developing [**need citations**], there still seems to be some uncertainty about when and how to cite data resources [**I have a citation for this, right?**] which may motivate data providers to seek recognition through co-authorship.  
-
-
-### What data types are used for each study question paradigm?
-I think the story is that data use is roughly similar between question paradigms.  Integrating multiple datasets for analyses is common in both question paradigms, and so it is worth making an effort to ensure that published datasets are in standardized, compatible formats.  
-
-### Study question paradigms
-I may have done a poor job explaining the difference between studies about communities and studies that aggregate results about individual species.  My intention was to code whether the response variable was a property of an individual species or a property of a community (e.g. species richness).  However, the coding may have been complicated by studies that, for example, perform a regression to determine whether the range change of species is due to functional traits.  In such a study, it is perhaps not clear whether the response is a characteristic of individual species (e.g. range shift) or a response of the community (e.g. late flowering plants had greater range shifts).  
-
-## Assorted bits to add
-[[@Follett2015] found that methodology was focus of 17% of studies in a systematic review of cit. sci. use in publications. ]
-
-[[@Follett2015] found that "the public preferred to publish their outcomes in" non peer reviewed places.  This is part of why I include grey literature. ] 
-
-[[@Pearce-Higgins2018] Some data collection / providing schemes have a business model of getting funding to do research.  This might be particularly important for designed monitoring schemes, because the study authors can influence data collection methods.  ]
-
-[[@Pearce-Higgins2018] warn of risks of free and open data being used without data providers knowledge and input.  Risks include inappropriate analysis or interpretation.  "Although not commonly regarded as a major issue in other disciplines where PDA is the norm, the complexities of ecological data can make archiving for independent use particularly challenging (Kenall et al. 2014, Mills et al. 2015)" [@Pearce-Higgins2018]. ]
-
-[In a review of ecological and environmental citizen science projects, Pocock et al. [-@Pocock2017] distinguished between 'mass participation' projects that tended to have lower data quality, less detailed data, but cover larger geographic areas, and 'systematic monitoring' projects that tended to collect more complex and possible higher-quality data (e.g. counts instead of presence/absence observations) but covered smaller geographic areas.]
-
-["There was no evidence that citizen science studies investigate a different organismal scale (community vs. species) compared to the urban ecology literature" in a systematic review @Wei2016. ]
-
-We only found one study in this review that used data from the bird song audio archive site xeno-canto, which was surprising because xeno-canto is more explicitly oriented towards collecting and providing biological sounds, unlike more general media sharing websites like soundcloud and vimeo.  It is possible that our search terms failed to return studies that used data from xeno-canto if those studies were framed more as studies of bird vocalizations rather than as studies of biological records.  Nevertheless, data from sites like xeno-canto share much in common with other biological records datasets in which basic "what, where, when" information about species is augmented with additional information.  The opportunistic nature of data in xeno-canto means that analyses using those data likely face challenges similar to those faced by analyses of other opportunistic or semi-structured biological records datasets.  
-
-We were not able to estimate the reliability of our codings about whether studies tested their statistical models using cross-validation and/or independently collected test data, because there were too few studies testing with those approaches.  However, the rarity of testing using cross-validation and/or independent data is an interesting results, even if we cannot analyze it robustly because of uncertainty about our coding reliability.  Testing statistical models using the same data that was used for model trianing is known to give overly optimistic measures of model performance (cite).  It is concerning that studies using biological records data seem to be either failing to test on independent data or failing to clearly report that they tested on independent data.  The opportunistic nature of biological records datasets means that the data may not represent a random sample from the population of interest in a study.  As such, it seems particularly important that conclusion drawn from models trained with biological records data are tested on independent or semi-independent data (e.g. using cross-validation).  Even if the independent test dataset has biases similar to the training data, it at least provides a minimum standard for determining whether results can be extrapolated beyond the peculiarities of the training data.  ??Cross-validation is commonly used to assess prediction performance in machine learning, and there are packages that implement cross-validation specifically for species distribution modelling.  Cross-validation can also potentially be used with more traditional statistical methods (e.g. linear regressions) to test how well fitted models agree with data that were not used in model fitting.??
-
-Digital record submission and storage has increased the ease with which vouchers of specimens can be stored and accessed.  Digital photos, audio recordings, and videos can all be used as digital voucher specimens to both confirm the taxonomic identity of species recorded and to provide additional information that may be of interest to reserachers.  Sites that collate recordings of bird songs (e.g. xeno-canto and the Macaulay Library of Natural Sounds) now hold ??hundreds of thousands?? of recordings of British and Irish birds, and eBird, one of the worlds largest platforms for collecting biological records, now allows observers to upload photos, audio recordings, and videos?? with species checklists. Given the large and rapidly growing archive of digital voucher specimens (??number and growth of eBird audio or video files??) and the relatively infrequent use of these data in studies in this review, the analysis of the digital vouchers associated with biological records may be a rich area for new research (cite some studies that do this).  The challenges associated with studying e.g. the distribution of bird song dialects (??cite??) or the distributions of morphological characteristics (??cite??) using biological records with digital vouchers are likely similar to the challenges (and the solutions to those challenges) associated with studying species occurrence distributions using more traditional "what, where, when" biological records.  It is possible that our search terms did not retrieve studies that used biological records with digital vouchers if those studies did not include words like "biological records" or "citizen science".  
-
-Biological records data were used as both response and predictor variables in studies in this review.  By far the most common way to use biological records was as a response (`r length(which(wg$biological.records.as.response.variable == T))` of `r nrow(wg)` studies), for example when using environmental predictor variables to estimate the probability of occurrence (measured with biological records) of a species in species distribution modelling (?cite a study?). However, biological records were used as a predictor in multiple studies. For example, the recorded presence of wild mammals and seabirds was used as one of many predictors to estimate the spatial distribution of air pollutant emissions (ammonia, methan, and nitrous oxide) (Tomlinson, Carnell, Tang, Sutton & Dragosits 2017).
-
-### old questions to drop or keep?
-
-$H2_a$: The data types "non-detection", "survey effort known", "abundance", and "organized monitoring scheme" each increase the probability of studies using a model-based analysis (either inferential or predictive) rather than a descriptive analysis.
-
-**Another sub-question - Does data with more structure tend to be analyzed in-house more frequently than data w/less structure?  See @Pearce-Higgins2018**
-**Not sure I should include this - I don't know if I can actually interpret it well.**
 
 
 # Appendix 1 
 ## Model assumption checking
 
 ### Coding Reliability
-```{r kripp_sum_cap}
-kripp_sum_cap <- figs(name = "kripp_sum_cap", 
-                      paste0("Reader agreement measured using Krippendorff's alpha, for variables for which the sample size was large enough to estimate Krippendorff's alpha.  Dashed and dotted horizontal lines show Krippendorff's alpha values of 0.8 and 0.67, which are recommended preferred and minimum values at which variables can be relied upon for analysis."))
-```
-
-```{r plot_kripp_for_adequate_sample_size, fig.cap=kripp_sum_cap}
+```{r plot_kripp_for_adequate_sample_size}
 # plot krippendorf's alpha values for only variables that have adequate sample size
 krip_plot <- ggplot(data = prob_of_values[which(prob_of_values$n_40_adequate == T), ], 
                     aes(y = kripp_alpha)) +
@@ -1459,8 +1261,8 @@ krip_plot <- ggplot(data = prob_of_values[which(prob_of_values$n_40_adequate == 
   geom_point(aes(x = 0)) + 
   geom_hline(aes(yintercept = 0.667), lty = "dotted") + 
   geom_hline(aes(yintercept = 0.8), lty = "dashed") + 
-  ggtitle("Krippendorf's alpha for the variables for\nwhich we have adequate sample size") +
-  ylab("Krippendorf's Alpha value") + 
+  # ggtitle("Krippendorf's alpha for the variables for\nwhich we have adequate sample size") +
+  ylab("Krippendorf's alpha") + 
   xlab("") +
   theme_bw() + 
   theme(axis.text.x = element_blank())
@@ -1502,15 +1304,9 @@ We only calculated Krippendorff's *alpha* for binary variables.  For temporal ex
 kable(m_time_full_anova)
 ```
 
-The following plots are for assessing assumptions for a linear regression of the form `log(number of years) ~ data type`.  Natural-log transformation of the number of years that studies cover improved normality (`r figs(name = "temp_norm_box_cap", display = "cite")`, `r figs(name = "temp_norm_ridge_cap", display = "cite")`).  
+The following plots are for assessing assumptions for a linear regression of the form `log(number of years) ~ data type`.
 
-
-```{r correlation_cap}
-correlation_cap <- figs(name = "correlation_cap", 
-                        "Correlation of the binary data type predictor variables.")
-```
-
-```{r time_assess_correlation_predictors, fig.height=8, fig.width = 8, fig.cap=correlation_cap}
+```{r time_assess_correlation_predictors, fig.height=8, fig.width = 8}
 ### assess correlation between data type predictors ----------------------
 dt_df <- wg[, which(
   colnames(wg) %in% 
@@ -1541,17 +1337,8 @@ if(diag_present) {
 }
 ```
 
-```{r temp_norm_box_cap} 
-temp_norm_box_cap <- figs(name = "temp_norm_box_cap", 
-                          "Boxplot of temporal extent of studies in log-transformed years for different data types.  Log transformation makes normality much better than it is with raw data.")
-```
 
-```{r temp_norm_ridge_cap} 
-temp_norm_ridge_cap <- figs(name = "temp_norm_ridge_cap", 
-                          "Histograms and densities of temporal extent of studies in log-transformed years for different data types.  Log transformation makes normality much better than it is with raw data.")
-```
-
-```{r temp_range_distribution_plot_print, fig.cap=temp_norm_box_cap} 
+```{r temp_range_distribution_plot_print, include=FALSE} 
 if(diag_present) {
   ## normality -------------------------------------
   # distribution of all data
@@ -1572,7 +1359,7 @@ if(diag_present) {
 }
 ```
 
-```{r temp_range_distribution_ridge_plot_print, fig.cap=temp_norm_ridge_cap}
+```{r temp_range_distribution_ridge_plot_print, include=FALSE}
 if(diag_present) {
   print(ggplot(data = temp_extent, aes(x = temp_extent, y = data_type)) + 
           scale_x_log10() + 
@@ -1608,8 +1395,8 @@ if(diag_present) {
   # hist(time_resids, 
   #      main = "standardized residuals of full model for temporal extent", 
   #      xlab = "standardized residuals")
-  boxplot(time_resids, ylab = "standardized residuals", 
-          main = "Residuals for lm model predicting log(temporal extent) ~ data type")
+  # boxplot(time_resids, ylab = "standardized residuals", 
+  #         main = "Residuals for lm model predicting log(temporal extent) ~ data type")
 }
 ```
 
@@ -1626,9 +1413,6 @@ if(diag_present) {
 ```
 
 ### Ecological Focus
-
-`r tabs("resp_var_tab_cap", display = "full")`
-
 ```{r print_response_variable_table}
 kable(resp_count_df, col.names = c("response variable", 
                                    "number of studies", 
@@ -1676,44 +1460,9 @@ if(diag_present) {
 }
 ```
 
-```{r cell_count_cap}
-cell_count_cap <- tabs(name = "cell_count_cap", 
-                       "Cell counts for predictor variables in methodology logistic regression.  Cell counts should be > 5.")
-```
-
-```{r method_vif_cap} 
-method_vif_cap <- tabs(name = "method_vif_cap", 
-                       "Variance inflation factors for variables used in the logistic regression estimating the proportion of studies with a methodological focus across different ecological study questions.")
-```
-
-```{r pearson_resids_cap}
-pearson_resids_cap <- figs(name = "pearson_resids_cap", 
-                           "Histogram of Pearson residuals for the logistic regression model of methodology studies across study questions.  Residuals with an absolute value larger than 2 are potentially problematic.")
-```
-
-```{r deviance_resids_cap}
-deviance_resids_cap <- figs(name = "deviance_resids_cap", 
-                           "Histogram of deviance residuals for the logistic regression model of methodology studies across study questions.  Residuals with an absolute value larger than 2 are potentially problematic.")
-```
-
-```{r leverage_cap}
-leverage_cap <- figs(name = "leverage_cap", 
-                           "Histogram of leverage for the logistic regression model of methodology studies across study questions.  Value larger than 2 are potentially problematic.")
-```
-
-```{r big_resids_cap}
-big_resids_cap <- tabs(name = "big_resids_cap", 
-                       "Studies with large Pearson or deviance residuals or leverage > 2.")
-```
-
-```{r confusion_matrix_cap}
-confusion_matrix_cap <- tabs(name = "confusion_matrix_cap", 
-                             "Confusion matrix for logistic regression model. (Right now the highest predicted probability from the model is 0.46, so the model does not predict any TRUE values).")
-```
-
 There were `r table(wg$methodology.development.or.analysis)[[2]]` methodological studies and `r table(wg$methodology.development.or.analysis)[[1]]` non-methodological studies, suggesting that we can fit `r min(table(wg$methodology.development.or.analysis))/10` predictors if we need at least 10 events or non-events per predictor.
 
-Variance inflation factors for all variables were small (`r tabs("method_vif_cap", display = "cite")`) indicating that correlation among the predictor variables is not likely to cause large uncertainty in the coefficient estimates of the logistic regression model [@Fox1992].  A Hosmer-Lemeshow goodness of fit test failed to reject the null hypothesis that the model fits the data well (*p* = `r round(method_mod_hlTest$p.value, 2)`). There were `r length(big_resids)` observations with big Pearson or deviance residuals or with leverage larger than two (`r tabs("big_resids_cap", display = "cite")`).
+Variance inflation factors for all variables were small indicating that correlation among the predictor variables is not likely to cause large uncertainty in the coefficient estimates of the logistic regression model [@Fox1992].  A Hosmer-Lemeshow goodness of fit test failed to reject the null hypothesis that the model fits the data well (*p* = `r round(method_mod_hlTest$p.value, 2)`). There were `r length(big_resids)` observations with big Pearson or deviance residuals or with leverage larger than two.
 
 Most of the model diagnostics suggested that the logistic regression assumtions were met.  However, because there were `r length(big_resids)` large residuals, we checked the conclusions of the logistic regression by using bootstrapping to estimate 95% confidence intervals around the proportion of studies that were methodological within each of the six ecological or biological study focuses.  The 95% bootstrap CIs for the proportion of studies with each ecological focus that were methodological all overlapped (Fig. S??), confirming the conclusion from the logistic regression that we were unable reject a null hypothesis of no difference in the proportion of studies within each focus area that are methodological.
 
@@ -1724,8 +1473,6 @@ if(diag_present) {
   table(wg$methodology.development.or.analysis)
 }
 ```
-
-`r tabs("cell_count_cap", display = "full")`
 
 ```{r cell_counts_table_print}
 if(diag_present){
@@ -1741,8 +1488,6 @@ if(diag_present){
 }
 ```
 
-`r if(diag_present) tabs("method_vif_cap", display = "full")`
-
 ```{r print_method_vif}
 if(diag_present) {
   vif_df <- data.frame(method_mod_vif)
@@ -1752,7 +1497,7 @@ if(diag_present) {
 }
 ```
 
-```{r print_pearson_resids_plot, fig.cap=pearson_resids_cap}
+```{r print_pearson_resids_plot}
 if(diag_present) {
   method_glm_Pr_plot <- ggplot(data = method_diags, aes(x = Pr)) + 
     geom_histogram() + theme_bw() +
@@ -1762,7 +1507,7 @@ if(diag_present) {
 }
 ```
 
-```{r deviance_resids_methodology_plot, fig.cap=deviance_resids_cap}
+```{r deviance_resids_methodology_plot}
 if(diag_present) {
     method_glm_dr_plot <- ggplot(data = method_diags, aes(x = dr)) + 
     geom_histogram() + theme_bw() +
@@ -1772,7 +1517,7 @@ if(diag_present) {
 }
 ```
 
-```{r leverage_methodology_plot, fig.cap=leverage_cap}
+```{r leverage_methodology_plot}
 if(diag_present) {
   method_glm_lev_plot <- ggplot(data = method_diags, aes(x = h)) + 
     geom_histogram() + theme_bw() +
@@ -1782,18 +1527,9 @@ if(diag_present) {
 }
 ```
 
-`r if(diag_present) tabs("big_resids_cap", display = "full")`
-```{r print_big_resids}
+```{r print_big_resids, include=FALSE}
 if(diag_present) kable(big_resids_df, digits = 2)
 ```
-
-`r if(diag_present) tabs("confusion_matrix_cap", display = "full")`
-```{r print_confusion_matrix_methodology}
-if(diag_present) {
-  kable(method_conf_matrix)
-}
-```
-
 
 ```{r method_prop_boot}
 # Get bootstrap CIs for proportion of studies with each focus that are 
@@ -1894,12 +1630,8 @@ To determine whether different types of biological records data were used to stu
  
 The use of data types differed significantly between study questions (*p* = `r round(dt_pd_interaction_test$"Pr(>Chi)"[2], 3)` for a chi-squared likelihood ratio test of a null hypothesis that a Poisson regression independence model with main effects for data type and ecological study focus (but no interaction term) model fit the data as well as a saturated model.  In the independence model, two cells had deviance residuals with an absolute value bigger than two (Fig. 4) - the cell for the number of studies investigating abundance using multiple biological datasets (residual = -3.5), and the cell for the number of studies investigating species distributions using multiple biological records datasets (residual = 2.8).  The residuals for those two cells were not as big in the permutation test reported in the main text, but the direction of the residuals was the same.  Deviance residuals from the Poisson model were generally positive for combinations of structured data types and study questions about abundance, and negative for combinations of structured data types and species distribution study questions (Fig. S??). This was in agreement with the permutation test (Fig ??) and suggested that abundance studies use structured data types more often than would be expected if data type and study question were not related, and distribution studies used structured data types less often than would be expected if study question and data type were not related.
 
-```{r data_type_study_question_cap}
-data_type_study_question_cap <- figs(name = "data_type_study_question_cap", 
-                               "Deviance residuals from a Poisson regression model of independence between data type and study question.  The direction and size of the residuals indicated deviations from what would be expected if there were no relationship between data type and study question.  Large negative residuals indicate that there were fewer studies with that combination of data type and study question than would be expected if there were no relationship between data type and study question.  Large positive residuals indicate that there were more studies with that combination of data type and study question than would be expected if there were no relationship between data type and study question.")
-```
 
-```{r data_type_study_question_graph, fig.cap=data_type_study_question_cap}
+```{r data_type_study_question_graph}
 data_type_study_question_pois_plot <- ggplot(
   data = dt_pd_df, 
   aes(x = factor(study_focus, 
@@ -1937,13 +1669,6 @@ data_type_study_question_pois_plot <- ggplot(
 print(data_type_study_question_pois_plot + 
         geom_text(aes(label = round(resids, digits = 1)))) # write the values
 ```
-
-```{r data_type_parad_table_cap}
-data_type_parad_table_cap <- tabs(name = "data_type_parad_table_cap", 
-                                  "Table of counts for data type by study question paradigm.")
-```
-
-`r tabs("data_type_parad_table_cap", display = "full")`
 
 ```{r print_data_type_paradigm_contingency_table}
 if(diag_present) {
@@ -1999,12 +1724,7 @@ summary(dt_pd_mod_full)
 ```
 
 
-```{r data_type_parad_cap}
-data_type_parad_cap <- figs(name = "data_type_parad_cap", 
-                            "The number of studies using each type of biological records data within each of the broad study question paradigms.")
-```
-
-```{r data_type_by_paradigm_barplot, fig.cap=data_type_parad_cap, fig.height=7, fig.width=7, include = F}
+```{r data_type_by_paradigm_barplot, fig.height=7, fig.width=7, include = F}
 ### plot data type by study question paradigm ----------------------
 # make plot, order factor levels by most important a-priori
 # dt_pd_df was created in the Methods section
@@ -2061,12 +1781,7 @@ To investigate whether the data type affects the analysis approach, we initially
 
 A Chi-squared likelihood ratio test comparing the saturated Poisson regression model  to a reduced model with only main effects for analysis approach and data type rejected the null hypothesis that the reduced model is as good as the full model (*p* = `r round(dt_an_mod_independence_test$'Pr(>Chi)'[2], 3)`), suggesting that the data type does influence or constrain the analysis approach.  
 
-```{r data_type_analysis_cap}
-data_type_analysis_cap <- figs(name = "data_type_analysis_cap", 
-                            "The number of studies using different types of biological records data with different analysis approaches.  Analysis approaches are inference (e.g. *p*-values or confidence intervals), prediction (e.g. prediction of species presence or absence into unsampled areas) and description (maps, graphs, narrative descriptions, or descriptive statistics with no inference or prediction).")
-```
-
-```{r data_type_analysis_approach_graph, fig.cap=data_type_analysis_cap}
+```{r data_type_analysis_approach_graph, include=FALSE}
 ### plot data type by analysis approach ----------------------
 # make plot, order factor levels by most important a-priori
 # dt_an_df was created in the Methods section
@@ -2216,19 +1931,10 @@ print(dt_an_pois_heatmap +
   geom_text(aes(label = round(resids, digits = 1))))
 ```
 
-```{r, prox_src_tab_cap_all}
-prox_src_tab_cap_all <- tabs(name = "prox_src_tab_cap_all", 
-                                   "Proximate data sources used studies in this review, and the number of studies that used each data source.")
-```
-
-`r tabs("prox_src_tab_cap_all", display = "full")`
-
 ```{r}
 kable(prox_src_df, col.names = c("Proximate Data Source", "Number of Studies"))
 ```
 
-### Taxonomic groups studied
-The instructions for coders (Appendix 2) did not adequately explain how to code this column.  For example, for a study about a single bird species *Turdus merula*, the instructions for the "taxonomic group" column did not specify whether to record "Turdis merula", "bird", or "Turdus merula; bird".  All of those types of variants were used throughout the coding, making the results for this column uninterpretable and un-repeatable. A future review should provide more explicit instructions to coders about what level the taxonomic group should be coded at (e.g. record the Class of organisms studied).  
 
 # Appendix 2 - Instructions for Coders
 [ Attach pdf of Instructions for Coders ]
@@ -2323,46 +2029,42 @@ ggsave("Fig6.jpg", data_type_analysis_approach_plot +
 
 
 ```{r save_plots_appendices}
-ggsave("FigS1.1.svg", krip_plot + 
+ggsave("FigS1.1.svg", data_type_pairs_plot + 
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "svg")
-ggsave("FigS1.2.svg", start_year_cor_plot + 
+ggsave("FigS1.3.svg", krip_plot + 
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "svg")
-ggsave("FigS1.3.svg", data_type_pairs_plot + 
+ggsave("FigS1.4.svg", start_year_cor_plot + 
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "svg")
-svg("FigS1.4.svg")
+
+svg("FigS1.5.svg")
 par(mfrow = c(2, 2)) 
 plot(time_lm_full, ask = FALSE) 
 par(mfrow = c(1, 1))
 dev.off()
-ggsave("FigS1.5.svg", method_glm_Pr_plot + 
+ggsave("FigS1.6.svg", multiplot(
+  method_glm_Pr_plot + theme(text = element_text(size = t_size_save)) + xlab("(a)"),
+  method_glm_lev_plot + theme(text = element_text(size = t_size_save)) + xlab("(c)"), 
+  method_glm_dr_plot + theme(text = element_text(size = t_size_save)) + xlab("(b)"), 
+  cols = 2), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+ggsave("FigS1.7.svg", prop_responses_boot_plot + 
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "svg")
-ggsave("FigS1.6.svg", method_glm_dr_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
-       device = "svg")
-ggsave("FigS1.7.svg", method_glm_lev_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
-       device = "svg")
-ggsave("FigS1.8.svg", prop_responses_boot_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
-       device = "svg")
-ggsave("FigS1.9.svg", data_type_study_question_pois_plot + 
+ggsave("FigS1.8.svg", data_type_study_question_pois_plot + 
          theme(text = element_text(size = t_size_save), 
                legend.key.height = unit(1.1, "cm")) + 
         geom_text(aes(label = round(resids, digits = 1)), size = t_size_save/3), 
        width = 25, height = 25, units = "cm", 
        device = "svg")
-ggsave("FigS1.10.svg", dt_an_pois_heatmap + 
+ggsave("FigS1.9.svg", dt_an_pois_heatmap + 
          theme(text = element_text(size = t_size_save), 
                legend.key.height = unit(1.1, "cm")) + 
         geom_text(aes(label = round(resids, digits = 1)), size = t_size_save/3), 
@@ -2371,61 +2073,48 @@ ggsave("FigS1.10.svg", dt_an_pois_heatmap +
 
 
 
+ggsave("FigS1.1.jpg", data_type_pairs_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+ggsave("FigS1.3.jpg", krip_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+ggsave("FigS1.4.jpg", start_year_cor_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
 
-ggsave("FigS1.1.jpg", krip_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
-       device = "jpg")
-ggsave("FigS1.2.jpg", start_year_cor_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
-       device = "jpg")
-ggsave("FigS1.3.jpg", data_type_pairs_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
-       device = "jpg")
-jpeg("FigS1.4.jpg")
+jpeg("FigS1.5.jpg", width = 25, height = 25, units = "cm", res = 290)
 par(mfrow = c(2, 2)) 
 plot(time_lm_full, ask = FALSE) 
 par(mfrow = c(1, 1))
 dev.off()
-ggsave("FigS1.5.jpg", method_glm_Pr_plot + 
+ggsave("FigS1.6.jpg", multiplot(
+  method_glm_Pr_plot + theme(text = element_text(size = t_size_save)) + xlab("(a)"),
+  method_glm_lev_plot + theme(text = element_text(size = t_size_save)) + xlab("(c)"), 
+  method_glm_dr_plot + theme(text = element_text(size = t_size_save)) + xlab("(b)"), 
+  cols = 2), 
+  width = 25, height = 25, units = "cm", 
+  device = "jpg")
+ggsave("FigS1.7.jpg", prop_responses_boot_plot + 
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "jpg")
-ggsave("FigS1.6.jpg", method_glm_dr_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
-       device = "jpg")
-ggsave("FigS1.7.jpg", method_glm_lev_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
-       device = "jpg")
-ggsave("FigS1.8.jpg", prop_responses_boot_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
-       device = "jpg")
-ggsave("FigS1.9.jpg", data_type_study_question_pois_plot + 
+ggsave("FigS1.8.jpg", data_type_study_question_pois_plot + 
          theme(text = element_text(size = t_size_save), 
                legend.key.height = unit(1.1, "cm")) + 
         geom_text(aes(label = round(resids, digits = 1)), size = t_size_save/3), 
        width = 25, height = 25, units = "cm", 
        device = "jpg")
-ggsave("FigS1.10.jpg", dt_an_pois_heatmap + 
+ggsave("FigS1.9.jpg", dt_an_pois_heatmap + 
          theme(text = element_text(size = t_size_save), 
                legend.key.height = unit(1.1, "cm")) + 
         geom_text(aes(label = round(resids, digits = 1)), size = t_size_save/3), 
        width = 25, height = 25, units = "cm", 
        device = "jpg")
-
-
 ```
-
-
-# References
-
-
-
 
 
 </div>

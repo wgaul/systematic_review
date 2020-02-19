@@ -30,34 +30,34 @@
 ## 
 ## author: Willson Gaul wgaul@hotmail.com
 ## created: 29 May 2018
-## last modified: 18 June 2018
+## last modified: 19 Feb 2020
 #######################################
 
 library(wgutil)
 library(Hmisc)
 library(tidyverse)
 
-scopus <- read_csv("./data/search_results/scopus_15June2018_searchResults.csv", 
+scopus <- read_csv("scopus_15June2018_searchResults.csv", 
                    skip = 4)
 scopus <- scopus[which(scopus$year >= 2014), ]
-gbif <- read_csv("./data/search_results/GBIF_publications.csv")
+gbif <- read_csv("GBIF_publications.csv")
 gbif <- gbif[which(gbif$year >= 2014), ] # keep only 2014 to present
-wos <- read_csv("./data/search_results/WebOfScience_15June2018.csv", 
+wos <- read_csv("WebOfScience_15June2018.csv", 
                 skip = 4)
 
 ## combine proquest files if not done yet, othewise read in combined results
-if("ProQuest_combined.csv" %nin% list.files("./data/search_results/")) {
-  pq_1 <- read_csv("./data/search_results/ProQuest_01.csv", 
+if("ProQuest_combined.csv" %nin% list.files("")) {
+  pq_1 <- read_csv("ProQuest_01.csv", 
                    skip = 4)
-  pq_2 <- read_csv("./data/search_results/ProQuest_02.csv")
-  pq_3 <- read_csv("./data/search_results/ProQuest_03.csv")
-  pq_4 <- read_csv("./data/search_results/ProQuest_04.csv")
-  pq_5 <- read_csv("./data/search_results/ProQuest_05.csv")
-  pq_6 <- read_csv("./data/search_results/ProQuest_06.csv")
-  pq_7 <- read_csv("./data/search_results/ProQuest_07.csv")
-  pq_8 <- read_csv("./data/search_results/ProQuest_08.csv")
-  pq_9 <- read_csv("./data/search_results/ProQuest_09.csv")
-  pq_10 <- read_csv("./data/search_results/ProQuest_10.csv")
+  pq_2 <- read_csv("ProQuest_02.csv")
+  pq_3 <- read_csv("ProQuest_03.csv")
+  pq_4 <- read_csv("ProQuest_04.csv")
+  pq_5 <- read_csv("ProQuest_05.csv")
+  pq_6 <- read_csv("ProQuest_06.csv")
+  pq_7 <- read_csv("ProQuest_07.csv")
+  pq_8 <- read_csv("ProQuest_08.csv")
+  pq_9 <- read_csv("ProQuest_09.csv")
+  pq_10 <- read_csv("ProQuest_10.csv")
   
   proquest <- bind_rows(list(pq_1, pq_2, pq_3, pq_4, pq_5, pq_6, pq_7, pq_8, 
                              pq_9, pq_10))
@@ -96,19 +96,19 @@ if("ProQuest_combined.csv" %nin% list.files("./data/search_results/")) {
   proquest <- proquest[, -which(colnames(proquest) %in% c("PublicationDate", 
                                                          "dup"))]
   
-  write_csv(proquest, "./search_results/ProQuest_combined.csv")
-} else proquest <- read_csv("./data/search_results/ProQuest_combined.csv")
+  write_csv(proquest, "ProQuest_combined.csv")
+} else proquest <- read_csv("ProQuest_combined.csv")
 
 ## combine Google Scholar results if not done yet, otherwise read in combined
 if("GoogleScholar_searchResults_merged.csv" %nin% 
-   list.files("./data/search_results/")) { 
-  gs_1 <- read_csv("./data/search_results/PoP_GS_BiologicalrecordsIreland_no_BookNewreportNewspeciesNewrecord_2014_2018.csv", 
+   list.files()) { 
+  gs_1 <- read_csv("PoP_GS_BiologicalrecordsIreland_no_BookNewreportNewspeciesNewrecord_2014_2018.csv", 
                    skip = 4)
-  gs_2 <- read_csv("./data/search_results/PoP_GS_BiologicalrecordsUnitedkingdom_no_bookNewreportNewspeciesNewrecord.csv", 
+  gs_2 <- read_csv("PoP_GS_BiologicalrecordsUnitedkingdom_no_bookNewreportNewspeciesNewrecord.csv", 
                    skip = 4)
-  gs_3 <- read_csv("./data/search_results/PoP_GS_CitizenscienceSpeciesIreland_no_DiseaseBookNewreportNewspeciesNewrecord_2014_2018.csv", 
+  gs_3 <- read_csv("PoP_GS_CitizenscienceSpeciesIreland_no_DiseaseBookNewreportNewspeciesNewrecord_2014_2018.csv", 
                    skip = 4)
-  gs_4 <- read_csv("./data/search_results/PoP_GS_CitizenscienceSpeciesUnitedkingdom_no_DiseaseBookNewreportNewspeciesNewrecord.csv", 
+  gs_4 <- read_csv("PoP_GS_CitizenscienceSpeciesUnitedkingdom_no_DiseaseBookNewreportNewspeciesNewrecord.csv", 
                    skip = 4)
   
   all_gs <- full_join(gs_1, gs_2,
@@ -160,11 +160,11 @@ if("GoogleScholar_searchResults_merged.csv" %nin%
   all_gs <- select(all_gs, Authors, Title, Year, ArticleURL, DOI)
   colnames(all_gs) <- c("author", "title", "year", "articleURL", "doi")
   
-  write_csv(all_gs, "./data/search_results/GoogleScholar_searchResults_merged.csv")
+  write_csv(all_gs, "GoogleScholar_searchResults_merged.csv")
   
   gs <- all_gs # NOTE: then need to add years by hand to this
   rm(all_gs)
-} else gs <- read_csv("./data/search_results/GoogleScholar_searchResults_merged.csv")
+} else gs <- read_csv("GoogleScholar_searchResults_merged.csv")
 
 
 ### calculate percent of each search results that were returned by the
@@ -389,8 +389,8 @@ rm(scopus, gbif, wos, proquest, search_results, elig, drop_dups, gs_dup, pq_dup,
    scop_dup, ttl, wos_dup)
 ### write out merged, ordered search results ----------------------------------
 if("master_combined_search_results_syst_rev.csv" %nin% 
-   list.files("./data/search_results/")){
-  write_csv(search_results,
-            path = "~/Documents/UCD/PhD_Project/systematic_review/search_results/master_combined_search_results_syst_rev.csv")
+   list.files("/")){
+  try(write_csv(search_results,
+            path = "~/Documents/UCD/PhD_Project/systematic_review/search_results/master_combined_search_results_syst_rev.csv"))
 } else warning("File not written.  A file named master_combined_search_results_syst_rev.csv alread exists.  If you want to overwrite it, run the write_csv command manually.")
 
