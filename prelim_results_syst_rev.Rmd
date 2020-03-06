@@ -2,12 +2,12 @@
 title: "What have biological records ever done for us?  A systematic scoping review - Code for plots and quantitative results"
 date: 19 Feb 2020
 output:
-  html_document:
-    number_sections: true
-    df_print: kable
   word_document:
     toc: true
     toc_depth: 4
+  html_document:
+    number_sections: true
+    df_print: kable
   pdf_document: default
   fig_caption: yes
 ---
@@ -30,6 +30,7 @@ library(pander)
 library(knitr)
 library(ggridges)
 library(bestglm)
+library(Gifi)
 library(MASS)
 library(car)
 library(GGally)
@@ -161,7 +162,7 @@ kripp_all_dbl_coded <- lapply(dbl_coded_list, FUN = do_kripp.alpha,
 
 ## Temporal and spatial extent of studies
 
-We expected the temporal and spatial extent covered by studies to be smaller for studies using more structured or "rich" data types compared to studies using less structured data.  We tested whether the temporal extent of studies differed based on the data type by fitting a linear regression with the natural-log transformed temporal extent of studies (in years) as the response variable.  We used five binary predictor variables indicating whether the study used at least some data that had the following characteristics or information: known sampling effort; explicit non-detection data; data from an organized monitoring scheme; visit-specific covariates; or multiple different biological records datasets used for one analyses.  Although some of the predictor variables were correlated (Fig. S??), we kept all variables in the regression model because we were interested in the effect of each additional type of information *after accounting for other information types*.  For example, we were interested in the additional effect of having non-detection data after adjusting for whether the data came from an organized monitoring scheme.  We assessed collinearity of predictor variables using variance inflation factors in order to determine if collinearity is likely to cause additional uncertainty in the the coefficient estimates for the effect of each data type (Fox 2016). Because the data types were not mutually exclusive, each data type category was treated as an individual binary variable, rather than being treated as a factor level of a categorical variable.  We assessed the significance of data types for predicting temporal extent by using a likelihood ratio test to compare a model containing main effects (but no interactions) for all data types to an intercept only model.  We then assessed the significance of each individual data type by comparing the model with all main effects to a reduced model in which the variable representing the data type being tested had been removed.
+We expected the temporal and spatial extent covered by studies to be smaller for studies using more structured or "rich" data types compared to studies using less structured data.  We tested whether the temporal extent of studies differed based on the data type by fitting a linear regression with the natural-log transformed temporal extent of studies (in years) as the response variable.  Of the four binary variables we coded indicating characteristics of the data, the three variables indicating structured data (sampling effort, non-detection, and data from an organized monitoring scheme) were correlated (Fig. S??).  We therefore summarized the predictor variables into two dimensions using multiple correspondence analysis (Mair & de Leeuw 2019) and used those two dimensions as predictors in the linear regression.  We assessed the significance of data types for predicting temporal extent by using a likelihood ratio test to compare a model containing the two MCA dimensions as predictors to an intercept only model.  Because the MCA dimensions were clearly interpretable in terms of data type, we then assessed the significance of the data types by comparing the model with all main effects to a reduceded models in which the MCA variables representing data types had been alternately removed.
 
 We assessed whether the mean spatial extent was different for studies using different types of data.  We assessed differences between means by determining whether 95% bias-corrected accelerated bootstrap confidence intervals (Efron & Tibshirani 1993)  overlapped.  Bootstrap confidence intervals were calculated using the "boot" package in R (Canty & Ripley, 2015).
 
@@ -237,7 +238,7 @@ spat_ext_data_type_CIs <- lapply(
 # structure" was asking whether that data type was available, whether or not it
 # was used, while "data type" was asking whether the data type was actually used
 # for the analysis.  
-temp_extent <- select(
+temp_extent_plot_df <- select(
   wg, c(title, temp_extent, 
         data.structure...sampling.effort.known, 
         data.structure...non.detection,
@@ -250,9 +251,9 @@ temp_extent <- select(
   group_by(data_type)
 
 # make names prettier
-temp_extent$data_type <- gsub("data.structure...", "", temp_extent$data_type)
+temp_extent_plot_df$data_type <- gsub("data.structure...", "", temp_extent_plot_df$data_type)
 
-temp_extent$data_type <- factor(as.character(temp_extent$data_type), 
+temp_extent_plot_df$data_type <- factor(as.character(temp_extent_plot_df$data_type), 
                                 levels = c("sampling.effort.known",
                                            "non.detection", 
                                            "organized.data.collection.scheme",                                        "multiple.datasets.integrated.for.analysis"), 
@@ -261,7 +262,6 @@ temp_extent$data_type <- factor(as.character(temp_extent$data_type),
                                            "organized scheme", 
                                            "multiple datasets"))
 ```
-
 
 ```{r fit_temp_extent_lm}
 ## fit linear regression with log-transformed years as response variable
@@ -282,23 +282,18 @@ time_resids <- rstandard(time_lm_full) # calculate residuals
 time_summary <- summary(time_lm_full)
 temp_extent_confint <- confint(time_lm_full)
 
+# Test significance of full model
+m0 <- lm(log_years ~ 1, data = wg[!is.na(wg$log_years), ], y = T) # fit null model 
+m_time_full_anova <- anova(m0, time_lm_full)
+
 ## to interpret outcome on original scale:
 # for a one-unit increase in x, the predicted value of y 
 # changes by (e^beta1 - 1)*100 percent
 ```
 
-```{r time_data_type_full_model_sig_test}
-# Test significance of full model
-m0 <- lm(log_years ~ 1, data = wg[!is.na(wg$log_years), ], y = T) # fit null model 
-m_time_full_anova <- anova(m0, time_lm_full)
-```
-
 ```{r time_data_type_test_main_effects, include = F}
 ## test effect of each data type predictor by comparing the full model to a
 # model with that predictor removed
-# 
-# TODO: Does this need multiple comparison correction?
-
 m_no_effort <- lm(log_years ~ 1 + 
                      data.structure...non.detection + 
                      data.structure...organized.data.collection.scheme + 
@@ -325,27 +320,51 @@ indiv_mods_time <- list("m_no_effort" = m_no_effort, "m_no_nonDet" = m_no_nonDet
                         "m_no_multData" = m_no_multData)
 ```
 
-```{r temp_extent_predictions}
-temp_extent_preds <- data.frame(
-  "data.structure...sampling.effort.known" = c(T,F,F,F), 
-  "data.structure...non.detection" = c(F, T, F, F), 
-  "data.structure...organized.data.collection.scheme" = c(F, F, T, F), 
-  "data.structure...multiple.datasets.integrated.for.analysis" = c(F,F,F,T))
-temp_extent_preds$pred_log_years <- predict(time_lm_full, 
-                                            newdata = temp_extent_preds)
-temp_extent_preds$pred_log_y_lowerCI <- predict(time_lm_full, 
-                                            newdata = temp_extent_preds, 
-                                            interval = "confidence", 
-                                            level = 0.95)[, "lwr"]
-temp_extent_preds$pred_log_y_upperCI <- predict(time_lm_full, 
-                                            newdata = temp_extent_preds, 
-                                            interval = "confidence", 
-                                            level = 0.95)[, "upr"]
-temp_extent_preds$pred_years <- exp(temp_extent_preds$pred_log_years)
-temp_extent_preds$pred_years_upperCI <- exp(temp_extent_preds$pred_log_y_upperCI)
-temp_extent_preds$pred_years_lowerCI <- exp(temp_extent_preds$pred_log_y_lowerCI)
+```{r time_MCA}
+temp_extent <- wg[!is.na(wg$log_years), 
+                  c("log_years", 
+                    "data.structure...sampling.effort.known", 
+                    "data.structure...non.detection", 
+                    "data.structure...organized.data.collection.scheme", 
+                    "data.structure...multiple.datasets.integrated.for.analysis")]
+### Try CATPCA to summarize predictors before lm
+time_hom <- homals(temp_extent[, 2:5], ndim = 2, ordinal = FALSE)
+
+# put the two dimensions D1 and D2 on the original temp_extent data
+temp_extent$D1 <- data.frame(time_hom$objectscores)$D1
+temp_extent$D2 <- data.frame(time_hom$objectscores)$D2
 ```
 
+```{r time_MCA_lm}
+# Fit linear regression using the reduced dimensions as predictors and 
+# log-transformed years as response variable
+time_lm_log_catpca <- lm(log_years ~ 1 + D1 + D2,
+                         data = temp_extent[!is.na(temp_extent$log_years), ], 
+                         na.action = na.exclude, y = TRUE) 
+
+#plot(time_lm_log_catpca, ask = F) # residuals look ok
+mca_lm_summary <- summary(time_lm_log_catpca)
+
+# Test significance of full model
+mca_m0 <- lm(log_years ~ 1, data = temp_extent, y = T) # fit null model 
+mca_time_full_anova <- anova(m0, time_lm_log_catpca)
+
+# Test significance of each dimension
+mca_noD1 <- lm(log_years ~ 1 + D2, 
+               data = temp_extent[!is.na(temp_extent$log_years), ], 
+                         na.action = na.exclude, y = TRUE)
+mca_noD2 <- lm(log_years ~ 1 + D1, 
+               data = temp_extent[!is.na(temp_extent$log_years), ], 
+                         na.action = na.exclude, y = TRUE)
+
+## VIF for the lm model of log(years) ~ data types 
+temp_extent_catpca_vif <- vif(time_lm_log_catpca) # assess multicollinearity
+temp_catpca_vif_df <- data.frame(temp_extent_catpca_vif)
+colnames(temp_catpca_vif_df)[1] <- "VIF"
+temp_catpca_vif_df$variable <- rownames(temp_catpca_vif_df)
+rownames(temp_catpca_vif_df) <- NULL
+# temp_catpca_vif_df # low VIF.  
+```
 
 
 ## What is the most popular study question paradigm for studies using biological records?
@@ -836,14 +855,12 @@ if(diag) {
 }
 ```
 
-The temporal extent of studies differed significantly for studies using different types of biological records data (anova of a linear regression model using data type to predict the natural log of the temporal extent of studies (in years) compared to a model that did not use data type $F_{`r format(round(m_time_full_anova[2, "Df"], digits = 2), scientific = F)`, `r format(round(m_time_full_anova[2, "Res.Df"], digits = 2), scientific = F)`}$ = `r format(round(m_time_full_anova[, "F"][2], digits = 2), scientific = F)`, *p* `r if(m_time_full_anova[6][[1]][2] >= 0.0001) {format(round(m_time_full_anova[6][[1]][2], digits = 4), scientific = T)} else "< 0.0001"`, Adjusted $R^2$ = `r format(round(time_summary$adj.r.squared, digits = 2), scientific = F)`, Fig. 1).  Studies that used multiple different biological records datasets covered significantly longer temporal extents than studies that did not use multiple different datasets after accounting for other data types ($F_{1, 196}$ = `r round(anova(indiv_mods_time$m_no_multData, time_lm_full)$F[2], digits = 2)`, *p* < 0.0001, Fig. 1).  Studies that used data from an organized monitoring scheme covered significantly shorter temporal extents than studies that did not use data from an organized monitoring scheme after accounting for other data types ($F_{1, 196}$ = `r round(anova(indiv_mods_time$m_no_scheme, time_lm_full)$F[2], digits = 2)`, *p* = `r round(anova(indiv_mods_time$m_no_scheme, time_lm_full)$'Pr(>F)'[2], digits = 2)`). The expected temporal extent covered by a study that used multiple biological records datasets was `r round(exp((time_lm_full$coefficients[1] + time_lm_full$coefficients[5])), digits = 1)` years (95% CI: [`r round(temp_extent_preds$pred_years_lowerCI[4], digits = 1)`, `r round(temp_extent_preds$pred_years_upperCI[4], digits = 1)`]) when the data did not have any of the other data types we recorded.  The expected temporal extent of a study that used data from an organized monitoring scheme was `r round(exp(time_lm_full$coefficients[1] + time_lm_full$coefficients[4]), digits = 1)` years (95% CI: [`r round(temp_extent_preds$pred_years_lowerCI[3], digits = 1)`, `r round(temp_extent_preds$pred_years_upperCI[3], digits = 1)`]) when the data did not have any of the other data types we recorded.
-
-We did not detect a significant effect of sampling effort data ($F_{1,196}$ = `r round(anova(indiv_mods_time$m_no_effort, time_lm_full)$F[2], digits = 2)`, *p* = `r round(anova(indiv_mods_time$m_no_effort, time_lm_full)$'Pr(>F)'[2], digits = 2)`) or non-detection data ($F_{1,196}$ = `r round(anova(indiv_mods_time$m_no_nonDet, time_lm_full)$F[2], digits = 2)`, *p* = `r round(anova(indiv_mods_time$m_no_nonDet, time_lm_full)$'Pr(>F)'[2], digits = 2)`) on the temporal extent of studies.  However, pairs plots and variance inflation factors show that the "sampling effort" and "non-detection" data types are strongly correlated with each other, and both are correlated less strongly with the "organized monitoring scheme" data type (Fig. S?, Tab. S1), suggesting that we may have been unable to dis-entangle the effects of each of these correlated variables with our current sample size (Fox 2016, p. 341-2).  We removed from the analysis `r length(which(is.na(wg$temp_extent)))` studies for which the coder could not determine the temporal extent.
+The temporal extent of studies differed significantly for studies using different types of biological records data (anova of a linear regression model using data type to predict the natural log of the temporal extent of studies (in years) compared to a model that did not use data type $F_{`r format(round(mca_time_full_anova[2, "Df"], digits = 2), scientific = F)`, `r format(round(mca_time_full_anova[2, "Res.Df"], digits = 2), scientific = F)`}$ = `r format(round(mca_time_full_anova[, "F"][2], digits = 2), scientific = F)`, *p* `r if(mca_time_full_anova[6][[1]][2] >= 0.0001) {format(round(mca_time_full_anova[6][[1]][2], digits = 4), scientific = T)} else "< 0.0001"`, Adjusted $R^2$ = `r format(round(mca_lm_summary$adj.r.squared, digits = 2), scientific = F)`, Fig. 1).  The first MCA dimension was related to whether studies used more structured types of biological records, with high values of dimension one being associated with studies that had explicit non-detection data, sampling effort information, or data from organized monitoring schemes.  For the second MCA dimension, high values indicated studies that used multiple biological records datasets.  The estimated linear regression coefficient for dimension one was negative ($F_{1, 199}$ = `r round(anova(mca_noD1, time_lm_log_catpca)$F[2], digits = 2)`, p < 0.0001), indicating that studies using more structured data covered significantly shorter temporal extents than studies using less structured data. The estimated linear regression coefficient for dimension two was positive ($F_{1, 199}$ = `r round(anova(mca_noD2, time_lm_log_catpca)$F[2], digits = 2)`, p < 0.0001), indicating that studies using more multiple biological records datasets covered significantly longer temporal extents than studies that did not.  We removed from the analysis `r length(which(is.na(wg$temp_extent)))` studies for which the coder could not determine the temporal extent.
 
 The mean spatial extent was not different for studies using different types of data based on overlapping 95% bootstrap confidence intervals (Fig. 2).
 
 ```{r time_extent_results_plot}
-temp_extent_plot <- ggplot(data = temp_extent, 
+temp_extent_plot <- ggplot(data = temp_extent_plot_df, 
                            aes(y = temp_extent, 
                                x = factor(data_type, 
                                           levels = c("sampling effort known", 
@@ -876,7 +893,7 @@ print(temp_extent_plot)
 ## TODO: need to hand-annotate R2 and p-value in plot
 # summary(time_lm_full)
 t_size = 22 # plot text size
-ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + #, color = sig_different_from_WhWhWh
+ggplot(data = temp_extent_plot_df, aes(y = temp_extent, x = data_type)) + #, color = sig_different_from_WhWhWh
   geom_boxplot(varwidth = T) +
   scale_y_log10() + 
   xlab("Data Type") + 
@@ -1247,7 +1264,7 @@ dist_cv_ind <- dist_studs[dist_studs$testing.using.independent.dataset == T |
 
 Of the species distribution studies, `r nrow(dist_cv_ind)` of `r nrow(dist_studs)` (`r round((nrow(dist_cv_ind)/nrow(dist_studs))*100, digits = 0)`%) used cross-validation or tested on independent data (or both).  
 
-
+An opportunity identified by our review is that multiple different biological records datasets were used for `r round((length(which(wg$data.structure...multiple.datasets.integrated.for.analysis[wg$response.variable...distribution == TRUE])) / length(which(wg$response.variable...distribution))) * 100, digits = 0)`% (`r length(which(wg$data.structure...multiple.datasets.integrated.for.analysis[wg$response.variable...distribution == TRUE]))` of `r length(which(wg$response.variable...distribution))`) species distribution studies and `r round(length(which(wg$data.structure...multiple.datasets.integrated.for.analysis)) / nrow(wg) * 100, digits = 0)`% (`r length(which(wg$data.structure...multiple.datasets.integrated.for.analysis))` of `r nrow(wg)`)
 
 # Appendix 1 
 ## Model assumption checking
@@ -1313,8 +1330,7 @@ dt_df <- wg[, which(
     c("data.structure...organized.data.collection.scheme", 
       "data.structure...sampling.effort.known", 
       "data.structure...non.detection", 
-      "data.structure...multiple.datasets.integrated.for.analysis", 
-      "data.type...visit.specific.covariates"))]
+      "data.structure...multiple.datasets.integrated.for.analysis"))]
 for(i in 1:ncol(dt_df)) {
   dt_df[, i] <- as.factor(as.character(data.frame(dt_df)[, i]))
 }
@@ -1327,8 +1343,7 @@ if(diag_present) {
                                   columnLabels = c("organized scheme", 
                                                    "sampling effort",
                                                    "non detection",
-                                                   "multiple datasets", 
-                                                   "visit specific covariates"), 
+                                                   "multiple datasets"), 
                                   labeller = label_wrap_gen(width = 10)) + 
     ggtitle("Correlation of data type predictor variables") + 
     theme(axis.text.x = element_text(angle = 50, hjust = 1), 
@@ -1336,7 +1351,6 @@ if(diag_present) {
   print(data_type_pairs_plot)
 }
 ```
-
 
 ```{r temp_range_distribution_plot_print, include=FALSE} 
 if(diag_present) {
@@ -1348,7 +1362,7 @@ if(diag_present) {
   
   # data very non-normal but log transformation kinda fixes this
   # (reciprocal and sqrt transformations did not help)
-  print(ggplot(data = temp_extent, aes(y = temp_extent, x = data_type)) + 
+  print(ggplot(data = temp_extent_plot_df, aes(y = temp_extent, x = data_type)) + 
           geom_boxplot(varwidth = T) +
           scale_y_log10() + 
           theme_bw() + 
@@ -1361,7 +1375,7 @@ if(diag_present) {
 
 ```{r temp_range_distribution_ridge_plot_print, include=FALSE}
 if(diag_present) {
-  print(ggplot(data = temp_extent, aes(x = temp_extent, y = data_type)) + 
+  print(ggplot(data = temp_extent_plot_df, aes(x = temp_extent, y = data_type)) + 
           scale_x_log10() + 
           geom_density_ridges(stat = "binline", alpha = 0.4) +
           geom_density_ridges(alpha = 0.4) + 
@@ -1370,17 +1384,16 @@ if(diag_present) {
 }
 ```
 
-
 ```{r temp_range_distribution_years_by_data_type}
 # distribution of log(years) by data type (raw data, not residuals) 
 # Looking at model residuals is more useful.  However, this does show that the
 # log(years) distribution is more normal for some data types than others.
 if(diag) {
-  for(i in unique(temp_extent$data_type)) { 
-    #hist(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)])
-    qqnorm(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)], 
+  for(i in unique(temp_extent_plot_df$data_type)) { 
+    #hist(log(temp_extent_plot_df$temp_extent)[which(temp_extent_plot_df$data_type == i)])
+    qqnorm(log(temp_extent_plot_df$temp_extent)[which(temp_extent_plot_df$data_type == i)], 
            main = i)
-    qqline(log(temp_extent$temp_extent)[which(temp_extent$data_type == i)])
+    qqline(log(temp_extent_plot_df$temp_extent)[which(temp_extent_plot_df$data_type == i)])
   }
 }
 ```
@@ -1410,6 +1423,62 @@ if(diag_present) {
   rownames(temp_vif_df) <- NULL
   kable(temp_vif_df, col.names = c("VIF", "variable"), digits = 2)
 }
+```
+
+```{r temp_extent_mca_outputs}
+summary(time_hom)
+
+# dimension one is summarizing the structured data types variables.  Positive
+# D1 values mean TRUE for the structured data type variables
+# dimension two is mostly summarizing the "multiple datasets" variable.  
+# Positive D2 values mean "TRUE" for the multiple datasets variable.
+time_hom$loadings
+plot(time_hom)
+plot(time_hom, plot.type = "screeplot")
+# I think this shows that there are cases with a range of D1 values at both the
+# positive and negative end of the D2 dimension.  And D1 and D2 are not
+# correlated with each other (obviously)
+plot(time_hom, plot.type = "biplot")
+
+# confirm that dimesion 1 values differ based on non-detection T/F
+ggplot(data = temp_extent, aes(y = D1, x = data.structure...non.detection)) + geom_boxplot() + geom_point()
+# confirm that dimesion 2 values do not differ much based on non-detection T/F
+ggplot(data = temp_extent, aes(y = D2, x = data.structure...non.detection)) + geom_boxplot() + geom_point()
+
+# confirm that dimesion 2 values differ based on multiple datasets T/F
+ggplot(data = temp_extent, aes(y = D2, x = data.structure...multiple.datasets.integrated.for.analysis)) + geom_boxplot() + geom_point()
+# but dimension 1 values do not differ much based on multiple datasets T/F
+ggplot(data = temp_extent, aes(y = D1, x = data.structure...multiple.datasets.integrated.for.analysis)) + geom_boxplot() + geom_point()
+
+temp_catpca_vif_df # low VIF.  
+```
+
+```{r check_time_lm_original_vars, include = F}
+#### try model selection with original variables ------------------------------
+# make all possible models
+temp_extent_subsets <- temp_extent[, c("data.structure...sampling.effort.known", 
+                  "data.structure...non.detection", 
+                  "data.structure...organized.data.collection.scheme", 
+                  "data.structure...multiple.datasets.integrated.for.analysis", 
+                  "log_years")]
+colnames(temp_extent_subsets)[ncol(temp_extent_subsets)] <- "y"
+all_time_lms <- bestglm(
+  temp_extent[, c("data.structure...sampling.effort.known", 
+                  "data.structure...non.detection", 
+                  "data.structure...organized.data.collection.scheme", 
+                  "data.structure...multiple.datasets.integrated.for.analysis", 
+                  "log_years")], 
+  family = gaussian, IC = "AIC", intercept = TRUE, 
+  RequireFullEnumerationQ = TRUE)
+all_time_lms$BestModels
+
+# look at summary of the best model
+summary(all_time_lms$BestModel) # non-detectin is significant after removing sampling effort
+
+# So it looks likee the sampling effort variable is less important than 
+# the non-detection variable.  Removing sampling effort from the full model 
+# reduces AIC (as does removing non-detection, but that doesn't reduce AIC
+# by as much, and the change is less than 2).  Removing organized collection scheme increases AIC.
 ```
 
 ### Ecological Focus
