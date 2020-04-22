@@ -855,22 +855,23 @@ if(diag) {
 }
 ```
 
-The temporal extent of studies differed significantly for studies using different types of biological records data (anova of a linear regression model using data type to predict the natural log of the temporal extent of studies (in years) compared to a model that did not use data type $F_{`r format(round(mca_time_full_anova[2, "Df"], digits = 2), scientific = F)`, `r format(round(mca_time_full_anova[2, "Res.Df"], digits = 2), scientific = F)`}$ = `r format(round(mca_time_full_anova[, "F"][2], digits = 2), scientific = F)`, *p* `r if(mca_time_full_anova[6][[1]][2] >= 0.0001) {format(round(mca_time_full_anova[6][[1]][2], digits = 4), scientific = T)} else "< 0.0001"`, Adjusted $R^2$ = `r format(round(mca_lm_summary$adj.r.squared, digits = 2), scientific = F)`, Fig. 1).  The first MCA dimension was related to whether studies used more structured types of biological records, with high values of dimension one being associated with studies that had explicit non-detection data, sampling effort information, or data from organized monitoring schemes.  For the second MCA dimension, high values indicated studies that used multiple biological records datasets.  The estimated linear regression coefficient for dimension one was negative ($F_{1, 199}$ = `r round(anova(mca_noD1, time_lm_log_catpca)$F[2], digits = 2)`, p < 0.0001), indicating that studies using more structured data covered significantly shorter temporal extents than studies using less structured data. The estimated linear regression coefficient for dimension two was positive ($F_{1, 199}$ = `r round(anova(mca_noD2, time_lm_log_catpca)$F[2], digits = 2)`, p < 0.0001), indicating that studies using more multiple biological records datasets covered significantly longer temporal extents than studies that did not.  We removed from the analysis `r length(which(is.na(wg$temp_extent)))` studies for which the coder could not determine the temporal extent.
+The temporal extent of studies differed significantly for studies using different types of biological records data (anova of a linear regression model using data type to predict the natural log of the temporal extent of studies (in years) compared to a model that did not use data type $F_{`r format(round(mca_time_full_anova[2, "Df"], digits = 2), scientific = F)`, `r format(round(mca_time_full_anova[2, "Res.Df"], digits = 2), scientific = F)`}$ = `r format(round(mca_time_full_anova[, "F"][2], digits = 2), scientific = F)`, *p* `r if(mca_time_full_anova[6][[1]][2] >= 0.0001) {format(round(mca_time_full_anova[6][[1]][2], digits = 4), scientific = T)} else "< 0.0001"`, Adjusted $R^2$ = `r format(round(mca_lm_summary$adj.r.squared, digits = 2), scientific = F)`, Fig. 1).  The first MCA dimension was related to whether studies used more structured types of biological records, with high values of dimension one being associated with studies that had explicit non-detection data, sampling effort information, or data from organized monitoring schemes.  For the second MCA dimension, high values indicated studies that used multiple biological records datasets.  The estimated linear regression coefficient for dimension one was `r time_lm_log_catpca$coefficients[["D1"]]` ($F_{1, 199}$ = `r round(anova(mca_noD1, time_lm_log_catpca)$F[2], digits = 2)`, p < 0.0001), indicating that studies using more structured data covered significantly shorter temporal extents than studies using less structured data. The estimated linear regression coefficient for dimension two was `r time_lm_log_catpca$coefficients[["D2"]]` ($F_{1, 199}$ = `r round(anova(mca_noD2, time_lm_log_catpca)$F[2], digits = 2)`, p < 0.0001), indicating that studies using more multiple biological records datasets covered significantly longer temporal extents than studies that did not.  We removed from the analysis `r length(which(is.na(wg$temp_extent)))` studies for which the coder could not determine the temporal extent.
 
 The mean spatial extent was not different for studies using different types of data based on overlapping 95% bootstrap confidence intervals (Fig. 2).
 
 ```{r time_extent_results_plot}
 temp_extent_plot <- ggplot(data = temp_extent_plot_df, 
                            aes(y = temp_extent, 
-                               x = factor(data_type, 
-                                          levels = c("sampling effort known", 
-                                                     "non detection", 
-                                                     "organized scheme", 
-                                                     "multiple datasets"), 
-                                          labels = c("sampling effort\nknown", 
-                                                     "non-detection", 
-                                                     "organized\nscheme",  
-                                                     "multiple\ndatasets")))) + 
+                               x = factor(
+                                 data_type, 
+                                 levels = c("sampling effort known", 
+                                            "non detection", 
+                                            "organized scheme", 
+                                            "multiple datasets"), 
+                                 labels = c("sampling effort\nknown", 
+                                            "non-detection", 
+                                            "organized\nmonitoring\nscheme",  
+                                            "multiple\ndatasets")))) + 
   geom_boxplot(varwidth = T) +
   scale_y_log10() + 
   xlab("Data Type") + 
@@ -916,16 +917,24 @@ ggplot(data = temp_extent_plot_df, aes(y = temp_extent, x = data_type)) + #, col
 
 ```{r spat_extent_bootCI_plot}
 spat_boot_df <- data.frame(matrix(nrow = length(data_types), 
-                                  ncol = 4))
-colnames(spat_boot_df) <- c("data_type", "mean", 
+                                  ncol = 7))
+colnames(spat_boot_df) <- c("data_type", "minimum", "maximum", "median", "mean", 
                              "l_95ci", "u_95ci")
 
 # fill response variable counts data frame using the list of bootstrap results
 for(i in 1:length(data_types)) {
   spat_boot_df[i, "data_type"] <- names(data_types)[i]
-  spat_boot_df[i, "mean"] <- spat_ext_data_type_CIs[[i]]$ci_obj$t0
-  spat_boot_df[i, "l_95ci"] <- spat_ext_data_type_CIs[[i]]$ci_obj$bca[4]
-  spat_boot_df[i, "u_95ci"] <- spat_ext_data_type_CIs[[i]]$ci_obj$bca[5]
+  spat_boot_df[i, "minimum"] <- min(spat_ext_data_type_CIs[[i]]$obs$spat_extent, 
+                                    na.rm = TRUE)
+    spat_boot_df[i, "maximum"] <- max(spat_ext_data_type_CIs[[i]]$obs$spat_extent, 
+                                    na.rm = TRUE)
+      spat_boot_df[i, "median"] <- median(
+        spat_ext_data_type_CIs[[i]]$obs$spat_extent, 
+        na.rm = TRUE)
+      spat_boot_df[i, "mean"] <- spat_ext_data_type_CIs[[i]]$ci_obj$t0
+      spat_boot_df[i, "l_95ci"] <- spat_ext_data_type_CIs[[i]]$ci_obj$bca[4]
+      spat_boot_df[i, "u_95ci"] <- spat_ext_data_type_CIs[[i]]$ci_obj$bca[5]
+  
 }
 
 # plot mean spatial extent of studies using each data type, with 95% CIs
@@ -1100,7 +1109,7 @@ print(methodology_plot)
 
 ## What data types are used for each type of ecological study question?
 
-The permutation test suggested that data type and study question were not independent (permutation-based significance level of the chi-squared test statistic for the observed data = `r chis_perm_study_question_pvalue` with `r n_perm` permutations).  Permutation test residuals and significance levels for each combination of data type and study question showed that residuals were generally large, positive, and significantly different from zero for combinations of structured data types and studies of species abundances, suggesting that those data types were used more frequently for abundance studies than would be expected if there were no relationship between data type and analysis approach. Residuals were large, negative, and highly significantly different from zero for combinations of more structured data types and studies of species distributions (Fig. 4?), suggesting that those rich data types are used for distribution studies less often than would be expected if there was no relationship between data type and analysis approach. The absolute value of residuals and significance levels for combinations of all data types with studies of phenology, species richness and "other" study questions generally indicated that the use of data types for those study questions did not differ strongly from what would be expected if there were no relationship between data type and study question.  The residuals and significance levels suggested that multiple datasets were used less often for abundance studies and more often for distribution studies (and perhaps for studies of "other" questions) than would be expected if there was no relationship between data type and study question.  Both the absolute magnitude of residuals and the significance levels suggested that the observed use of multiple datasets for abundance and distribution questions differed less strongly from the null expectation than did combinations of structured data types with those study questions.  
+The permutation test suggested that data type and study question were not independent (Chi-square statistic = `r chisq.test(dt_pd_df_wide[, 2:4])$statistic`, df = `r chisq.test(dt_pd_df_wide[, 2:4])$parameter`p = `r chis_perm_study_question_pvalue` with `r n_perm` permutations).  Permutation test residuals and significance levels for each combination of data type and study question showed that residuals were generally large, positive, and significantly different from zero for combinations of structured data types and studies of species abundances, suggesting that those data types were used more frequently for abundance studies than would be expected if there were no relationship between data type and analysis approach. Residuals were large, negative, and highly significantly different from zero for combinations of more structured data types and studies of species distributions (Fig. 4?), suggesting that those rich data types are used for distribution studies less often than would be expected if there was no relationship between data type and analysis approach. The absolute value of residuals and significance levels for combinations of all data types with studies of phenology, species richness and "other" study questions generally indicated that the use of data types for those study questions did not differ strongly from what would be expected if there were no relationship between data type and study question.  The residuals and significance levels suggested that multiple datasets were used less often for abundance studies and more often for distribution studies (and perhaps for studies of "other" questions) than would be expected if there was no relationship between data type and study question.  Both the absolute magnitude of residuals and the significance levels suggested that the observed use of multiple datasets for abundance and distribution questions differed less strongly from the null expectation than did combinations of structured data types with those study questions.  
 
 
 ```{r print_data_type_study_question_heatmap_table_permutation}
@@ -1113,6 +1122,18 @@ perm_sq_resids_long <- gather(perm_sq_resids, key = "study_question",
 # add significance levels to residuals data frame
 perm_sq_resids_long <- left_join(perm_sq_resids_long, perm_sq_p_vals_long, 
                               by = c("data_type", "study_question"))
+# make symbols for significance levels
+perm_sq_resids_long$sig_symb <- NA
+perm_sq_resids_long$sig_symb[perm_sq_resids_long$significance >= 0.1] <- " "
+perm_sq_resids_long$sig_symb[perm_sq_resids_long$significance < 0.1 & 
+                               perm_sq_resids_long$significance >= 0.01] <- "*"
+perm_sq_resids_long$sig_symb[perm_sq_resids_long$significance < 0.01 & 
+                               perm_sq_resids_long$significance >= 0.001] <- "**"
+perm_sq_resids_long$sig_symb[
+  perm_sq_resids_long$significance < 0.001 & 
+    perm_sq_resids_long$significance >= 0.0001] <- "***"
+perm_sq_resids_long$sig_symb[perm_sq_resids_long$significance < 0.0001] <- "****"
+
 
 data_type_study_question_perm_plot <- ggplot(
   data = perm_sq_resids_long,        
@@ -1147,15 +1168,14 @@ data_type_study_question_perm_plot <- ggplot(
   # ggtitle("Residuals (significance level)\nfrom permutation test") + 
   labs(fill = "observed -\nexpected\ncounts")
 print(data_type_study_question_perm_plot + 
-  geom_text(aes(label = paste0(round(residual, digits = 1), " (", 
-                               round(significance, digits = 2), ")"))))
+  geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb))))
 ```
 
 Some types of additional data that can be associated with biological records were used too infrequently for us to evaluate the reliability of our codings.  Types of data used infrequently included photos (`r round((length(which(wg$data.type...photo == T)) / nrow(wg)) * 100, digits = 1)` % of studies), videos (`r round((length(which(wg$data.type...video == T)) / nrow(wg)) * 100, digits = 1)` % of studies), vouchers specimens (`r round((length(which(wg$data.type...voucher.of.some.kind.necessary.for.analysis == T)) / nrow(wg)) * 100, digits = 1)` % of studies), audio recordings (`r round((length(which(wg$data.type...audio == T)) / nrow(wg)) * 100, digits = 1)` % of studies), and life stage (e.g. phenology) information (`r round((length(which(wg$data.type...life.stage == T)) / nrow(wg)) * 100, digits = 1)` % of studies.  The coding reliability was too low for us to interpret whether studies used abundance data (Krippendorff's *alpha* = `r round(samp_adequate$kripp_alpha[samp_adequate$variable == "data type - abundance"], digits = 2)`) or only "what, where, when" data (Krippendorff's *alpha* = `r round(samp_adequate$kripp_alpha[samp_adequate$variable == "data type - what where when only"], digits = 2)`).
 
 ## Analysis approach & data type
 
-There was strong evidence that data type and analysis approach are not independent (permutation-based significance level of the chi-squared test statistic for the observed data = `r chis_perm_pvalue` with `r n_perm` permutations).  Permutation test residuals and significance levels for each combination of data type and analysis method show that residuals are generally large, negative, and highly significantly different from zero for combinations of more structured data types and descriptive-only analyses (Fig. 5), suggesting that those rich data types are analyzed descriptively less often than would be expected if there was no relationship between data type and analysis approach.  Residuals are generally large, positive, and significantly different from zero for combinations of structured data types and inferential analyses, suggesting that those data types are analyzed with inferential methods more frequently than would be expected if there were no relationship between data type and analysis approach.  The absolute value of residuals and significance levels for combinations of all data types with predictive analysis methods generally indicated that the use of data types in predictive analyses did not differ strongly from what would be expected if there were no relationship between data type and analysis approach.  The residuals and significance levels for the cells associated with multiple data sets being used in an analysis suggest that multiple datasets are used less often for inference and more often for descriptive-only analyses than would be expected if there was no relationship between data type and analysis approach, though both the absolute magnitude of the residuals and the significance levels suggested that the observed use of multiple datasets for those two analysis approaches differed less strongly from the null expectation than did the use of data with non-detection and/or sampling effort information and data from organized monitoring schemes.  
+There was strong evidence that data type and analysis approach are not independent (chi-squared test statistic = `r chisq.test(dt_an_df_wide[, 2:4])$statistic`, df = `r chisq.test(dt_an_df_wide[, 2:4])$parameter`,p = `r chis_perm_pvalue`, `r n_perm` permutations).  Permutation test residuals and significance levels for each combination of data type and analysis method show that residuals are generally large, negative, and highly significantly different from zero for combinations of more structured data types and descriptive-only analyses (Fig. 5), suggesting that those rich data types are analyzed descriptively less often than would be expected if there was no relationship between data type and analysis approach.  Residuals are generally large, positive, and significantly different from zero for combinations of structured data types and inferential analyses, suggesting that those data types are analyzed with inferential methods more frequently than would be expected if there were no relationship between data type and analysis approach.  The absolute value of residuals and significance levels for combinations of all data types with predictive analysis methods generally indicated that the use of data types in predictive analyses did not differ strongly from what would be expected if there were no relationship between data type and analysis approach.  The residuals and significance levels for the cells associated with multiple data sets being used in an analysis suggest that multiple datasets are used less often for inference and more often for descriptive-only analyses than would be expected if there was no relationship between data type and analysis approach, though both the absolute magnitude of the residuals and the significance levels suggested that the observed use of multiple datasets for those two analysis approaches differed less strongly from the null expectation than did the use of data with non-detection and/or sampling effort information and data from organized monitoring schemes.  
 
 ```{r print_data_type_analysis_approach_contingency_table}
 if(diag_present) {
@@ -1183,6 +1203,16 @@ perm_resids_long <- gather(perm_resids, key = "analysis_approach",
 # add significance levels to residuals data frame
 perm_resids_long <- left_join(perm_resids_long, perm_p_vals_long, 
                               by = c("data_type", "analysis_approach"))
+perm_resids_long$sig_symb <- NA # make column for significance level symbol
+perm_resids_long$sig_symb[perm_resids_long$significance >= 0.1] <- " "
+perm_resids_long$sig_symb[perm_resids_long$significance < 0.1 & 
+                               perm_resids_long$significance >= 0.01] <- "*"
+perm_resids_long$sig_symb[perm_resids_long$significance < 0.01 & 
+                               perm_resids_long$significance >= 0.001] <- "**"
+perm_resids_long$sig_symb[
+  perm_resids_long$significance < 0.001 & 
+    perm_resids_long$significance >= 0.0001] <- "***"
+perm_resids_long$sig_symb[perm_resids_long$significance < 0.0001] <- "****"
 
 data_type_analysis_approach_plot <- ggplot(
   data = perm_resids_long,        
@@ -1213,8 +1243,7 @@ data_type_analysis_approach_plot <- ggplot(
   # ggtitle("Residuals (significance level)\nfrom permutation test") + 
   labs(fill = "observed -\nexpected\ncounts")
 print(data_type_analysis_approach_plot + 
-  geom_text(aes(label = paste0(round(residual, digits = 1), " (", 
-                               round(significance, digits = 2), ")"))))
+  geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb))))
 ```
 
 
@@ -2024,40 +2053,37 @@ Google Scholar searched through Publish or Perish (@Harzing2007) over multiple d
 - 8 June 2018: Publish or Perish search terms: all of the words: "citizen science", species, "United Kingdom"; none of the words: disease, book, "new report", "new species", "new record"; years: 2014 to 2018
 - 12 June 2018: PoP search terms: all of the words: "biological records", "United Kingdom"; none of the words: book‚ "new report", "new species", "new record"
 
-# Save plots
+# Save plots and tables
 ```{r save_plots_main_text}
 t_size_save <- 25
+
+meth_df # print table 1 (methodology logistic regression results)
+spat_boot_df # print table 1 (spatial extent)
 
 ggsave("Fig1.svg", temp_extent_plot + 
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "svg")
-ggsave("Fig2.svg", spat_extent_plot + 
+# ggsave("Fig2.svg", spat_extent_plot + 
+#          theme(text = element_text(size = t_size_save)), 
+#        width = 25, height = 25, units = "cm", 
+#        device = "svg")
+ggsave("Fig2.svg", response_var_plot + 
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "svg")
-ggsave("Fig3.svg", response_var_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
-       device = "svg")
-ggsave("Fig4.svg", methodology_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
-       device = "svg")
-ggsave("Fig5.svg", data_type_study_question_perm_plot + 
+ggsave("Fig3.svg", data_type_study_question_perm_plot + 
          theme(text = element_text(size = t_size_save), 
         legend.key.height = grid::unit(1.5, "cm")) + 
-  geom_text(aes(label = paste0(round(residual, digits = 1), "\n(", 
-                               round(significance, digits = 2), ")")), 
+  geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
             size = t_size_save/3), # write the values
        width = 25, height = 25, units = "cm", 
        device = "svg")
-ggsave("Fig6.svg", data_type_analysis_approach_plot + 
+ggsave("Fig4.svg", data_type_analysis_approach_plot + 
          theme(text = element_text(size = t_size_save), 
         legend.key.height = grid::unit(1.5, "cm")) + 
-  geom_text(aes(label = paste0(round(residual, digits = 1), " (", 
-                               round(significance, digits = 2), ")")), 
-            size = t_size_save/3), 
+  geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
+            size = t_size_save/2), 
        width = 25, height = 25, units = "cm", 
        device = "svg")
 
@@ -2066,31 +2092,26 @@ ggsave("Fig1.jpg", temp_extent_plot +
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "jpg")
-ggsave("Fig2.jpg", spat_extent_plot + 
+# ggsave("Fig2.jpg", spat_extent_plot + 
+#          theme(text = element_text(size = t_size_save)), 
+#        width = 25, height = 25, units = "cm", 
+#        device = "jpg")
+ggsave("Fig2.jpg", response_var_plot + 
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "jpg")
-ggsave("Fig3.jpg", response_var_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
-       device = "jpg")
-ggsave("Fig4.jpg", methodology_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
-       device = "jpg")
-ggsave("Fig5.jpg", data_type_study_question_perm_plot + 
+ggsave("Fig3.jpg", data_type_study_question_perm_plot + 
          theme(text = element_text(size = t_size_save), 
                legend.key.height = grid::unit(1.5, "cm")) + 
-         geom_text(aes(label = paste0(round(residual, digits = 1), "\n(", 
-                               round(significance, digits = 2), ")")), 
-                   size = t_size_save/4), # write the values, 
+         geom_text(aes(label = paste0(round(residual, digits = 1), "\n", 
+                                      sig_symb)), 
+                   size = t_size_save/3), # write the values, 
        width = 25, height = 25, units = "cm", 
        device = "jpg")
-ggsave("Fig6.jpg", data_type_analysis_approach_plot + 
+ggsave("Fig4.jpg", data_type_analysis_approach_plot + 
          theme(text = element_text(size = t_size_save), 
                legend.key.height = grid::unit(1.5, "cm")) + 
-  geom_text(aes(label = paste0(round(residual, digits = 1), " (", 
-                               round(significance, digits = 2), ")")), 
+  geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
             size = t_size_save/3), 
        width = 25, height = 25, units = "cm", 
        device = "jpg")
