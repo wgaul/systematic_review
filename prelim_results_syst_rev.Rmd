@@ -1,6 +1,6 @@
 ---
 title: "What have biological records ever done for us?  A systematic scoping review - Code for plots and quantitative results"
-date: 19 Feb 2020
+date: 23 April 2020
 output:
   word_document:
     toc: true
@@ -51,9 +51,11 @@ source("./clean_data_syst_rev.R")
 
 Willson Gaul, Dinara Sadykova, Ellie Roark, Hannah J. White, Lupe León-Sánchez, Paul Caplat, Mark C. Emmerson, Jon M. Yearsley
 
-This R markdown document contains code that produces the plots, tables, and quantitative results reported in Gaul et al. (2020).  The actual text of the methods and results is not identical to the text of the published paper, but the numbers produced by the R code in this document are the same as those in the final paper.  
+This R markdown document contains code that produces the plots, tables, and quantitative results reported in Gaul et al. (2020) "What have biological records ever done for us?  A systematic scoping review".  The actual text of the methods and results is not identical to the text of the published paper, but the numbers produced by the R code in this document are the same as those in the final paper.  
 
-In order to run, this document must be saved in a directory containing the scripts "clean_data_syst_rev.R" and "combine_search_results.R" and a sub-directory called "data" that has the files "master_eligibility_results.csv", "wg_systematic_review_coding.csv", and "ellie_systematic_review_coding_04.csv", plus another sub-directory called "search_results" that contains csv files with results from multiple different search engines (see the "combine_search_results.R" script for names of all the search results data files that are expected).  
+In order to run, this document must be saved in a directory containing the scripts "clean_data_syst_rev.R" and "combine_search_results.R" and the data files "master_eligibility_results.csv", "wg_systematic_review_coding.csv", and "ellie_systematic_review_coding_04.csv", plus another sub-directory called "search_results" that contains csv files with results from multiple different search engines (see the "combine_search_results.R" script for names of all the search results data files that are expected).  
+
+Data are available from: https://doi.org/10.5281/zenodo.3760678
 
 # Methods
 
@@ -2064,26 +2066,26 @@ ggsave("Fig1.svg", temp_extent_plot +
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "svg")
-# ggsave("Fig2.svg", spat_extent_plot + 
+# ggsave("Fig2a.svg", spat_extent_plot + 
 #          theme(text = element_text(size = t_size_save)), 
 #        width = 25, height = 25, units = "cm", 
 #        device = "svg")
-ggsave("Fig2.svg", response_var_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
-       device = "svg")
-ggsave("Fig3.svg", data_type_study_question_perm_plot + 
-         theme(text = element_text(size = t_size_save), 
-        legend.key.height = grid::unit(1.5, "cm")) + 
-  geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
-            size = t_size_save/3), # write the values
-       width = 25, height = 25, units = "cm", 
-       device = "svg")
-ggsave("Fig4.svg", data_type_analysis_approach_plot + 
+ggsave("Fig2.svg", data_type_analysis_approach_plot + 
          theme(text = element_text(size = t_size_save), 
         legend.key.height = grid::unit(1.5, "cm")) + 
   geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
             size = t_size_save/2), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+ggsave("Fig3.svg", response_var_plot + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "svg")
+ggsave("Fig4.svg", data_type_study_question_perm_plot + 
+         theme(text = element_text(size = t_size_save), 
+        legend.key.height = grid::unit(1.5, "cm")) + 
+  geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
+            size = t_size_save/3), # write the values
        width = 25, height = 25, units = "cm", 
        device = "svg")
 
@@ -2092,27 +2094,27 @@ ggsave("Fig1.jpg", temp_extent_plot +
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "jpg")
-# ggsave("Fig2.jpg", spat_extent_plot + 
+# ggsave("Fig2a.jpg", spat_extent_plot + 
 #          theme(text = element_text(size = t_size_save)), 
 #        width = 25, height = 25, units = "cm", 
 #        device = "jpg")
-ggsave("Fig2.jpg", response_var_plot + 
+ggsave("Fig2.jpg", data_type_analysis_approach_plot + 
+         theme(text = element_text(size = t_size_save), 
+               legend.key.height = grid::unit(1.5, "cm")) + 
+  geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
+            size = t_size_save/3), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+ggsave("Fig3.jpg", response_var_plot + 
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "jpg")
-ggsave("Fig3.jpg", data_type_study_question_perm_plot + 
+ggsave("Fig4.jpg", data_type_study_question_perm_plot + 
          theme(text = element_text(size = t_size_save), 
                legend.key.height = grid::unit(1.5, "cm")) + 
          geom_text(aes(label = paste0(round(residual, digits = 1), "\n", 
                                       sig_symb)), 
                    size = t_size_save/3), # write the values, 
-       width = 25, height = 25, units = "cm", 
-       device = "jpg")
-ggsave("Fig4.jpg", data_type_analysis_approach_plot + 
-         theme(text = element_text(size = t_size_save), 
-               legend.key.height = grid::unit(1.5, "cm")) + 
-  geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
-            size = t_size_save/3), 
        width = 25, height = 25, units = "cm", 
        device = "jpg")
 ```
