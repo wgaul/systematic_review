@@ -1282,6 +1282,9 @@ Coder agreement was low when determining whether a study had an author associate
 ## Cross validation
 We coded whether studies tested statistical models using cross-validation and/or independent test datasets, but the percent of studies that did those things was too low for us to estimate the reliability of our codings using Krippendorff's alpha (proportion of studies that tested using cross-validation = `r round(length(which(wg$cross.validation == T)) / nrow(wg), digits = 2)`, proportion of studies that tested using independently collected test data = `r round(length(which(wg$testing.using.independent.dataset == T)) / nrow(wg), digits = 2)`).  
 
+## Acknowledgments
+This publication emanated from research supported in part by a grant from Science Foundation Ireland under grant number 15/IA/2881.
+
 ```{r dist_cv}
 # of the distribution studies, how many used cross-validation?
 dist_studs <- wg[wg$response.variable...distribution == T, ]
