@@ -876,8 +876,8 @@ temp_extent_plot <- ggplot(data = temp_extent_plot_df,
                                             "multiple\ndatasets")))) + 
   geom_boxplot(varwidth = T) +
   scale_y_log10() + 
-  xlab("Data Type") + 
-  ylab("Temporal Extent of Study (years)") + 
+  xlab("Data type") + 
+  ylab("Temporal extent of study (years)") + 
   # annotate("text", x = 3, y = 2600, 
   #          label = "paste(\"Adjusted \", 
   #                italic(R) ^ 2, \" = 0.36\")", 
@@ -886,8 +886,8 @@ temp_extent_plot <- ggplot(data = temp_extent_plot_df,
   #          label = "paste(\"Overall model significance \", 
   #                italic(p), \" < 0.0001\")", 
   #          parse = TRUE) +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = 35, vjust = 0.9, hjust = 1)) 
+  theme(axis.text.x = element_text(angle = 35, vjust = 0.9, hjust = 1), 
+        panel.background = element_rect(fill = "white", colour = "grey50")) 
 print(temp_extent_plot)
 ```
 
@@ -899,8 +899,8 @@ t_size = 22 # plot text size
 ggplot(data = temp_extent_plot_df, aes(y = temp_extent, x = data_type)) + #, color = sig_different_from_WhWhWh
   geom_boxplot(varwidth = T) +
   scale_y_log10() + 
-  xlab("Data Type") + 
-  ylab("Temporal Extent of Study (years)") + 
+  xlab("Data type") + 
+  ylab("Temporal extent of study (years)") + 
   annotate("text", x = 3, y = 2000,
            label = "paste(\"Adjusted \",
                  italic(R) ^ 2, \" = 0.28\")",
@@ -1049,11 +1049,11 @@ response_var_plot <- ggplot(data = resp_count_df,
                      ymax = u_95ci), 
                      size = 1.1) + 
   xlab("") + 
-  ylab("Proportion of Studies") + 
-  ylim(c(0, 1)) + 
-  theme_bw() + 
+  ylab("Proportion of studies") + 
+  # ylim(c(0, 0.75)) + 
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1), 
-        strip.background = element_blank(), strip.placement = "outside")
+        strip.background = element_blank(), strip.placement = "outside", 
+        panel.background = element_rect(fill = "white", colour = "grey50"))
 # theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)))
 print(response_var_plot)
 ```
@@ -1157,8 +1157,8 @@ data_type_study_question_perm_plot <- ggplot(
                             "non-detection", 
                             "organized\nscheme")))) + 
   geom_tile(aes(fill = residual)) + 
-  xlab("Study Question") + 
-  ylab("Data Type") + # write the values
+  xlab("Study question") + 
+  ylab("Data type") + # write the values
   scale_fill_gradient2(low = "#3366ff", mid = "white", high = "#ff751a") + 
   theme(panel.grid.major.x=element_blank(), #no gridlines
         panel.grid.minor.x=element_blank(), 
@@ -1232,8 +1232,8 @@ data_type_analysis_approach_plot <- ggplot(
                             "non-detection", 
                             "organized\nscheme")))) + 
   geom_tile(aes(fill = residual)) + 
-  xlab("Analysis Approach") + 
-  ylab("Data Type") + # write the values
+  xlab("Analysis approach") + 
+  ylab("Data type") + # write the values
   scale_fill_gradient2(low = "#3366ff", mid = "white", high = "#ff751a") + 
   theme(panel.grid.major.x=element_blank(), #no gridlines
         panel.grid.minor.x=element_blank(), 
