@@ -1051,7 +1051,7 @@ response_var_plot <- ggplot(data = resp_count_df,
   xlab("") + 
   ylab("Proportion of studies") + 
   # ylim(c(0, 0.75)) + 
-  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1), 
+  theme(axis.text.x = element_text(angle = 40, hjust = 1, vjust = 1), 
         strip.background = element_blank(), strip.placement = "outside", 
         panel.background = element_rect(fill = "white", colour = "grey50"))
 # theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)))
@@ -1143,9 +1143,10 @@ data_type_study_question_perm_plot <- ggplot(
                  levels = c("abundance", "distribution", "phenology", 
                             "species.richness", "trends.over.time", 
                             "other_focus"), 
-                 labels = c("abundance", "species\ndistribution", 
+                 labels = c("abundance", "species distribution", 
                             "phenology", 
-                            "species\nrichness", "trends\nover\ntime", 
+                            "species richness", 
+                            "trends over time", 
                             "other")), 
       y = factor(data_type,
                  levels = c("multiple.datasets.integrated.for.analysis", 
@@ -1165,7 +1166,7 @@ data_type_study_question_perm_plot <- ggplot(
         panel.grid.major.y=element_blank(), 
         panel.grid.minor.y=element_blank(),
         panel.background=element_rect(fill="white"), # background=white
-        axis.text.x = element_text(angle=35, hjust = 1, vjust=1),
+        axis.text.x = element_text(angle=45, hjust = 1, vjust=1),
         axis.text.y = element_text(angle=45)) +  
   # ggtitle("Residuals (significance level)\nfrom permutation test") + 
   labs(fill = "observed -\nexpected\ncounts")
@@ -1220,7 +1221,7 @@ data_type_analysis_approach_plot <- ggplot(
   data = perm_resids_long,        
   aes(x = factor(analysis_approach, 
                  levels = c("descriptive.only", "inference", "prediction"), 
-                 labels = c("descriptive\nonly", 
+                 labels = c("descriptive only", 
                             "inference", "prediction")), 
       y = factor(data_type,
                  levels = c("multiple datasets integrated for analysis", 
@@ -1240,7 +1241,7 @@ data_type_analysis_approach_plot <- ggplot(
         panel.grid.major.y=element_blank(), 
         panel.grid.minor.y=element_blank(),
         panel.background=element_rect(fill="white"), # background=white
-        axis.text.x = element_text(angle=30, hjust = 1, vjust=1),
+        axis.text.x = element_text(angle=40, hjust = 1, vjust=1),
         axis.text.y = element_text(angle=45)) +  
   # ggtitle("Residuals (significance level)\nfrom permutation test") + 
   labs(fill = "observed -\nexpected\ncounts")
@@ -2092,33 +2093,32 @@ ggsave("Fig4.svg", data_type_study_question_perm_plot +
        width = 25, height = 25, units = "cm", 
        device = "svg")
 
-
-ggsave("Fig1.jpg", temp_extent_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
+tsize_manuscript <- 15
+ggsave("Gaul Figure 1.jpg", temp_extent_plot + 
+         theme(text = element_text(size = tsize_manuscript_)), 
+       width = 11, height = 11, units = "cm", dpi = 300, 
        device = "jpg")
-# ggsave("Fig2a.jpg", spat_extent_plot + 
-#          theme(text = element_text(size = t_size_save)), 
-#        width = 25, height = 25, units = "cm", 
-#        device = "jpg")
-ggsave("Fig2.jpg", data_type_analysis_approach_plot + 
-         theme(text = element_text(size = t_size_save), 
-               legend.key.height = grid::unit(1.5, "cm")) + 
+ggsave("Gaul Figure 2.jpg", data_type_analysis_approach_plot + 
+         theme(text = element_text(size = tsize_manuscript), 
+               legend.key.height = grid::unit(1, "cm")) + 
   geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
-            size = t_size_save/3), 
-       width = 25, height = 25, units = "cm", 
+            size = tsize_manuscript/3), 
+       width = 11, height = 11, units = "cm", 
        device = "jpg")
-ggsave("Fig3.jpg", response_var_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
+ggsave("Gaul Figure 3.jpg", response_var_plot + 
+         theme(text = element_text(size = tsize_manuscript)), 
+       width = 11, height = 11, units = "cm", 
        device = "jpg")
-ggsave("Fig4.jpg", data_type_study_question_perm_plot + 
-         theme(text = element_text(size = t_size_save), 
-               legend.key.height = grid::unit(1.5, "cm")) + 
-         geom_text(aes(label = paste0(round(residual, digits = 1), "\n", 
+ggsave("Gaul Figure 4.jpg", data_type_study_question_perm_plot + 
+         theme(text = element_text(size = tsize_manuscript), 
+               legend.key.height = grid::unit(1, "cm"), 
+               axis.text = element_text(
+                 size = tsize_manuscript - 5)) + 
+         geom_text(aes(label = paste0(round(residual, 
+                                            digits = 1), "\n", 
                                       sig_symb)), 
-                   size = t_size_save/3), # write the values, 
-       width = 25, height = 25, units = "cm", 
+                   size = tsize_manuscript/5), # write the values, 
+       width = 11, height = 11, units = "cm", 
        device = "jpg")
 ```
 
