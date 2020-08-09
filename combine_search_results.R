@@ -276,7 +276,16 @@ search_results <- full_join(search_results,
 
 ### remove duplicate titles in search_results ---------------------------------
 # find possible duplicates
-n_duplicate_titles <- table(search_results$title)[table(search_results$title) > 1]
+search_results$title_std <- search_results$title # standardize titles to lower case
+search_results$title_std <- str_replace_all(
+  search_results$title_std, "\\s", "") %>%
+  str_replace_all(., "[[:punct:]]", "") %>%
+  str_to_lower()
+# count number of duplicates
+n_duplicate_titles <- table(search_results$title_std)[table(
+  search_results$title_std) > 1]
+
+# remove duplicate results
 possible_dups <- search_results[which(
   search_results$title %in% names(table(search_results$title)[which(
     table(search_results$title) > 1)])), ]
@@ -385,11 +394,11 @@ colnames(search_results)[which(
 colnames(search_results)[which(
   colnames(search_results) == "rand_order") ] <- "inclusion_order"
 
-rm(scopus, gbif, wos, proquest, search_results, elig, drop_dups, gs_dup, pq_dup, 
+rm(scopus, gbif, wos, proquest, drop_dups, gs_dup, pq_dup, 
    scop_dup, ttl, wos_dup)
 ### write out merged, ordered search results ----------------------------------
 if("master_combined_search_results_syst_rev.csv" %nin% 
-   list.files("/")){
+   list.files("./")){
   try(write_csv(search_results,
             path = "~/Documents/UCD/PhD_Project/systematic_review/search_results/master_combined_search_results_syst_rev.csv"))
 } else warning("File not written.  A file named master_combined_search_results_syst_rev.csv alread exists.  If you want to overwrite it, run the write_csv command manually.")

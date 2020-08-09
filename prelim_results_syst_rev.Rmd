@@ -2,12 +2,12 @@
 title: "What have biological records ever done for us?  A systematic scoping review - Code for plots and quantitative results"
 date: 23 April 2020
 output:
-  word_document:
-    toc: true
-    toc_depth: 4
   html_document:
     number_sections: true
     df_print: kable
+  word_document:
+    toc: true
+    toc_depth: 4
   pdf_document: default
   fig_caption: yes
 ---
@@ -35,6 +35,7 @@ library(MASS)
 library(car)
 library(GGally)
 library(tidyverse)
+library(ggrepel)
 
 diag <- F # produce exploratory & diagnostics plots & results
 diag_present <- T # produce diagnostics for report to Dina
@@ -335,6 +336,34 @@ time_hom <- homals(temp_extent[, 2:5], ndim = 2, ordinal = FALSE)
 # put the two dimensions D1 and D2 on the original temp_extent data
 temp_extent$D1 <- data.frame(time_hom$objectscores)$D1
 temp_extent$D2 <- data.frame(time_hom$objectscores)$D2
+
+## Make plot of loadings for dimensions
+# get data frame of loadings of first 2 dimensions
+mca_loadings_df <- data.frame(variable = c(names(time_hom$quantifications), 
+                                           names(time_hom$quantifications)), 
+                              value = c(T, T, T, T, F, F, F, F),
+                              D1 = NA, D2 = NA)
+for(i in 1:nrow(mca_loadings_df)) {
+  mca_loadings_df[i, 3:4] <- as.numeric(
+    time_hom$quantifications[[
+      as.character(mca_loadings_df$variable)[i]]][as.character(
+        mca_loadings_df$value[i]), ])
+}
+# clean variable names
+mca_loadings_df$variable <- gsub("data.structure...", "", 
+                                 mca_loadings_df$variable)
+mca_loadings_df$paste <- paste(mca_loadings_df$variable, 
+                               mca_loadings_df$value, sep = "_")
+# graph loadings
+mca_loadings_plot <- ggplot(data = mca_loadings_df, 
+                            aes(x = D1, y = D2, color = variable, 
+                                label = paste)) + 
+  geom_point() + 
+  scale_color_viridis_d(option = "magma", begin = 0.2, end = 0.8) + 
+  xlab("Dimension 1") + ylab("Dimension 2") +
+  theme_bw() + 
+  theme(legend.position = "none")
+mca_loadings_plot
 ```
 
 ```{r time_MCA_lm}
@@ -470,6 +499,77 @@ method_mod_null <- glm(factor(as.character(methodology.development.or.analysis),
 ```{r print_method_focus_model, include = F}
 method_chisq <- anova(method_mod_null, method_mod, test = "Chisq")
 ```
+
+```{r AIC_method_model}
+# in response to reviewer comment, look at AIC of all models
+# 27 July 2020
+method_AIC <- stepAIC(method_mod, direction = "backward")
+method_AIC$anova
+
+AIC_test <- glmulti::glmulti(y = method_mod, 
+                             level = 1, method = "h", 
+                             family = binomial())
+# AIC_test
+AIC_test@crits
+AIC_test@formulas[1] # best ranked model
+AIC_test@crits[1]
+AIC_test@formulas[26] # null model
+AIC_test@crits[26]
+AIC_test@crits[26] - AIC_test@crits[1] # delta AIC from best ranked to null
+AIC_test@formulas[55] # full model
+AIC_test@crits[55] - AIC_test@crits[1] # delta AIC from best ranked to full
+
+# fit "best" model according to AIC
+method_mod_best <- glm(
+  factor(as.character(methodology.development.or.analysis), 
+         levels = c("FALSE", "TRUE"), 
+         labels = c("FALSE", "TRUE")) ~ 1 +
+    factor(response.variable...distribution), 
+  data = wg, family = binomial())
+
+## look at AUC
+auc_null <- pROC::roc(response = method_mod_null$y, 
+                      predictor = method_mod_null$fitted.values)
+plot(auc_null)
+auc_null
+auc_full <- pROC::roc(response = method_mod$y, 
+                      predictor = method_mod$fitted.values)
+plot(auc_full)
+auc_full
+auc_best <- pROC::roc(response = method_mod_best$y, 
+                      predictor = method_mod_best$fitted.values)
+plot(auc_best)
+auc_best
+
+## McFadden's pseudo-R2
+# McFadden's R2 = 1 - (log(Lc) / log(Lnull))
+# where Lc is the likelihood value from the current model and Lnull is the 
+# likelihood from the null model
+
+# pseudo R2 - full model
+1 - (as.numeric(logLik(method_mod)) / as.numeric(logLik(method_mod_null)))
+# pseudo R2 - "best" model
+1 - (as.numeric(logLik(method_mod_best)) / as.numeric(logLik(method_mod_null)))
+```
+
+```{r methodological_rawData}
+## make a table of raw data for methodological vs. study question
+method_question_df <- data.frame(
+  study_question = c("species.richness", "distribution", 
+                     "response.variable...abundance", 
+                     "phenology", "trends.over.time", "other_focus"), 
+  methodological = NA, 
+  not_methodological = NA)
+for(i in 1:nrow(method_question_df)) {
+  v <- which(grepl(as.character(method_question_df$study_question[i]), 
+                   colnames(wg)))
+  method_question_df$methodological[i] <- length(
+    which(wg$methodology.development.or.analysis[wg[, v]] == T))
+  method_question_df$not_methodological[i] <- length(
+    which(wg$methodology.development.or.analysis[wg[, v]] == F))
+}
+```
+
 
 ```{r proportion_methodological_boot}
 prop_method <- length(which(wg$methodology.development.or.analysis == TRUE)) / 
@@ -784,7 +884,15 @@ To answer the question of who chooses to use biological records data, we used bo
 
 ## Search results 
 
-The search returned `r nrow(elig)` potentially relevant studies, of which we judged `r length(which(wg$qualifies == TRUE))` (`r round((length(which(wg$qualifies == TRUE))/nrow(elig)) * 100, digits = 1)`%) to be eligible for inclusion in this review.  The number of potentially relevant studies returned by more than one search method was `r length(n_duplicate_titles)` (`r round((length(n_duplicate_titles)/nrow(elig))*100, digits = 1)`%).  Of the studies that we deemed eligible for inclusion in this review, `r length(which(wg$title %in% names(n_duplicate_titles)))` (`r round((length(which(wg$title %in% names(n_duplicate_titles)))/nrow(wg))*100, digits = 1)`%) were returned by more than one search method.  
+```{r eligibleDuplicates}
+# count number of eligible studies that were returned more than once
+# by the search
+titles <- str_replace_all(wg$title, "\\s", "") %>%
+  str_replace_all(., "[[:punct:]]", "") %>%
+  str_to_lower()
+```
+
+The search returned `r nrow(elig)` potentially relevant studies, of which we judged `r length(which(wg$qualifies == TRUE))` (`r round((length(which(wg$qualifies == TRUE))/nrow(elig)) * 100, digits = 1)`%) to be eligible for inclusion in this review.  The number of potentially relevant studies returned by more than one search method was `r length(n_duplicate_titles)` (`r round((length(n_duplicate_titles)/nrow(elig))*100, digits = 1)`%).  Of the studies that we deemed eligible for inclusion in this review, `r length(which(titles %in% names(n_duplicate_titles)))` (`r round((length(which(titles %in% names(n_duplicate_titles)))/nrow(wg))*100, digits = 1)`%) were returned by more than one search method.  
 
 One reader coded all `r nrow(wg)` studies and a second reader independently coded `r nrow(er)` of the studies. 
 
@@ -862,33 +970,60 @@ The temporal extent of studies differed significantly for studies using differen
 The mean spatial extent was not different for studies using different types of data based on overlapping 95% bootstrap confidence intervals (Fig. 2).
 
 ```{r time_extent_results_plot}
-temp_extent_plot <- ggplot(data = temp_extent_plot_df, 
-                           aes(y = temp_extent, 
-                               x = factor(
-                                 data_type, 
-                                 levels = c("sampling effort known", 
-                                            "non detection", 
-                                            "organized scheme", 
-                                            "multiple datasets"), 
-                                 labels = c("sampling effort\nknown", 
-                                            "non-detection", 
-                                            "organized\nmonitoring\nscheme",  
-                                            "multiple\ndatasets")))) + 
-  geom_boxplot(varwidth = T) +
-  scale_y_log10() + 
-  xlab("Data type") + 
-  ylab("Temporal extent of study (years)") + 
-  # annotate("text", x = 3, y = 2600, 
-  #          label = "paste(\"Adjusted \", 
-  #                italic(R) ^ 2, \" = 0.36\")", 
-  #          parse = TRUE) + 
-  # annotate("text", x = 3, y = 1200, 
-  #          label = "paste(\"Overall model significance \", 
-  #                italic(p), \" < 0.0001\")", 
-  #          parse = TRUE) +
+# ## boxplot version
+# temp_extent_plot <- ggplot(data = temp_extent_plot_df, 
+#                            aes(y = temp_extent, 
+#                                x = factor(
+#                                  data_type, 
+#                                  levels = c("sampling effort known", 
+#                                             "non detection", 
+#                                             "organized scheme", 
+#                                             "multiple datasets"), 
+#                                  labels = c("sampling effort\nknown", 
+#                                             "non-detection", 
+#                                             "organized\nmonitoring\nscheme",  
+#                                             "multiple\ndatasets")))) + 
+#   geom_boxplot(varwidth = T) +
+#   scale_y_log10() + 
+#   xlab("Data type") + 
+#   ylab("Temporal extent of study (years)") + 
+#   # annotate("text", x = 3, y = 2600, 
+#   #          label = "paste(\"Adjusted \", 
+#   #                italic(R) ^ 2, \" = 0.36\")", 
+#   #          parse = TRUE) + 
+#   # annotate("text", x = 3, y = 1200, 
+#   #          label = "paste(\"Overall model significance \", 
+#   #                italic(p), \" < 0.0001\")", 
+#   #          parse = TRUE) +
+#   theme(axis.text.x = element_text(angle = 35, vjust = 0.9, hjust = 1), 
+#         panel.background = element_rect(fill = "white", colour = "grey50")) 
+# print(temp_extent_plot)
+
+## make a ridge plot version
+temp_extent_plot_ridge <- ggplot(
+  data = temp_extent_plot_df, 
+  aes(x = temp_extent, 
+      y = factor(
+        data_type, 
+        levels = c("sampling effort known", 
+                   "non detection", 
+                   "organized scheme", 
+                   "multiple datasets"), 
+        labels = c("sampling effort\nknown", 
+                   "non-detection", 
+                   "organized\nmonitoring\nscheme",
+                   "multiple\ndatasets")))) + 
+  geom_density_ridges(panel_scaling = F, 
+                      jittered_points = TRUE,
+                      position = position_points_jitter(width = 0.05, height = 0),
+                      point_shape = '|', point_alpha = 0.7, alpha = 0.7) + 
+  scale_x_log10(breaks = c(1, 10, 100, 1000, 10000), 
+                labels = c("1", "10", "100", "1000", "10000")) + 
+  ylab("Data type") +
+  xlab("Temporal extent of study (years)") +
   theme(axis.text.x = element_text(angle = 35, vjust = 0.9, hjust = 1), 
         panel.background = element_rect(fill = "white", colour = "grey50")) 
-print(temp_extent_plot)
+print(temp_extent_plot_ridge)
 ```
 
 ```{r time_extent_results_plot_for_presentation_slide, eval = F, include = F}
@@ -917,7 +1052,7 @@ ggplot(data = temp_extent_plot_df, aes(y = temp_extent, x = data_type)) + #, col
         text = element_text(size = t_size)) 
 ```
 
-```{r spat_extent_bootCI_plot}
+```{r spat_extent_bootCI_plot, include=FALSE}
 spat_boot_df <- data.frame(matrix(nrow = length(data_types), 
                                   ncol = 7))
 colnames(spat_boot_df) <- c("data_type", "minimum", "maximum", "median", "mean", 
@@ -1063,9 +1198,10 @@ print(response_var_plot)
 The overall model predicting the probability of a study addressing a methodological question based on the ecological focus of the study was not significant (intercept-only model residual deviance = `r round(method_chisq$'Resid. Dev'[1], digits = 1)`, full model residual deviance = `r round(method_chisq$'Resid. Dev'[2], digits = 1)`, Chi-squared test *p* = `r round(anova(method_mod, method_mod_null, test = "Chisq")[2, 5], 2)`, Fig. 3).  The proportion of studies that were methodological was `r round(prop_method_CI$boot_obj$t0, digits = 2)` (95% bootstrap CI [`r round(prop_method_CI$ci_obj$bca[[4]], digits = 2)`, `r round(prop_method_CI$ci_obj$bca[[5]], digits = 2)`]).
 
 ```{r plot_method_study_focus_coefficients}
-meth_df <- data.frame(matrix(nrow = 6, ncol = 4))
-colnames(meth_df) <- c("variable", "coef_estimate", "l_bound", "h_bound")
-meth_df$variable <- c("abundance", "distribution", "phenology", 
+meth_df <- data.frame(matrix(nrow = 7, ncol = 6))
+colnames(meth_df) <- c("variable", "coef_estimate", "l_bound", "h_bound", 
+                       "z_value", "P_value")
+meth_df$variable <- c("Intercept", "abundance", "distribution", "phenology", 
                       "richness", "time", "other")
 cis <- confint(method_mod)
 for(i in 1:nrow(meth_df)) {
@@ -1076,6 +1212,8 @@ for(i in 1:nrow(meth_df)) {
   meth_df$coef_estimate[i] <- coefs$Estimate[grepl(v, coefs$rowname)]
   meth_df$l_bound[i] <- cis[grepl(v, dimnames(cis)[[1]]), "2.5 %"]
   meth_df$h_bound[i] <- cis[grepl(v, dimnames(cis)[[1]]), "97.5 %"]
+  meth_df$z_value[i] <- coefs$z.value[grepl(v, coefs$rowname)]
+  meth_df$P_value[i] <- coefs$Pr...z..[grepl(v, coefs$rowname)]
 }
 
 # make graph
@@ -1510,7 +1648,7 @@ all_time_lms$BestModels
 # look at summary of the best model
 summary(all_time_lms$BestModel) # non-detectin is significant after removing sampling effort
 
-# So it looks likee the sampling effort variable is less important than 
+# So it looks like the sampling effort variable is less important than 
 # the non-detection variable.  Removing sampling effort from the full model 
 # reduces AIC (as does removing non-detection, but that doesn't reduce AIC
 # by as much, and the change is less than 2).  Removing organized collection scheme increases AIC.
@@ -2064,38 +2202,65 @@ Google Scholar searched through Publish or Perish (@Harzing2007) over multiple d
 t_size_save <- 25
 
 meth_df # print table 1 (methodology logistic regression results)
-spat_boot_df # print table 1 (spatial extent)
+method_question_df
+# spat_boot_df # print table 1 (spatial extent) # removed from the manuscript
 
-ggsave("Fig1.svg", temp_extent_plot + 
-         theme(text = element_text(size = t_size_save)), 
-       width = 25, height = 25, units = "cm", 
-       device = "svg")
-# ggsave("Fig2a.svg", spat_extent_plot + 
+# ggsave("Fig1.svg", temp_extent_plot_ridge + 
 #          theme(text = element_text(size = t_size_save)), 
 #        width = 25, height = 25, units = "cm", 
 #        device = "svg")
-ggsave("Fig2.svg", data_type_analysis_approach_plot + 
+# # ggsave("Fig2a.svg", spat_extent_plot + 
+# #          theme(text = element_text(size = t_size_save)), 
+# #        width = 25, height = 25, units = "cm", 
+# #        device = "svg")
+# ggsave("Fig2.svg", data_type_analysis_approach_plot + 
+#          theme(text = element_text(size = t_size_save), 
+#         legend.key.height = grid::unit(1.5, "cm")) + 
+#   geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
+#             size = t_size_save/2), 
+#        width = 25, height = 25, units = "cm", 
+#        device = "svg")
+# ggsave("Fig3.svg", response_var_plot + 
+#          theme(text = element_text(size = t_size_save)), 
+#        width = 25, height = 25, units = "cm", 
+#        device = "svg")
+# ggsave("Fig4.svg", data_type_study_question_perm_plot + 
+#          theme(text = element_text(size = t_size_save), 
+#         legend.key.height = grid::unit(1.5, "cm")) + 
+#   geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
+#             size = t_size_save/3), # write the values
+#        width = 25, height = 25, units = "cm", 
+#        device = "svg")
+
+## use eps
+ggsave("Fig1.eps", temp_extent_plot_ridge + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "eps")
+ggsave("Fig2.eps", data_type_analysis_approach_plot + 
          theme(text = element_text(size = t_size_save), 
         legend.key.height = grid::unit(1.5, "cm")) + 
   geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
             size = t_size_save/2), 
        width = 25, height = 25, units = "cm", 
-       device = "svg")
-ggsave("Fig3.svg", response_var_plot + 
+       device = "eps")
+ggsave("Fig3.eps", response_var_plot + 
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
-       device = "svg")
-ggsave("Fig4.svg", data_type_study_question_perm_plot + 
+       device = "eps")
+ggsave("Fig4.eps", data_type_study_question_perm_plot + 
          theme(text = element_text(size = t_size_save), 
         legend.key.height = grid::unit(1.5, "cm")) + 
   geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
             size = t_size_save/3), # write the values
        width = 25, height = 25, units = "cm", 
-       device = "svg")
+       device = "eps")
+
+
 
 tsize_manuscript <- 15
-ggsave("Gaul Figure 1.jpg", temp_extent_plot + 
-         theme(text = element_text(size = tsize_manuscript_)), 
+ggsave("Gaul Figure 1.jpg", temp_extent_plot_ridge + 
+         theme(text = element_text(size = tsize_manuscript)), 
        width = 11, height = 11, units = "cm", dpi = 300, 
        device = "jpg")
 ggsave("Gaul Figure 2.jpg", data_type_analysis_approach_plot + 
@@ -2124,6 +2289,14 @@ ggsave("Gaul Figure 4.jpg", data_type_study_question_perm_plot +
 
 
 ```{r save_plots_appendices}
+ggsave("FigS1.jpg", mca_loadings_plot + 
+         geom_label_repel(point.padding = 1, 
+                          box.padding = 1, size = t_size_save/4) + 
+         theme(text = element_text(size = t_size_save)), 
+       width = 25, height = 25, units = "cm", 
+       device = "jpg")
+
+
 ggsave("FigS1.1.svg", data_type_pairs_plot + 
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
