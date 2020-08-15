@@ -1,6 +1,6 @@
 ---
 title: "What have biological records ever done for us?  A systematic scoping review - Code for plots and quantitative results"
-date: 23 April 2020
+date: 13 August 2020
 output:
   html_document:
     number_sections: true
@@ -54,7 +54,7 @@ Willson Gaul, Dinara Sadykova, Ellie Roark, Hannah J. White, Lupe León-Sánchez
 
 This R markdown document contains code that produces the plots, tables, and quantitative results reported in Gaul et al. (2020) "What have biological records ever done for us?  A systematic scoping review".  The actual text of the methods and results is not identical to the text of the published paper, but the numbers produced by the R code in this document are the same as those in the final paper.  
 
-In order to run, this document must be saved in a directory containing the scripts "clean_data_syst_rev.R" and "combine_search_results.R" and the data files "master_eligibility_results.csv", "wg_systematic_review_coding.csv", and "ellie_systematic_review_coding_04.csv", plus another sub-directory called "search_results" that contains csv files with results from multiple different search engines (see the "combine_search_results.R" script for names of all the search results data files that are expected).  
+In order to run, this document must be saved in a directory containing the scripts "clean_data_syst_rev.R" and "combine_search_results.R" and the data files "master_eligibility_results.csv", "wg_systematic_review_coding.csv",  "ellie_systematic_review_coding_04.csv", and .csv files with results from multiple different search engines (see the "combine_search_results.R" script for names of all the search results data files that are expected).  
 
 Data are available from: https://doi.org/10.5281/zenodo.3760678
 
@@ -952,7 +952,13 @@ samp_adequate$variable <- gsub("\\.", " ", samp_adequate$variable)
 kable(samp_adequate[order(samp_adequate$kripp_alpha, decreasing = T), -c(2, 4)], 
       col.names = c("Variable", "Krippendorff's alpha"),
       digits = 2)
+
+# which variables were unreliable (i.e. sample size big enough but alpha low)
+prob_of_values[prob_of_values$prob_small_class >= 0.14 & 
+                 prob_of_values$kripp_alpha <= 0.67, ]
 ```
+
+`r nrow(prob_of_values[prob_of_values$prob_small_class >= 0.14 & prob_of_values$kripp_alpha > 0.67, ])` variables met our criteria for inclusion in further analyses (Krippendorff's alpha greater than 0.67 and relative frequency of at least 0.14 for the least common category).  `r nrow(prob_of_values[prob_of_values$prob_small_class >= 0.14 & prob_of_values$kripp_alpha <= 0.67, ])` variables had relative frequencies of the least common category high enough to estimate alpha, but had alpha values less than or equal to 0.67 and were therefore deemed unreliable.  
 
 ## Temporal and spatial extent of studies
 
@@ -1259,6 +1265,13 @@ perm_sq_p_vals_long <- gather(perm_sq_p_vals, key = "study_question",
 # get permutation residuals
 perm_sq_resids_long <- gather(perm_sq_resids, key = "study_question", 
                            value = "residual", 2:ncol(perm_sq_resids))
+# add observed counts to residuals data frame
+dt_pd_df_temp <- dt_pd_df # make a copy of dt_pd_df for modifying column names
+colnames(dt_pd_df_temp)[colnames(dt_pd_df_temp) == "n"] <- "count" # rename column
+colnames(dt_pd_df_temp)[colnames(dt_pd_df_temp) == "study_focus"] <- "study_question"
+perm_sq_resids_long <- left_join(perm_sq_resids_long, dt_pd_df_temp, 
+                              by = c("data_type", "study_question"))
+rm(dt_pd_df_temp)
 # add significance levels to residuals data frame
 perm_sq_resids_long <- left_join(perm_sq_resids_long, perm_sq_p_vals_long, 
                               by = c("data_type", "study_question"))
@@ -1341,6 +1354,13 @@ perm_p_vals_long <- gather(perm_p_vals, key = "analysis_approach",
 # get permutation residuals
 perm_resids_long <- gather(perm_resids, key = "analysis_approach", 
                            value = "residual", 2:4)
+# add observed counts to residuals data frame
+dt_an_df_temp <- dt_an_df # make a copy of dt_an_df for modifying data_type column
+dt_an_df_temp$data_type <- gsub("\\.", " ", dt_an_df_temp$data_type)
+colnames(dt_an_df_temp)[colnames(dt_an_df_temp) == "n"] <- "count" # rename column
+perm_resids_long <- left_join(perm_resids_long, dt_an_df_temp, 
+                              by = c("data_type", "analysis_approach"))
+rm(dt_an_df_temp)
 # add significance levels to residuals data frame
 perm_resids_long <- left_join(perm_resids_long, perm_p_vals_long, 
                               by = c("data_type", "analysis_approach"))
@@ -1384,7 +1404,8 @@ data_type_analysis_approach_plot <- ggplot(
   # ggtitle("Residuals (significance level)\nfrom permutation test") + 
   labs(fill = "observed -\nexpected\ncounts")
 print(data_type_analysis_approach_plot + 
-  geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb))))
+  geom_text(aes(label = paste0(round(residual, digits = 1), "\n(", count, 
+                               ")\n", sig_symb))))
 ```
 
 
@@ -2199,90 +2220,66 @@ Google Scholar searched through Publish or Perish (@Harzing2007) over multiple d
 
 # Save plots and tables
 ```{r save_plots_main_text}
-t_size_save <- 25
+t_size_save <- 24
 
 meth_df # print table 1 (methodology logistic regression results)
 method_question_df
 # spat_boot_df # print table 1 (spatial extent) # removed from the manuscript
-
-# ggsave("Fig1.svg", temp_extent_plot_ridge + 
-#          theme(text = element_text(size = t_size_save)), 
-#        width = 25, height = 25, units = "cm", 
-#        device = "svg")
-# # ggsave("Fig2a.svg", spat_extent_plot + 
-# #          theme(text = element_text(size = t_size_save)), 
-# #        width = 25, height = 25, units = "cm", 
-# #        device = "svg")
-# ggsave("Fig2.svg", data_type_analysis_approach_plot + 
-#          theme(text = element_text(size = t_size_save), 
-#         legend.key.height = grid::unit(1.5, "cm")) + 
-#   geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
-#             size = t_size_save/2), 
-#        width = 25, height = 25, units = "cm", 
-#        device = "svg")
-# ggsave("Fig3.svg", response_var_plot + 
-#          theme(text = element_text(size = t_size_save)), 
-#        width = 25, height = 25, units = "cm", 
-#        device = "svg")
-# ggsave("Fig4.svg", data_type_study_question_perm_plot + 
-#          theme(text = element_text(size = t_size_save), 
-#         legend.key.height = grid::unit(1.5, "cm")) + 
-#   geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
-#             size = t_size_save/3), # write the values
-#        width = 25, height = 25, units = "cm", 
-#        device = "svg")
 
 ## use eps
 ggsave("Fig1.eps", temp_extent_plot_ridge + 
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "eps")
-ggsave("Fig2.eps", data_type_analysis_approach_plot + 
-         theme(text = element_text(size = t_size_save), 
-        legend.key.height = grid::unit(1.5, "cm")) + 
-  geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
-            size = t_size_save/2), 
-       width = 25, height = 25, units = "cm", 
-       device = "eps")
-ggsave("Fig3.eps", response_var_plot + 
+ggsave("Fig2.eps", response_var_plot + 
          theme(text = element_text(size = t_size_save)), 
        width = 25, height = 25, units = "cm", 
        device = "eps")
-ggsave("Fig4.eps", data_type_study_question_perm_plot + 
+ggsave("Fig3.eps", data_type_study_question_perm_plot + 
          theme(text = element_text(size = t_size_save), 
         legend.key.height = grid::unit(1.5, "cm")) + 
-  geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
+  geom_text(aes(label = paste0(round(residual, digits = 1), "\n(", count, 
+                               ")\n",  sig_symb)), 
             size = t_size_save/3), # write the values
+       width = 25, height = 25, units = "cm", 
+       device = "eps")
+ggsave("Fig4.eps", data_type_analysis_approach_plot + 
+         theme(text = element_text(size = t_size_save), 
+        legend.key.height = grid::unit(1.5, "cm")) + 
+  geom_text(aes(label = paste0(round(residual, digits = 1), "\n(", count, 
+                               ")\n",  sig_symb)), 
+            size = t_size_save/2), 
        width = 25, height = 25, units = "cm", 
        device = "eps")
 
 
 
-tsize_manuscript <- 15
+tsize_manuscript <- 14
 ggsave("Gaul Figure 1.jpg", temp_extent_plot_ridge + 
          theme(text = element_text(size = tsize_manuscript)), 
        width = 11, height = 11, units = "cm", dpi = 300, 
        device = "jpg")
-ggsave("Gaul Figure 2.jpg", data_type_analysis_approach_plot + 
-         theme(text = element_text(size = tsize_manuscript), 
-               legend.key.height = grid::unit(1, "cm")) + 
-  geom_text(aes(label = paste0(round(residual, digits = 1), "\n", sig_symb)), 
-            size = tsize_manuscript/3), 
-       width = 11, height = 11, units = "cm", 
-       device = "jpg")
-ggsave("Gaul Figure 3.jpg", response_var_plot + 
+ggsave("Gaul Figure 2.jpg", response_var_plot + 
          theme(text = element_text(size = tsize_manuscript)), 
        width = 11, height = 11, units = "cm", 
        device = "jpg")
-ggsave("Gaul Figure 4.jpg", data_type_study_question_perm_plot + 
+ggsave("Gaul Figure 3.jpg", data_type_study_question_perm_plot + 
          theme(text = element_text(size = tsize_manuscript), 
                legend.key.height = grid::unit(1, "cm"), 
                axis.text = element_text(
                  size = tsize_manuscript - 5)) + 
          geom_text(aes(label = paste0(round(residual, 
-                                            digits = 1), "\n", 
+                                            digits = 1), "\n(", count, ")\n", 
                                       sig_symb)), 
                    size = tsize_manuscript/5), # write the values, 
+       width = 11, height = 11, units = "cm", 
+       device = "jpg")
+ggsave("Gaul Figure 4.jpg", data_type_analysis_approach_plot + 
+         theme(text = element_text(size = tsize_manuscript), 
+               legend.key.height = grid::unit(1, "cm")) + 
+  geom_text(aes(label = paste0(round(residual, digits = 1), "\n(", count, 
+                               ")\n",  sig_symb)), 
+            size = tsize_manuscript/3), 
        width = 11, height = 11, units = "cm", 
        device = "jpg")
 ```
