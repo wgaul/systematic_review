@@ -1008,24 +1008,36 @@ The mean spatial extent was not different for studies using different types of d
 ## make a ridge plot version
 temp_extent_plot_ridge <- ggplot(
   data = temp_extent_plot_df, 
-  aes(x = temp_extent, 
-      y = factor(
-        data_type, 
-        levels = c("sampling effort known", 
-                   "non detection", 
-                   "organized scheme", 
-                   "multiple datasets"), 
-        labels = c("sampling effort\nknown", 
-                   "non-detection", 
-                   "organized\nmonitoring\nscheme",
-                   "multiple\ndatasets")))) + 
-  geom_density_ridges(panel_scaling = F, 
-                      jittered_points = TRUE,
-                      position = position_points_jitter(width = 0.05, height = 0),
-                      point_shape = '|', point_alpha = 0.7, alpha = 0.7) + 
-  scale_x_log10(breaks = c(1, 10, 100, 1000, 10000), 
-                labels = c("1", "10", "100", "1000", "10000")) + 
-  ylab("Data type") +
+  aes(x = temp_extent)) + 
+      # y = factor(
+      #   data_type, 
+      #   levels = c("sampling effort known", 
+      #              "non detection", 
+      #              "organized scheme", 
+      #              "multiple datasets"), 
+      #   labels = c("sampling effort\nknown", 
+      #              "non-detection", 
+      #              "organized\nmonitoring\nscheme",
+      #              "multiple\ndatasets"))
+      # )) + 
+  # geom_density_ridges(panel_scaling = F, 
+  #                     jittered_points = TRUE,
+  #                     position = position_points_jitter(width = 0.05, height = 0),
+  #                     point_shape = '|', point_alpha = 0.7, alpha = 0.7) + 
+  geom_histogram(bins = 40) + 
+  facet_wrap(~ factor(data_type,
+                      levels = c("sampling effort known",
+                                 "non detection",
+                                 "organized scheme",
+                                 "multiple datasets"),
+                      labels = c("sampling effort known",
+                                 "non-detection",
+                                 "organized monitoring scheme",
+                                 "multiple datasets")), 
+             ncol = 1) + 
+scale_x_log10(breaks = c(1, 10, 100, 1000, 10000), 
+              labels = c("1", "10", "100", "1000", "10000")) + 
+  ylab("Number of studies") +
   xlab("Temporal extent of study (years)") +
   theme(axis.text.x = element_text(angle = 35, vjust = 0.9, hjust = 1), 
         panel.background = element_rect(fill = "white", colour = "grey50")) 
@@ -1391,7 +1403,7 @@ data_type_analysis_approach_plot <- ggplot(
                             "non-detection", 
                             "organized\nscheme")))) + 
   geom_tile(aes(fill = residual)) + 
-  xlab("Analysis approach") + 
+  xlab("Analytical approach") + 
   ylab("Data type") + # write the values
   scale_fill_gradient2(low = "#3366ff", mid = "white", high = "#ff751a") + 
   theme(panel.grid.major.x=element_blank(), #no gridlines
@@ -2257,7 +2269,7 @@ ggsave("Fig4.eps", data_type_analysis_approach_plot +
 tsize_manuscript <- 14
 ggsave("Gaul Figure 1.jpg", temp_extent_plot_ridge + 
          theme(text = element_text(size = tsize_manuscript)), 
-       width = 11, height = 11, units = "cm", dpi = 300, 
+       width = 10, height = 12, units = "cm", dpi = 300, 
        device = "jpg")
 ggsave("Gaul Figure 2.jpg", response_var_plot + 
          theme(text = element_text(size = tsize_manuscript)), 
